@@ -3,3 +3,6 @@ export * from './ids';
 export * from './object-types';
 export * from './reminders';
 export * from './life-object';
+export * from './household';
+export * from './household-task';
+export * from './audit';

@@ -7,13 +7,18 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node dist/db/migrate.js"
   },
   "dependencies": {
     "@life-os/domain": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-express": "^11.1.6",
+    "dotenv": "^17.0.0",
+    "drizzle-orm": "^0.44.0",
+    "postgres": "^3.4.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "zod": "^3.24.1"
@@ -23,6 +28,7 @@
     "@nestjs/schematics": "^11.0.8",
     "@types/express": "^5.0.1",
     "@types/node": "^24.0.0",
+    "drizzle-kit": "^0.31.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

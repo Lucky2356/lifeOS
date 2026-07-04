@@ -39,6 +39,27 @@
 - [ADR](docs/adr/) — журнал архитектурных решений
 - [CHANGELOG](CHANGELOG.md)
 
+## Быстрый старт (локально)
+
+Требуется Node ≥ 22 и pnpm. Для персистентной БД — Docker.
+
+```bash
+pnpm install
+
+# Вариант A — без БД (zero-config, in-memory):
+pnpm --filter @life-os/api dev            # API на http://localhost:3011
+pnpm --filter @life-os/web dev            # Web на http://localhost:5173
+
+# Вариант B — с PostgreSQL:
+docker compose -f infra/docker/docker-compose.yml up -d
+cp apps/api/.env.example apps/api/.env    # DATABASE_URL уже указывает на порт 5433
+pnpm --filter @life-os/api build
+pnpm --filter @life-os/api db:migrate     # применить миграции
+pnpm --filter @life-os/api dev
+```
+
+Тесты: `pnpm -r test`. Сборка всего: `pnpm build`.
+
 ## Процесс
 
 Разработка ведётся по фазам с чек-поинтами: Фаза 0 (PRD) → Фаза 1 (архитектура) → Фаза 2 (UX)

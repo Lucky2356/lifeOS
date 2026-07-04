@@ -1,0 +1,23 @@
+import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      // Бандлер (Vite/Rollup) компилирует TS-исходник доменного пакета напрямую —
+      // корректные named-экспорты; NestJS при этом потребляет собранный dist (CJS).
+      '@life-os/domain': fileURLToPath(new URL('../../packages/domain/src/index.ts', import.meta.url)),
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET ?? 'http://localhost:3011',
+        changeOrigin: true,
+      },
+    },
+  },
+});

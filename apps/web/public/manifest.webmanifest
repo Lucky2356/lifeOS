@@ -1,0 +1,10 @@
+{
+  "name": "Life OS",
+  "short_name": "Life OS",
+  "description": "Персональная операционная система для жизни",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F0E8",
+  "theme_color": "#3A6455",
+  "icons": []
+}

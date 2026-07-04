@@ -1,0 +1,69 @@
+/* Дизайн-токены Life OS «Calm Sanctuary» — источник правды docs/DESIGN.md.
+   Тема переключается атрибутом data-theme на <html>. */
+
+:root,
+:root[data-theme='light'] {
+  --paper: #f4f0e8;
+  --panel: #efeadf;
+  --surface: #ffffff;
+  --ink: #211f1b;
+  --ink-2: #57534b;
+  --ink-3: #8a8577;
+  --line: #e5dfd3;
+  --nav-inactive: #8c877d;
+
+  --sage: #3a6455;
+  --sage-soft: #e6eee9;
+  --sage-ink: #2c4c40;
+  --clay-soft: #f5e7df;
+  --clay-ink: #a6552f;
+  --amber-soft: #f5ead1;
+  --amber-ink: #7a5417;
+  --brick-soft: #f5ded9;
+  --brick-ink: #8a362e;
+
+  --violet: #6e5fa8;
+  --violet-soft: #f3effa;
+  --violet-line: #ddd4f0;
+  --violet-ink: #4e4490;
+
+  --on-accent: #ffffff;
+  --logo-fg: #ffffff;
+  --avatar-bg: #dfd8c8;
+}
+
+:root[data-theme='dark'] {
+  --paper: #161512;
+  --panel: #1f1d19;
+  --surface: #252320;
+  --ink: #efeae0;
+  --ink-2: #b0aa9d;
+  --ink-3: #7c7666;
+  --line: #34302a;
+  --nav-inactive: #726d62;
+
+  --sage: #7fbba0;
+  --sage-soft: #213029;
+  --sage-ink: #93cbaf;
+  --clay-soft: #2e211a;
+  --clay-ink: #dd9068;
+  --amber-soft: #332818;
+  --amber-ink: #e8ba66;
+  --brick-soft: #31201b;
+  --brick-ink: #e7948a;
+
+  --violet: #a897e0;
+  --violet-soft: #242038;
+  --violet-line: #3d3757;
+  --violet-ink: #bcaeec;
+
+  --on-accent: #15201b;
+  --logo-fg: #15201b;
+  --avatar-bg: #34302a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+  }
+}

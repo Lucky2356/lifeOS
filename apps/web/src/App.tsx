@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
+import { TodayScreen } from './components/TodayScreen';
 import { LedgerScreen } from './components/LedgerScreen';
 import { ObjectDetailScreen } from './components/ObjectDetailScreen';
 import { HouseholdScreen } from './components/HouseholdScreen';
@@ -11,7 +12,7 @@ type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator';
 
 export function App() {
   const { theme, toggle } = useTheme();
-  const [route, setRoute] = useState<Route>('ledger');
+  const [route, setRoute] = useState<Route>('today');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   function navigate(key: string) {
@@ -19,11 +20,18 @@ export function App() {
     setRoute(key as Route);
   }
 
+  function openObject(id: string) {
+    setRoute('ledger');
+    setSelectedId(id);
+  }
+
   return (
     <div className="app">
       <Sidebar active={route} onNavigate={navigate} />
       {route === 'ledger' && selectedId ? (
         <ObjectDetailScreen id={selectedId} onBack={() => setSelectedId(null)} theme={theme} onToggleTheme={toggle} />
+      ) : route === 'today' ? (
+        <TodayScreen theme={theme} onToggleTheme={toggle} onOpenObject={openObject} />
       ) : route === 'ledger' ? (
         <LedgerScreen theme={theme} onToggleTheme={toggle} onSelect={setSelectedId} />
       ) : route === 'household' ? (
@@ -33,7 +41,7 @@ export function App() {
       ) : route === 'navigator' ? (
         <NavigatorScreen theme={theme} onToggleTheme={toggle} />
       ) : (
-        <LedgerScreen theme={theme} onToggleTheme={toggle} onSelect={setSelectedId} />
+        <TodayScreen theme={theme} onToggleTheme={toggle} onOpenObject={openObject} />
       )}
     </div>
   );

@@ -29,6 +29,23 @@ export function computeReminders(deadlineISO: string, rules: ReminderRule[]): Co
     .sort((a, b) => a.fireAt.localeCompare(b.fireAt));
 }
 
+/** Правила напоминаний по умолчанию: за 90 / 30 / 7 / 1 день до дедлайна. */
+export const defaultReminderRules: ReminderRule[] = [
+  { offsetDays: 90 },
+  { offsetDays: 30 },
+  { offsetDays: 7 },
+  { offsetDays: 1 },
+];
+
+/** Ещё не наступившие напоминания для дедлайна (fireAt в будущем относительно now). */
+export function upcomingReminders(
+  deadlineISO: string,
+  now: Date = new Date(),
+  rules: ReminderRule[] = defaultReminderRules,
+): ComputedReminder[] {
+  return computeReminders(deadlineISO, rules).filter((r) => new Date(r.fireAt).getTime() >= now.getTime());
+}
+
 /** Целые дни до дедлайна (может быть отрицательным). null — если даты нет/она невалидна. */
 export function daysUntil(validUntilISO: string | null | undefined, now: Date = new Date()): number | null {
   if (!validUntilISO) return null;

@@ -5,7 +5,15 @@ import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { AddObjectModal } from './AddObjectModal';
 import type { Theme } from '../lib/theme';
 
-export function LedgerScreen({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
+export function LedgerScreen({
+  theme,
+  onToggleTheme,
+  onSelect,
+}: {
+  theme: Theme;
+  onToggleTheme: () => void;
+  onSelect: (id: string) => void;
+}) {
   const [objects, setObjects] = useState<LifeObject[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -82,7 +90,7 @@ export function LedgerScreen({ theme, onToggleTheme }: { theme: Theme; onToggleT
           {objects.map((o) => {
             const pill = lifecyclePill(o);
             return (
-              <button key={o.id} className="card">
+              <button key={o.id} className="card" onClick={() => onSelect(o.id)}>
                 <div className="card-top">
                   <span className="icon-chip">
                     <i className={`ti ${typeIcons[o.type]}`} aria-hidden="true" />

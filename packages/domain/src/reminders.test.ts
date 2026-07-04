@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeReminders, daysUntil, lifecycleFor } from './reminders';
+import { computeReminders, daysUntil, lifecycleFor, upcomingReminders } from './reminders';
 
 describe('computeReminders', () => {
   it('вычисляет даты срабатывания за N дней до дедлайна и сортирует их', () => {
@@ -12,6 +12,20 @@ describe('computeReminders', () => {
 
   it('бросает ошибку на невалидном дедлайне', () => {
     expect(() => computeReminders('не-дата', [{ offsetDays: 7 }])).toThrow();
+  });
+});
+
+describe('upcomingReminders', () => {
+  it('оставляет только ещё не наступившие напоминания', () => {
+    const now = new Date('2026-08-20T00:00:00.000Z');
+    const result = upcomingReminders('2026-09-14T00:00:00.000Z', now);
+    // за 90 и 30 дней уже прошли, за 7 и 1 — впереди
+    expect(result.map((r) => r.offsetDays)).toEqual([7, 1]);
+  });
+
+  it('пустой массив, когда все напоминания в прошлом', () => {
+    const now = new Date('2026-09-14T00:00:00.000Z');
+    expect(upcomingReminders('2026-09-14T00:00:00.000Z', now)).toEqual([]);
   });
 });
 

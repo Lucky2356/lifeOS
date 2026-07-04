@@ -1,0 +1,184 @@
+{
+  "packId": "ru",
+  "version": "1.0.0",
+  "region": "RU",
+  "locales": ["ru", "en"],
+  "playbooks": [
+    {
+      "key": "job_loss",
+      "kind": "crisis",
+      "title": { "ru": "Потеря работы", "en": "Job loss" },
+      "summary": {
+        "ru": "Спокойно, по шагам. Вы не обязаны делать всё сразу.",
+        "en": "Calmly, step by step. You don't have to do everything at once."
+      },
+      "steps": [
+        {
+          "key": "documents",
+          "order": 1,
+          "title": { "ru": "Забрать документы при увольнении", "en": "Collect documents on dismissal" },
+          "description": {
+            "ru": "Трудовая книжка, справка 2-НДФЛ, приказ об увольнении, расчётный лист.",
+            "en": "Employment record, income statement, dismissal order, payslip."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "save_to_ledger",
+          "order": 2,
+          "title": { "ru": "Сохранить копии в реестр", "en": "Save copies to the ledger" },
+          "description": {
+            "ru": "Отсканируйте и добавьте документы в Life Ledger, чтобы они были под рукой.",
+            "en": "Scan and add documents to Life Ledger so they are at hand."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "register_employment",
+          "order": 3,
+          "title": { "ru": "Встать на учёт в центр занятости", "en": "Register at the employment center" },
+          "description": {
+            "ru": "Даёт статус безработного и открывает право на пособие. Подать можно онлайн.",
+            "en": "Grants unemployed status and unlocks benefits. Can be filed online."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": "unemployment_benefit"
+        },
+        {
+          "key": "review_obligations",
+          "order": 4,
+          "title": { "ru": "Пересмотреть обязательные платежи", "en": "Review mandatory payments" },
+          "description": {
+            "ru": "Проверьте подписки, кредиты и страховки в реестре — что можно приостановить.",
+            "en": "Check subscriptions, loans and insurance in the ledger — what can be paused."
+          },
+          "requiredDocumentTypes": ["subscription", "financial_obligation", "insurance"],
+          "embedsGuideKey": null
+        }
+      ]
+    },
+    {
+      "key": "loss_of_loved_one",
+      "kind": "crisis",
+      "title": { "ru": "Смерть близкого", "en": "Loss of a loved one" },
+      "summary": {
+        "ru": "Первые шаги и документы, когда сложно думать. Двигайтесь в своём темпе.",
+        "en": "First steps and documents when it's hard to think. Go at your own pace."
+      },
+      "steps": [
+        {
+          "key": "death_certificate",
+          "order": 1,
+          "title": { "ru": "Получить свидетельство о смерти", "en": "Obtain the death certificate" },
+          "description": {
+            "ru": "Медицинское заключение, затем гербовое свидетельство в ЗАГС.",
+            "en": "Medical report, then the official certificate at the registry office."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "funeral",
+          "order": 2,
+          "title": { "ru": "Организация похорон", "en": "Arrange the funeral" },
+          "description": {
+            "ru": "Пособие на погребение, договор с ритуальной службой.",
+            "en": "Funeral allowance, agreement with the funeral service."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "inheritance",
+          "order": 3,
+          "title": { "ru": "Открыть наследственное дело", "en": "Open the inheritance case" },
+          "description": {
+            "ru": "Обратиться к нотариусу в течение 6 месяцев. Понадобятся документы на имущество.",
+            "en": "Visit a notary within 6 months. Property documents will be needed."
+          },
+          "requiredDocumentTypes": ["property", "vehicle", "financial_obligation"],
+          "embedsGuideKey": null
+        }
+      ]
+    },
+    {
+      "key": "relocation",
+      "kind": "crisis",
+      "title": { "ru": "Переезд", "en": "Relocation" },
+      "summary": {
+        "ru": "Смена адреса, регистрация и перенос услуг — по порядку.",
+        "en": "Address change, registration and moving services — in order."
+      },
+      "steps": [
+        {
+          "key": "registration",
+          "order": 1,
+          "title": { "ru": "Оформить регистрацию по новому адресу", "en": "Register at the new address" },
+          "description": {
+            "ru": "Через Госуслуги или МВД. Нужен паспорт и документ на жильё.",
+            "en": "Via public services or the ministry. Passport and housing document needed."
+          },
+          "requiredDocumentTypes": ["document", "property"],
+          "embedsGuideKey": "address_change"
+        },
+        {
+          "key": "transfer_services",
+          "order": 2,
+          "title": { "ru": "Перенести коммунальные услуги и подписки", "en": "Transfer utilities and subscriptions" },
+          "description": {
+            "ru": "Интернет, страховки, подписки с привязкой к адресу — обновите данные.",
+            "en": "Internet, insurance, address-bound subscriptions — update the details."
+          },
+          "requiredDocumentTypes": ["subscription", "insurance"],
+          "embedsGuideKey": null
+        }
+      ]
+    },
+    {
+      "key": "renew_documents",
+      "kind": "bureaucracy",
+      "title": { "ru": "Продление документов", "en": "Renew documents" },
+      "summary": {
+        "ru": "Загранпаспорт, права и другие документы — сроки и шаги.",
+        "en": "Passport, license and other documents — deadlines and steps."
+      },
+      "steps": [
+        {
+          "key": "check_deadline",
+          "order": 1,
+          "title": { "ru": "Проверить срок действия", "en": "Check the expiry date" },
+          "description": {
+            "ru": "Life Ledger подскажет, что истекает и когда.",
+            "en": "Life Ledger shows what expires and when."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "prepare_documents",
+          "order": 2,
+          "title": { "ru": "Подготовить документы и фото", "en": "Prepare documents and photo" },
+          "description": {
+            "ru": "Заявление, старый документ, фотографии, оплата пошлины.",
+            "en": "Application, old document, photos, fee payment."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "submit",
+          "order": 3,
+          "title": { "ru": "Подать заявление", "en": "Submit the application" },
+          "description": {
+            "ru": "Через Госуслуги или МФЦ. Отслеживайте статус заявки.",
+            "en": "Via public services or a service center. Track the application status."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        }
+      ]
+    }
+  ]
+}

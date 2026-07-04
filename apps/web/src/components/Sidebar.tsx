@@ -6,7 +6,7 @@ const items = [
   { key: 'navigator', icon: 'ti-compass', label: 'Навигатор' },
 ];
 
-export function Sidebar({ active }: { active: string }) {
+export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (key: string) => void }) {
   return (
     <nav className="rail" aria-label="Основная навигация">
       <div className="rail-logo" aria-hidden="true">
@@ -19,6 +19,7 @@ export function Sidebar({ active }: { active: string }) {
           title={it.label}
           aria-label={it.label}
           aria-current={it.key === active ? 'page' : undefined}
+          onClick={() => onNavigate(it.key)}
         >
           <i className={`ti ${it.icon}`} aria-hidden="true" />
         </button>

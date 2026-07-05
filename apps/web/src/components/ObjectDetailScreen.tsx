@@ -143,7 +143,14 @@ export function ObjectDetailScreen({
             <button className="btn btn-primary" onClick={save} disabled={busy || title.trim().length === 0}>
               {busy ? 'Сохраняю…' : 'Сохранить'}
             </button>
-            <button className="btn" onClick={() => { setEditing(false); load(); }} disabled={busy}>
+            <button
+              className="btn"
+              onClick={() => {
+                setEditing(false);
+                load();
+              }}
+              disabled={busy}
+            >
               Отмена
             </button>
           </>

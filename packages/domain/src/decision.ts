@@ -45,10 +45,7 @@ export interface ScoredOption {
 export function scoreOptions(decision: Pick<Decision, 'criteria' | 'options'>): ScoredOption[] {
   return decision.options
     .map((opt) => {
-      const total = decision.criteria.reduce(
-        (sum, c) => sum + c.weight * (opt.scores[c.id] ?? 0),
-        0,
-      );
+      const total = decision.criteria.reduce((sum, c) => sum + c.weight * (opt.scores[c.id] ?? 0), 0);
       return { optionId: opt.id, label: opt.label, total };
     })
     .sort((a, b) => b.total - a.total);
@@ -75,7 +72,11 @@ export const updateDecisionInputSchema = z
   .partial();
 export type UpdateDecisionInput = z.infer<typeof updateDecisionInputSchema>;
 
-export function createDecision(input: CreateDecisionInput, ownerUserId: string, now: Date = new Date()): Decision {
+export function createDecision(
+  input: CreateDecisionInput,
+  ownerUserId: string,
+  now: Date = new Date(),
+): Decision {
   const parsed = createDecisionInputSchema.parse(input);
   const ts = now.toISOString();
   return {
@@ -98,7 +99,11 @@ export function createDecision(input: CreateDecisionInput, ownerUserId: string, 
   };
 }
 
-export function applyDecisionUpdate(current: Decision, patch: UpdateDecisionInput, now: Date = new Date()): Decision {
+export function applyDecisionUpdate(
+  current: Decision,
+  patch: UpdateDecisionInput,
+  now: Date = new Date(),
+): Decision {
   const parsed = updateDecisionInputSchema.parse(patch);
   return {
     ...current,

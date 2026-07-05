@@ -25,7 +25,9 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (k
         </button>
       ))}
       <div className="rail-spacer" />
-      <div className="rail-avatar" title="Профиль">А</div>
+      <div className="rail-avatar" title="Профиль">
+        А
+      </div>
     </nav>
   );
 }

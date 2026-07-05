@@ -74,11 +74,7 @@ export class HouseholdController {
   }
 
   @Post(':id/tasks/:taskId/toggle')
-  toggleTask(
-    @Param('id') id: string,
-    @Param('taskId') taskId: string,
-    @CurrentUserId() userId: string,
-  ) {
+  toggleTask(@Param('id') id: string, @Param('taskId') taskId: string, @CurrentUserId() userId: string) {
     return this.service.toggleTask(id, taskId, userId);
   }
 

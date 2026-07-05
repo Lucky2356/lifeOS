@@ -10,9 +10,7 @@ import { LIFE_OBJECT_REPOSITORY, type LifeObjectRepository } from './life-object
 
 @Injectable()
 export class LifeObjectService {
-  constructor(
-    @Inject(LIFE_OBJECT_REPOSITORY) private readonly repo: LifeObjectRepository,
-  ) {}
+  constructor(@Inject(LIFE_OBJECT_REPOSITORY) private readonly repo: LifeObjectRepository) {}
 
   create(input: CreateLifeObjectInput, ownerUserId: string): Promise<LifeObject> {
     return this.repo.create(createLifeObject(input, ownerUserId));

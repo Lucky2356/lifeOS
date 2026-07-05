@@ -3,6 +3,7 @@
 > Единая модель без дублирования сущностей между модулями. Все таблицы несут sync-метаданные (ADR 0003).
 
 ## 1. Соглашения (для всех таблиц)
+
 - Первичный ключ: `id UUID` (UUIDv7 — сортируемый по времени, безопасен при офлайн-создании).
 - Sync-метаданные: `created_at`, `updated_at`, `hlc` (hybrid logical clock), `deleted_at` (tombstone),
   `version INT`.
@@ -45,6 +46,7 @@ erDiagram
 ## 3. Ключевые сущности
 
 ### IAM
+
 - **USER** — `id`, `email`, `password_hash` (argon2id), `mfa_type` (none/totp/passkey), `mfa_secret`
   (зашифрован), `locale`, `status`, `created_at`, ...
 - **SESSION** — `id`, `user_id`, `device_id`, `refresh_token_hash`, `expires_at`, `revoked_at`,
@@ -53,6 +55,7 @@ erDiagram
   `provider`, `privacy_share_sensitive` (bool, default false).
 
 ### Household OS
+
 - **HOUSEHOLD** — `id`, `name`, `created_by`, ...
 - **MEMBERSHIP** — `id`, `household_id`, `user_id`, `role` (owner/adult/child/guest),
   `permissions` (jsonb override), `expires_at` (для гостя), `status`.
@@ -66,6 +69,7 @@ erDiagram
   `at`, `context` (jsonb, без чувствительного содержимого).
 
 ### Life Ledger (ядро)
+
 - **OBJECT_TYPE** — справочник типов: document / warranty_item / subscription / insurance / property /
   vehicle / health_record / financial_obligation. Расширяемо; часть типов приходит из content pack
   (справочники региона).
@@ -80,6 +84,7 @@ erDiagram
   `change` (jsonb diff), `at`.
 
 ### Decision Companion
+
 - **DECISION** — `id`, `owner_user_id`, `title`, `context`, `status`, `decided_at?`.
 - **DECISION_CRITERION** — `id`, `decision_id`, `label`, `weight`.
 - **DECISION_OPTION** — `id`, `decision_id`, `label`, `scores` (jsonb: criterion_id→score), `pros`, `cons`.
@@ -87,6 +92,7 @@ erDiagram
   `reviewed_at?` — для анализа паттернов со временем.
 
 ### Content Pack Engine (данные пака — версионируются отдельно)
+
 - **CONTENT_PACK** — `pack_id`, `version`, `region`, `locales`, `checksum`, `status`.
 - **PLAYBOOK** (Crisis) — `id`, `pack_id`, `pack_version`, `key`, `title_i18n`, `applies_when` (jsonb).
 - **PLAYBOOK_STEP** — `id`, `playbook_id`, `order`, `title_i18n`, `description_i18n`,
@@ -97,9 +103,11 @@ erDiagram
   `pack_version`, `step_states` (jsonb), `started_at`, `completed_at?`. (Аналогично GUIDE_PROGRESS.)
 
 ### Billing (заглушка, вне core — ADR монетизации)
+
 - **DONATION_INTENT** — `id`, `user_id`, `amount`, `status`, `provider_ref?`. Изолирован, не влияет на core.
 
 ## 4. Row-Level Security (набросок политик)
+
 - `LIFE_OBJECT`: видим, если `owner_user_id = current_user` **ИЛИ** есть `SHARE_GRANT`/членство в
   `household_id` с достаточным `access_level`. Дети/гости — только явно расшаренное.
 - `AUDIT_ENTRY`: доступ только owner/adult дома; запись — системная, не редактируется.
@@ -107,5 +115,6 @@ erDiagram
 - Политики применяются в БД (RLS), а не только в API — защита от broken access control.
 
 ## 5. Замечания по эволюции
+
 - Все типы объектов расширяются через `OBJECT_TYPE` + схему `data` — новый тип не меняет структуру таблиц.
 - Новый регион = новый `CONTENT_PACK`, без DDL-изменений ядра.

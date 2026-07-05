@@ -35,7 +35,13 @@ describe('isMembershipActive', () => {
 
   it('гость с истёкшим сроком неактивен', () => {
     const m = createMembership(
-      { householdId: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000002', displayName: 'Гость', role: 'guest', expiresAt: '2026-07-01T00:00:00.000Z' },
+      {
+        householdId: '00000000-0000-0000-0000-000000000001',
+        userId: '00000000-0000-0000-0000-000000000002',
+        displayName: 'Гость',
+        role: 'guest',
+        expiresAt: '2026-07-01T00:00:00.000Z',
+      },
       new Date('2026-06-01T00:00:00.000Z'),
     );
     expect(isMembershipActive(m, new Date('2026-07-05T00:00:00.000Z'))).toBe(false);
@@ -44,9 +50,12 @@ describe('isMembershipActive', () => {
   });
 
   it('участник без срока активен', () => {
-    const m = createMembership(
-      { householdId: '00000000-0000-0000-0000-000000000001', userId: '00000000-0000-0000-0000-000000000002', displayName: 'Мария', role: 'adult' },
-    );
+    const m = createMembership({
+      householdId: '00000000-0000-0000-0000-000000000001',
+      userId: '00000000-0000-0000-0000-000000000002',
+      displayName: 'Мария',
+      role: 'adult',
+    });
     expect(isMembershipActive(m)).toBe(true);
   });
 });

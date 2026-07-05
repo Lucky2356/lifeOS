@@ -24,7 +24,9 @@ export class InMemoryHouseholdRepository implements HouseholdRepository {
   }
 
   async listMemberships(householdId: string): Promise<Membership[]> {
-    return [...this.memberships.values()].filter((m) => m.householdId === householdId && m.deletedAt === null);
+    return [...this.memberships.values()].filter(
+      (m) => m.householdId === householdId && m.deletedAt === null,
+    );
   }
 
   async findMembership(householdId: string, userId: string): Promise<Membership | null> {
@@ -66,8 +68,6 @@ export class InMemoryHouseholdRepository implements HouseholdRepository {
   }
 
   async listAudit(householdId: string): Promise<AuditEntry[]> {
-    return this.audit
-      .filter((e) => e.householdId === householdId)
-      .sort((a, b) => b.at.localeCompare(a.at));
+    return this.audit.filter((e) => e.householdId === householdId).sort((a, b) => b.at.localeCompare(a.at));
   }
 }

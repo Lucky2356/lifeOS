@@ -23,7 +23,10 @@ export function lifecyclePill(o: LifeObject, now: Date = new Date()): Pill {
   const days = daysUntil(o.validUntil, now);
   switch (state) {
     case 'overdue':
-      return { cls: 'pill-overdue', label: days !== null ? `просрочено ${Math.abs(days)} дн.` : 'просрочено' };
+      return {
+        cls: 'pill-overdue',
+        label: days !== null ? `просрочено ${Math.abs(days)} дн.` : 'просрочено',
+      };
     case 'due_soon':
       return { cls: 'pill-due', label: days !== null ? `через ${days} дн.` : 'скоро' };
     case 'ok':

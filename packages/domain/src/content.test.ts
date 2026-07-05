@@ -7,8 +7,22 @@ const playbook: Playbook = {
   title: { ru: 'Потеря работы', en: 'Job loss' },
   summary: { ru: '', en: '' },
   steps: [
-    { key: 's1', order: 1, title: { ru: 'A', en: 'A' }, description: { ru: '', en: '' }, requiredDocumentTypes: [], embedsGuideKey: null },
-    { key: 's2', order: 2, title: { ru: 'B', en: 'B' }, description: { ru: '', en: '' }, requiredDocumentTypes: [], embedsGuideKey: null },
+    {
+      key: 's1',
+      order: 1,
+      title: { ru: 'A', en: 'A' },
+      description: { ru: '', en: '' },
+      requiredDocumentTypes: [],
+      embedsGuideKey: null,
+    },
+    {
+      key: 's2',
+      order: 2,
+      title: { ru: 'B', en: 'B' },
+      description: { ru: '', en: '' },
+      requiredDocumentTypes: [],
+      embedsGuideKey: null,
+    },
   ],
 };
 

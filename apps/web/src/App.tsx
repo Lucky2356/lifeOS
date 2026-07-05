@@ -29,7 +29,12 @@ export function App() {
     <div className="app">
       <Sidebar active={route} onNavigate={navigate} />
       {route === 'ledger' && selectedId ? (
-        <ObjectDetailScreen id={selectedId} onBack={() => setSelectedId(null)} theme={theme} onToggleTheme={toggle} />
+        <ObjectDetailScreen
+          id={selectedId}
+          onBack={() => setSelectedId(null)}
+          theme={theme}
+          onToggleTheme={toggle}
+        />
       ) : route === 'today' ? (
         <TodayScreen theme={theme} onToggleTheme={toggle} onOpenObject={openObject} />
       ) : route === 'ledger' ? (

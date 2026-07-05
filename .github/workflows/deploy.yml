@@ -1,0 +1,32 @@
+name: Deploy (build images)
+
+# Хостинг на старте локальный, поэтому пуша в registry/на сервер здесь нет —
+# воркфлоу собирает Docker-образы, валидируя деплой-артефакты. Пуш в registry
+# добавляется, когда появится цель развёртывания и секреты.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-images:
+    name: Build API and web images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          tags: life-os-api:ci
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          tags: life-os-web:ci

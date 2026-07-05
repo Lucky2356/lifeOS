@@ -33,9 +33,7 @@ describe('HouseholdService', () => {
   it('владелец добавляет ребёнка; ребёнок не может создавать задачи', async () => {
     const h = await newHouse();
     await service.addMember(h.id, owner, { userId: childUser, displayName: 'Даша', role: 'child' });
-    await expect(
-      service.createTask(h.id, childUser, { title: 'Задача' }),
-    ).rejects.toThrow();
+    await expect(service.createTask(h.id, childUser, { title: 'Задача' })).rejects.toThrow();
   });
 
   it('ребёнок не может добавлять участников', async () => {

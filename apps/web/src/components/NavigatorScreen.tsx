@@ -55,10 +55,14 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         </div>
 
         <div className="serif page-title">{pickText(selected.title, 'ru')}</div>
-        <div className="page-sub" style={{ marginBottom: 16 }}>{pickText(selected.summary, 'ru')}</div>
+        <div className="page-sub" style={{ marginBottom: 16 }}>
+          {pickText(selected.summary, 'ru')}
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
-          <div style={{ flex: 1, height: 7, background: 'var(--line)', borderRadius: 999, overflow: 'hidden' }}>
+          <div
+            style={{ flex: 1, height: 7, background: 'var(--line)', borderRadius: 999, overflow: 'hidden' }}
+          >
             <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sage)' }} />
           </div>
           <span style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
@@ -79,12 +83,20 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               </button>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 500, textDecoration: done ? 'line-through' : 'none', color: done ? 'var(--ink-3)' : 'var(--ink)' }}>
+                  <span
+                    style={{
+                      fontWeight: 500,
+                      textDecoration: done ? 'line-through' : 'none',
+                      color: done ? 'var(--ink-3)' : 'var(--ink)',
+                    }}
+                  >
                     {pickText(step.title, 'ru')}
                   </span>
                   {step.embedsGuideKey && <span className="pill pill-ok">Гид</span>}
                 </div>
-                <div className="page-sub" style={{ marginTop: 4 }}>{pickText(step.description, 'ru')}</div>
+                <div className="page-sub" style={{ marginTop: 4 }}>
+                  {pickText(step.description, 'ru')}
+                </div>
                 {step.requiredDocumentTypes.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {step.requiredDocumentTypes.map((t) => (
@@ -118,7 +130,9 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         {crisis.map((pb) => (
           <button key={pb.key} className="card" onClick={() => open(pb)}>
             <div className="card-top">
-              <span className="icon-chip"><i className="ti ti-compass" aria-hidden="true" /></span>
+              <span className="icon-chip">
+                <i className="ti ti-compass" aria-hidden="true" />
+              </span>
             </div>
             <div className="card-title">{pickText(pb.title, 'ru')}</div>
             <div className="card-meta">{pb.steps.length} шагов</div>
@@ -131,7 +145,9 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         {bureaucracy.map((pb) => (
           <button key={pb.key} className="card" onClick={() => open(pb)}>
             <div className="card-top">
-              <span className="icon-chip"><i className="ti ti-file-text" aria-hidden="true" /></span>
+              <span className="icon-chip">
+                <i className="ti ti-file-text" aria-hidden="true" />
+              </span>
             </div>
             <div className="card-title">{pickText(pb.title, 'ru')}</div>
             <div className="card-meta">{pb.steps.length} шагов</div>

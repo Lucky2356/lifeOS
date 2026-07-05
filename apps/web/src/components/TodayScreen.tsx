@@ -42,7 +42,8 @@ export function TodayScreen({
     });
     void householdApi.listMine().then((hs) => {
       const first = hs[0];
-      if (first) void householdApi.tasks(first.id).then((t) => setTasks(t.filter((x) => x.status === 'open')));
+      if (first)
+        void householdApi.tasks(first.id).then((t) => setTasks(t.filter((x) => x.status === 'open')));
     });
   }, []);
 
@@ -53,7 +54,9 @@ export function TodayScreen({
       <div className="page-head">
         <div>
           <div className="page-sub" style={{ marginBottom: 2 }}>
-            {new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
+            {new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(
+              new Date(),
+            )}
           </div>
           <div className="serif page-title">Доброе утро</div>
           <div className="page-sub" style={{ marginTop: 4 }}>
@@ -80,7 +83,14 @@ export function TodayScreen({
                   key={o.id}
                   className="list-row"
                   onClick={() => onOpenObject(o.id)}
-                  style={{ width: '100%', background: 'none', border: 'none', borderBottom: '0.5px solid var(--line)', cursor: 'pointer', textAlign: 'left' }}
+                  style={{
+                    width: '100%',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: '0.5px solid var(--line)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
                 >
                   <span className="icon-chip" style={{ width: 32, height: 32, fontSize: 16 }}>
                     <i className={`ti ${typeIcons[o.type]}`} aria-hidden="true" />

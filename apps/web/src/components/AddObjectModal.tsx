@@ -56,7 +56,12 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
         </div>
         <div className="field">
           <label htmlFor="validUntil">Действует до / дедлайн (необязательно)</label>
-          <input id="validUntil" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+          <input
+            id="validUntil"
+            type="date"
+            value={validUntil}
+            onChange={(e) => setValidUntil(e.target.value)}
+          />
         </div>
         {error && <div style={{ color: 'var(--brick-ink)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>

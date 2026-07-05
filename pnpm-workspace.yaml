@@ -1,5 +1,8 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
 allowBuilds:
   esbuild: true
+overrides:
+  # SCA-фикс: multer <2.2.0 уязвим (GHSA-72gw-mp4g-v24j), тянется через @nestjs/platform-express.
+  multer: '>=2.2.0'

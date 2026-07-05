@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  scoreOptions,
-  type Decision,
-  type DecisionCriterion,
-  type DecisionOption,
-} from '@life-os/domain';
+import { scoreOptions, type Decision, type DecisionCriterion, type DecisionOption } from '@life-os/domain';
 import { decisionApi } from '../lib/decision-api';
 import type { Theme } from '../lib/theme';
 
@@ -60,7 +55,9 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     setDirty(true);
   }
   function setScore(optId: string, critId: string, value: number) {
-    setOptions((os) => os.map((o) => (o.id === optId ? { ...o, scores: { ...o.scores, [critId]: value } } : o)));
+    setOptions((os) =>
+      os.map((o) => (o.id === optId ? { ...o, scores: { ...o.scores, [critId]: value } } : o)),
+    );
     setDirty(true);
   }
 
@@ -75,7 +72,9 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           </button>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
         </div>
-        <div className="serif page-title" style={{ marginBottom: 18 }}>{selected.title}</div>
+        <div className="serif page-title" style={{ marginBottom: 18 }}>
+          {selected.title}
+        </div>
 
         <div className="section-label">
           Критерии
@@ -84,7 +83,11 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           </button>
         </div>
         <div className="list-card" style={{ marginBottom: 20 }}>
-          {criteria.length === 0 && <div className="list-row" style={{ color: 'var(--ink-3)' }}>Добавьте критерии</div>}
+          {criteria.length === 0 && (
+            <div className="list-row" style={{ color: 'var(--ink-3)' }}>
+              Добавьте критерии
+            </div>
+          )}
           {criteria.map((c) => (
             <div className="list-row" key={c.id}>
               <input
@@ -99,12 +102,16 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               <select
                 value={c.weight}
                 onChange={(e) => {
-                  setCriteria((cs) => cs.map((x) => (x.id === c.id ? { ...x, weight: Number(e.target.value) } : x)));
+                  setCriteria((cs) =>
+                    cs.map((x) => (x.id === c.id ? { ...x, weight: Number(e.target.value) } : x)),
+                  );
                   setDirty(true);
                 }}
               >
                 {[1, 2, 3, 4, 5].map((w) => (
-                  <option key={w} value={w}>{w}</option>
+                  <option key={w} value={w}>
+                    {w}
+                  </option>
                 ))}
               </select>
             </div>
@@ -118,7 +125,11 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           </button>
         </div>
         <div className="list-card" style={{ marginBottom: 20 }}>
-          {options.length === 0 && <div className="list-row" style={{ color: 'var(--ink-3)' }}>Добавьте варианты</div>}
+          {options.length === 0 && (
+            <div className="list-row" style={{ color: 'var(--ink-3)' }}>
+              Добавьте варианты
+            </div>
+          )}
           {options.map((o) => (
             <div className="list-row" key={o.id} style={{ flexWrap: 'wrap', gap: 10 }}>
               <input
@@ -131,7 +142,16 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                 }}
               />
               {criteria.map((c) => (
-                <span key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--ink-3)' }}>
+                <span
+                  key={c.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 12,
+                    color: 'var(--ink-3)',
+                  }}
+                >
                   {c.label}
                   <input
                     type="number"
@@ -153,7 +173,9 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             <div className="list-card" style={{ marginBottom: 20 }}>
               {ranked.map((r, i) => (
                 <div className="list-row" key={r.optionId}>
-                  {i === 0 && <i className="ti ti-star" aria-hidden="true" style={{ color: 'var(--sage)' }} />}
+                  {i === 0 && (
+                    <i className="ti ti-star" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+                  )}
                   <span style={{ fontWeight: i === 0 ? 500 : 400 }}>{r.label}</span>
                   <span className="list-row-meta">{r.total} баллов</span>
                 </div>
@@ -190,13 +212,17 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           {decisions.map((d) => (
             <button key={d.id} className="card" onClick={() => open(d)}>
               <div className="card-top">
-                <span className="icon-chip"><i className="ti ti-scale" aria-hidden="true" /></span>
+                <span className="icon-chip">
+                  <i className="ti ti-scale" aria-hidden="true" />
+                </span>
                 <span className={`pill ${d.status === 'decided' ? 'pill-ok' : 'pill-none'}`}>
                   {d.status === 'decided' ? 'решено' : 'черновик'}
                 </span>
               </div>
               <div className="card-title">{d.title}</div>
-              <div className="card-meta">{d.options.length} вар. · {d.criteria.length} крит.</div>
+              <div className="card-meta">
+                {d.options.length} вар. · {d.criteria.length} крит.
+              </div>
             </button>
           ))}
         </div>

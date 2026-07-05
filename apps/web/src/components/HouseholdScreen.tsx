@@ -135,7 +135,11 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
           <div className="section-label">Общие задачи</div>
           <div className="list-card" style={{ marginBottom: 14 }}>
-            {tasks.length === 0 && <div className="list-row" style={{ color: 'var(--ink-3)' }}>Пока нет задач</div>}
+            {tasks.length === 0 && (
+              <div className="list-row" style={{ color: 'var(--ink-3)' }}>
+                Пока нет задач
+              </div>
+            )}
             {tasks.map((t) => (
               <div className="list-row" key={t.id}>
                 <button
@@ -145,7 +149,12 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                 >
                   {t.status === 'done' && <i className="ti ti-check" aria-hidden="true" />}
                 </button>
-                <span style={{ textDecoration: t.status === 'done' ? 'line-through' : 'none', color: t.status === 'done' ? 'var(--ink-3)' : 'var(--ink)' }}>
+                <span
+                  style={{
+                    textDecoration: t.status === 'done' ? 'line-through' : 'none',
+                    color: t.status === 'done' ? 'var(--ink-3)' : 'var(--ink)',
+                  }}
+                >
                   {t.title}
                 </span>
               </div>
@@ -170,7 +179,11 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             </span>
           </div>
           <div className="list-card">
-            {audit.length === 0 && <div className="list-row" style={{ color: 'var(--ink-3)' }}>Событий пока нет</div>}
+            {audit.length === 0 && (
+              <div className="list-row" style={{ color: 'var(--ink-3)' }}>
+                Событий пока нет
+              </div>
+            )}
             {audit.slice(0, 8).map((e) => (
               <div className="list-row" key={e.id}>
                 <span>

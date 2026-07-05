@@ -126,7 +126,10 @@
         {
           "key": "transfer_services",
           "order": 2,
-          "title": { "ru": "Перенести коммунальные услуги и подписки", "en": "Transfer utilities and subscriptions" },
+          "title": {
+            "ru": "Перенести коммунальные услуги и подписки",
+            "en": "Transfer utilities and subscriptions"
+          },
           "description": {
             "ru": "Интернет, страховки, подписки с привязкой к адресу — обновите данные.",
             "en": "Internet, insurance, address-bound subscriptions — update the details."

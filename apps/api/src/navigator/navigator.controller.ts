@@ -28,11 +28,7 @@ export class NavigatorController {
   }
 
   @Post('progress/:id/steps/:stepKey/toggle')
-  toggle(
-    @Param('id') id: string,
-    @Param('stepKey') stepKey: string,
-    @CurrentUserId() userId: string,
-  ) {
+  toggle(@Param('id') id: string, @Param('stepKey') stepKey: string, @CurrentUserId() userId: string) {
     return this.content.toggle(id, stepKey, userId);
   }
 }

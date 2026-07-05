@@ -6,6 +6,7 @@
 ## [Unreleased]
 
 ### Added
+
 - Фаза 0: PRD (`docs/PRD.md`) — утверждён.
 - Фаза 1: архитектурная документация — компоненты, доменная модель, схема БД, карта API, RBAC, threat model.
 - ADR 0001–0005: стек, стиль архитектуры, offline-sync, content packs, AI-слой.
@@ -33,11 +34,26 @@
   - Экран «Сегодня»: спокойная сводка «требует внимания» (агрегация реестра по жизненному циклу) + задачи дома.
   - PWA: манифест + service worker (офлайн app-shell, installable).
 - Домен: 28 тестов; API: 15 тестов. Единый паттерн «порт репозитория» во всех модулях.
+- Фаза 5, CI/CD и гейты безопасности:
+  - GitHub Actions `ci.yml`: build, **lint** (ESLint) + **format** (Prettier), typecheck, tests,
+    валидация content-pack; **SCA** (`pnpm audit --prod --audit-level=high`); **secret scanning** (gitleaks).
+  - `codeql.yml`: **SAST** (CodeQL). `deploy.yml`: сборка Docker-образов (валидация артефактов).
+  - Деплой-артефакты: `apps/api/Dockerfile` (multi-stage, `pnpm deploy`), `apps/web/Dockerfile` (nginx),
+    `infra/docker/docker-compose.prod.yml`. API-образ собран и проверен локально (health + контент из контейнера).
+  - `docs/OPERATIONS.md`: окружения, миграции expand/contract, логи без PII, backup/DR, нагрузочное тестирование.
+  - ESLint (flat config) + Prettier как обязательные гейты; `scripts/validate-content.mjs`.
+
+### Fixed / Security
+
+- **SCA-фиксы** (найдены гейтом и устранены): `multer` → ≥2.2.0 (GHSA-72gw-mp4g-v24j, через
+  @nestjs/platform-express, pnpm override); `drizzle-orm` → ^0.45.2 (GHSA-gpj5-g38j-94v9). Аудит чист.
 
 ### Notes / остаётся
+
 - Persistence: Life Ledger на PostgreSQL/Drizzle; Household/Decision/Navigator — in-memory за тем же
   портом (Drizzle-swap-in — механический следующий шаг). Полный offline-first данных — local-first
   движок (ADR 0003), продовая задача. AI-слой — опциональный, отдельный будущий срез (ADR 0005).
 
 ### Security
+
 - Валидация входа Zod на границе API; `.env` вне git; owner-scoped доступ в репозитории (задел под RLS).

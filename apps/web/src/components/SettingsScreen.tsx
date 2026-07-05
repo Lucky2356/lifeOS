@@ -116,6 +116,10 @@ export function SettingsScreen({
               </span>
             </div>
           </div>
+
+          <div className="page-sub" style={{ marginTop: 24, fontSize: 12 }}>
+            Life OS · версия {__APP_VERSION__} · обновляется автоматически
+          </div>
         </>
       )}
     </main>

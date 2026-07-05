@@ -43,6 +43,16 @@
   - `docs/OPERATIONS.md`: окружения, миграции expand/contract, логи без PII, backup/DR, нагрузочное тестирование.
   - ESLint (flat config) + Prettier как обязательные гейты; `scripts/validate-content.mjs`.
 
+- Финализация:
+  - **AI-слой (ADR 0005)**: provider-agnostic порт, Noop + Claude адаптеры (по ключу), настройки
+    (выкл по умолчанию, помодульные тумблеры, приватность), gated `POST /ai/suggest`, экран настроек
+    ИИ, блок «Предложил ИИ» с ручной альтернативой; тесты «core работает без ИИ».
+  - **Структурные логи без PII** (pino/pino-http): метод/путь/статус, без тел и секретных заголовков.
+  - **Экспорт/удаление аккаунта**: `GET /account/export`, `DELETE /account` — право на забвение.
+  - **Релизы и автообновление**: `release.yml` (тег `v*` → GitHub Release + образы GHCR), версионируемый
+    service worker с **мгновенным авто-обновлением** PWA (web/телефон/ПК), `docs/RELEASES.md`.
+  - Домен: 32 теста; API: 21 тест.
+
 ### Fixed / Security
 
 - **SCA-фиксы** (найдены гейтом и устранены): `multer` → ≥2.2.0 (GHSA-72gw-mp4g-v24j, через

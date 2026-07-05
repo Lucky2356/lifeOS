@@ -37,6 +37,7 @@
 - [RBAC](docs/RBAC.md) — роли и права доступа
 - [Безопасность / Threat Model](docs/SECURITY.md)
 - [Операции / CI-CD](docs/OPERATIONS.md) — окружения, миграции, мониторинг, backup/DR
+- [Релизы и автообновление](docs/RELEASES.md) — версии, GitHub Releases, авто-обновление PWA
 - [Дизайн-система](docs/DESIGN.md)
 - [ADR](docs/adr/) — журнал архитектурных решений
 - [CHANGELOG](CHANGELOG.md)

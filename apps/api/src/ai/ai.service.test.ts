@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AiService } from './ai.service';
-import { AiSettingsRepository } from './ai-settings.repository';
+import { InMemoryAiSettingsRepository } from './ai-settings.repository';
 
 const user = '00000000-0000-0000-0000-0000000000a1';
 
@@ -9,7 +9,7 @@ describe('AiService', () => {
 
   beforeEach(() => {
     delete process.env.ANTHROPIC_API_KEY;
-    service = new AiService(new AiSettingsRepository());
+    service = new AiService(new InMemoryAiSettingsRepository());
   });
 
   it('по умолчанию ИИ выключен → suggest бросает ai_disabled (core не деградирует)', async () => {

@@ -62,6 +62,11 @@
     раздел «Безопасность» (включение MFA, выход). Домен: валидация IAM (35 тестов), API: auth (27 тестов).
   - Проверено вживую: 401 без токена, register→app, ownerUserId из токена, logout очищает сессию.
 
+- **Полная персистентность в PostgreSQL**: Drizzle-репозитории для всех модулей (IAM users/sessions,
+  Household + memberships/tasks/audit, Decision, AI settings, Navigator progress) через тот же порт-паттерн.
+  Глобальный `DatabaseModule`; без `DATABASE_URL` — in-memory (zero-config dev). Миграция `0001`.
+  Проверено: register → перезапуск API → login работает, объекты/решения/дома/прогресс сохранены.
+
 ### Fixed / Security
 
 - **SCA-фиксы** (найдены гейтом и устранены): `multer` → ≥2.2.0 (GHSA-72gw-mp4g-v24j, через

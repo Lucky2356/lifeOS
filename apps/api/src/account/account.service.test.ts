@@ -7,7 +7,7 @@ import { InMemoryDecisionRepository } from '../decision/in-memory-decision.repos
 import { HouseholdService } from '../household/household.service';
 import { InMemoryHouseholdRepository } from '../household/in-memory-household.repository';
 import { AiService } from '../ai/ai.service';
-import { AiSettingsRepository } from '../ai/ai-settings.repository';
+import { InMemoryAiSettingsRepository } from '../ai/ai-settings.repository';
 
 const user = '00000000-0000-0000-0000-0000000000a1';
 
@@ -22,7 +22,7 @@ describe('AccountService', () => {
     ledger = new LifeObjectService(new InMemoryLifeObjectRepository());
     decisions = new DecisionService(new InMemoryDecisionRepository());
     households = new HouseholdService(new InMemoryHouseholdRepository());
-    ai = new AiService(new AiSettingsRepository());
+    ai = new AiService(new InMemoryAiSettingsRepository());
     account = new AccountService(ledger, decisions, households, ai);
   });
 

@@ -7,9 +7,11 @@ import { NavigatorModule } from './navigator/navigator.module';
 import { AiModule } from './ai/ai.module';
 import { AccountModule } from './account/account.module';
 import { IamModule } from './iam/iam.module';
+import { DatabaseModule } from './db/database.module';
 
 @Module({
   imports: [
+    DatabaseModule,
     IamModule,
     LedgerModule,
     HouseholdModule,

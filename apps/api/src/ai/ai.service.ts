@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import {
   isAiEnabled,
   mergeAiSettings,
@@ -7,7 +7,7 @@ import {
   type AiSuggestion,
   type UpdateAiSettings,
 } from '@life-os/domain';
-import { AiSettingsRepository } from './ai-settings.repository';
+import { AI_SETTINGS_REPOSITORY, type AiSettingsRepository } from './ai-settings.repository';
 import type { AiProvider } from './ai-provider';
 import { NoopAiProvider } from './noop.provider';
 import { ClaudeAiProvider } from './claude.provider';
@@ -16,7 +16,7 @@ import { ClaudeAiProvider } from './claude.provider';
 export class AiService {
   private readonly claudeKey = process.env.ANTHROPIC_API_KEY;
 
-  constructor(private readonly settingsRepo: AiSettingsRepository) {}
+  constructor(@Inject(AI_SETTINGS_REPOSITORY) private readonly settingsRepo: AiSettingsRepository) {}
 
   getSettings(userId: string): Promise<AiSettings> {
     return this.settingsRepo.get(userId);

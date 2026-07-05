@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Injectable, NotFoundException, type OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, type OnModuleInit } from '@nestjs/common';
 import {
   startProgress,
   toggleStep,
@@ -9,11 +9,13 @@ import {
   type Playbook,
   type PlaybookProgress,
 } from '@life-os/domain';
+import { PROGRESS_REPOSITORY, type ProgressRepository } from './progress.repository';
 
 @Injectable()
 export class ContentService implements OnModuleInit {
   private pack!: ContentPack;
-  private readonly progress = new Map<string, PlaybookProgress>();
+
+  constructor(@Inject(PROGRESS_REPOSITORY) private readonly progress: ProgressRepository) {}
 
   onModuleInit(): void {
     const dir = process.env.CONTENT_PACK_DIR ?? resolve(process.cwd(), '..', '..', 'content-packs');
@@ -31,26 +33,20 @@ export class ContentService implements OnModuleInit {
     return p;
   }
 
-  start(key: string, ownerUserId: string): PlaybookProgress {
+  async start(key: string, ownerUserId: string): Promise<PlaybookProgress> {
     const playbook = this.getPlaybook(key);
-    const existing = [...this.progress.values()].find(
-      (p) => p.ownerUserId === ownerUserId && p.playbookKey === key,
-    );
+    const existing = await this.progress.findByOwnerAndKey(ownerUserId, key);
     if (existing) return existing;
-    const progress = startProgress(playbook, this.pack, ownerUserId);
-    this.progress.set(progress.id, progress);
-    return progress;
+    return this.progress.create(startProgress(playbook, this.pack, ownerUserId));
   }
 
-  listProgress(ownerUserId: string): PlaybookProgress[] {
-    return [...this.progress.values()].filter((p) => p.ownerUserId === ownerUserId);
+  listProgress(ownerUserId: string): Promise<PlaybookProgress[]> {
+    return this.progress.listByOwner(ownerUserId);
   }
 
-  toggle(progressId: string, stepKey: string, ownerUserId: string): PlaybookProgress {
-    const current = this.progress.get(progressId);
+  async toggle(progressId: string, stepKey: string, ownerUserId: string): Promise<PlaybookProgress> {
+    const current = await this.progress.findById(progressId);
     if (!current || current.ownerUserId !== ownerUserId) throw new NotFoundException('Прогресс не найден');
-    const updated = toggleStep(current, stepKey);
-    this.progress.set(progressId, updated);
-    return updated;
+    return this.progress.save(toggleStep(current, stepKey));
   }
 }

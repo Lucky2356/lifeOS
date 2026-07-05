@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { defaultAiSettings, type AiSettings } from '@life-os/domain';
 
-/** Хранилище настроек ИИ по пользователю (in-memory; swap-in на Drizzle — как в других модулях). */
+export interface AiSettingsRepository {
+  get(userId: string): Promise<AiSettings>;
+  save(userId: string, settings: AiSettings): Promise<AiSettings>;
+  delete(userId: string): Promise<void>;
+}
+
+export const AI_SETTINGS_REPOSITORY = Symbol('AI_SETTINGS_REPOSITORY');
+
+/** Хранилище настроек ИИ по пользователю (in-memory). */
 @Injectable()
-export class AiSettingsRepository {
+export class InMemoryAiSettingsRepository implements AiSettingsRepository {
   private readonly store = new Map<string, AiSettings>();
 
   async get(userId: string): Promise<AiSettings> {

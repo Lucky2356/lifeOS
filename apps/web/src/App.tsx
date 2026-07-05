@@ -6,9 +6,10 @@ import { ObjectDetailScreen } from './components/ObjectDetailScreen';
 import { HouseholdScreen } from './components/HouseholdScreen';
 import { DecisionsScreen } from './components/DecisionsScreen';
 import { NavigatorScreen } from './components/NavigatorScreen';
+import { SettingsScreen } from './components/SettingsScreen';
 import { useTheme } from './lib/theme';
 
-type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator';
+type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'settings';
 
 export function App() {
   const { theme, toggle } = useTheme();
@@ -45,6 +46,8 @@ export function App() {
         <DecisionsScreen theme={theme} onToggleTheme={toggle} />
       ) : route === 'navigator' ? (
         <NavigatorScreen theme={theme} onToggleTheme={toggle} />
+      ) : route === 'settings' ? (
+        <SettingsScreen theme={theme} onToggleTheme={toggle} onBack={() => setRoute('today')} />
       ) : (
         <TodayScreen theme={theme} onToggleTheme={toggle} onOpenObject={openObject} />
       )}

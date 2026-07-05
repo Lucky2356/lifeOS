@@ -8,3 +8,4 @@ export * from './household-task';
 export * from './audit';
 export * from './decision';
 export * from './content';
+export * from './ai';

@@ -1,0 +1,123 @@
+import { useEffect, useState } from 'react';
+import { aiModules, type AiModule, type AiSettings } from '@life-os/domain';
+import { aiApi } from '../lib/ai-api';
+import type { Theme } from '../lib/theme';
+
+const moduleLabels: Record<AiModule, { icon: string; label: string }> = {
+  ledger: { icon: 'ti-folders', label: 'Реестр' },
+  household: { icon: 'ti-home', label: 'Дом' },
+  decision: { icon: 'ti-scale', label: 'Решения' },
+  navigator: { icon: 'ti-compass', label: 'Навигатор' },
+};
+
+function Switch({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button
+      className={`switch ${on ? 'switch-on' : ''}`}
+      onClick={onClick}
+      role="switch"
+      aria-checked={on}
+      aria-label="Переключатель"
+    >
+      <span className="switch-knob" />
+    </button>
+  );
+}
+
+export function SettingsScreen({
+  theme,
+  onToggleTheme,
+  onBack,
+}: {
+  theme: Theme;
+  onToggleTheme: () => void;
+  onBack: () => void;
+}) {
+  const [settings, setSettings] = useState<AiSettings | null>(null);
+
+  useEffect(() => {
+    void aiApi.getSettings().then(setSettings);
+  }, []);
+
+  async function patch(p: Parameters<typeof aiApi.updateSettings>[0]) {
+    const updated = await aiApi.updateSettings(p);
+    setSettings(updated);
+  }
+
+  return (
+    <main className="main">
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+        <button className="btn btn-ghost" onClick={onBack}>
+          <i className="ti ti-arrow-left" aria-hidden="true" /> Назад
+        </button>
+        <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
+          <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="serif page-title">ИИ и приватность</div>
+      <div className="page-sub" style={{ marginBottom: 20, maxWidth: 520 }}>
+        ИИ — только помощник. Всё в Life OS работает и без него, вручную. Включайте там, где удобно, и
+        выключайте в любой момент.
+      </div>
+
+      {settings && (
+        <>
+          <div className="ai-hero">
+            <span className="ai-hero-icon">
+              <i className="ti ti-sparkles" aria-hidden="true" />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 500 }}>ИИ-ассистент</div>
+              <div className="page-sub">Подсказки, помощь с формами, следующий шаг</div>
+            </div>
+            <Switch
+              on={settings.globalEnabled}
+              onClick={() => patch({ globalEnabled: !settings.globalEnabled })}
+            />
+          </div>
+
+          <div className="section-label">По модулям</div>
+          <div className="list-card" style={{ marginBottom: 22, opacity: settings.globalEnabled ? 1 : 0.55 }}>
+            {aiModules.map((m) => (
+              <div className="list-row" key={m}>
+                <i
+                  className={`ti ${moduleLabels[m].icon}`}
+                  aria-hidden="true"
+                  style={{ color: 'var(--sage)' }}
+                />
+                <span style={{ flex: 1 }}>{moduleLabels[m].label}</span>
+                <Switch
+                  on={settings.perModule[m] ?? false}
+                  onClick={() => patch({ perModule: { [m]: !(settings.perModule[m] ?? false) } })}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="section-label">Приватность данных</div>
+          <div className="list-card">
+            <div className="list-row">
+              <i className="ti ti-lock" aria-hidden="true" style={{ color: 'var(--brick-ink)' }} />
+              <span style={{ flex: 1 }}>
+                Отправлять чувствительные данные ИИ
+                <span className="page-sub"> · медкарты и документы не отправляются без разрешения</span>
+              </span>
+              <Switch
+                on={settings.shareSensitive}
+                onClick={() => patch({ shareSensitive: !settings.shareSensitive })}
+              />
+            </div>
+            <div className="list-row">
+              <i className="ti ti-cpu" aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+              <span style={{ flex: 1 }}>Провайдер ИИ</span>
+              <span className="list-row-meta" style={{ textTransform: 'capitalize' }}>
+                {settings.provider}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+    </main>
+  );
+}

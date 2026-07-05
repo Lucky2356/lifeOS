@@ -25,9 +25,14 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (k
         </button>
       ))}
       <div className="rail-spacer" />
-      <div className="rail-avatar" title="Профиль">
+      <button
+        className={`rail-avatar${active === 'settings' ? ' active' : ''}`}
+        title="Настройки"
+        aria-label="Настройки"
+        onClick={() => onNavigate('settings')}
+      >
         А
-      </div>
+      </button>
     </nav>
   );
 }

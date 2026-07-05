@@ -1,12 +1,5 @@
 import type { Playbook, PlaybookProgress } from '@life-os/domain';
-
-const BASE = '/api/v1';
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: { 'Content-Type': 'application/json' }, ...init });
-  if (!res.ok) throw new Error(`Запрос не удался (${res.status})`);
-  return (await res.json()) as T;
-}
+import { apiFetch as req } from './http';
 
 export const contentApi = {
   playbooks: (kind?: 'crisis' | 'bureaucracy') =>

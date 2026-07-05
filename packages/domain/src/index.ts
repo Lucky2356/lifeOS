@@ -9,3 +9,4 @@ export * from './audit';
 export * from './decision';
 export * from './content';
 export * from './ai';
+export * from './iam';

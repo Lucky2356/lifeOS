@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { aiModules, type AiModule, type AiSettings } from '@life-os/domain';
 import { aiApi } from '../lib/ai-api';
+import { authApi } from '../lib/auth-api';
 import type { Theme } from '../lib/theme';
 
 const moduleLabels: Record<AiModule, { icon: string; label: string }> = {
@@ -28,12 +29,18 @@ export function SettingsScreen({
   theme,
   onToggleTheme,
   onBack,
+  onLogout,
 }: {
   theme: Theme;
   onToggleTheme: () => void;
   onBack: () => void;
+  onLogout: () => void;
 }) {
   const [settings, setSettings] = useState<AiSettings | null>(null);
+  const [mfaSetup, setMfaSetup] = useState<{ secret: string; otpauthUrl: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
 
   useEffect(() => {
     void aiApi.getSettings().then(setSettings);
@@ -42,6 +49,32 @@ export function SettingsScreen({
   async function patch(p: Parameters<typeof aiApi.updateSettings>[0]) {
     const updated = await aiApi.updateSettings(p);
     setSettings(updated);
+  }
+
+  async function startMfa() {
+    setMfaError(null);
+    setMfaSetup(await authApi.mfaSetup());
+  }
+
+  async function confirmMfa() {
+    setMfaError(null);
+    try {
+      await authApi.mfaEnable(mfaCode);
+      setMfaEnabled(true);
+      setMfaSetup(null);
+      setMfaCode('');
+    } catch {
+      setMfaError('Неверный код, попробуйте ещё раз');
+    }
+  }
+
+  async function doLogout() {
+    try {
+      await authApi.logout();
+    } catch {
+      // сессия всё равно очищается локально
+    }
+    onLogout();
   }
 
   return (
@@ -114,6 +147,54 @@ export function SettingsScreen({
               <span className="list-row-meta" style={{ textTransform: 'capitalize' }}>
                 {settings.provider}
               </span>
+            </div>
+          </div>
+
+          <div className="section-label" style={{ marginTop: 22 }}>
+            Безопасность
+          </div>
+          <div className="list-card">
+            <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+              <i className="ti ti-shield-lock" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+              <span style={{ flex: 1 }}>
+                Двухфакторная защита (TOTP)
+                <span className="page-sub"> · Google Authenticator, 1Password и др.</span>
+              </span>
+              {mfaEnabled ? (
+                <span className="pill pill-ok">включена</span>
+              ) : (
+                <button className="btn" onClick={startMfa}>
+                  Включить
+                </button>
+              )}
+            </div>
+            {mfaSetup && (
+              <div className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                <div className="page-sub">Добавьте секрет в приложение-аутентификатор и введите код:</div>
+                <code style={{ fontSize: 12, wordBreak: 'break-all', color: 'var(--ink-2)' }}>
+                  {mfaSetup.secret}
+                </code>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className="inline-input"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="123456"
+                  />
+                  <button className="btn btn-primary" onClick={confirmMfa} disabled={mfaCode.length < 6}>
+                    Подтвердить
+                  </button>
+                </div>
+                {mfaError && <div style={{ color: 'var(--brick-ink)', fontSize: 13 }}>{mfaError}</div>}
+              </div>
+            )}
+            <div className="list-row">
+              <i className="ti ti-logout" aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+              <span style={{ flex: 1 }}>Выйти из аккаунта</span>
+              <button className="btn btn-danger" onClick={doLogout}>
+                Выйти
+              </button>
             </div>
           </div>
 

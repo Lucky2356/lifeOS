@@ -53,6 +53,15 @@
     service worker с **мгновенным авто-обновлением** PWA (web/телефон/ПК), `docs/RELEASES.md`.
   - Домен: 32 теста; API: 21 тест.
 
+- **Аутентификация + MFA (IAM)**: реальная auth вместо `DEV_USER_ID`.
+  - Пароли — argon2id (`@node-rs/argon2`); TOTP MFA (`otpauth`), секрет шифруется AES-256-GCM at-rest.
+  - JWT access (15м) + opaque refresh (ротация при обновлении), сессии с отзывом; список/выход сессий.
+  - Глобальный `JwtAuthGuard` защищает весь API (кроме `/auth/*`, `/health`); rate-limiting (`@nestjs/throttler`)
+    на auth-эндпоинтах; единообразные ошибки (защита от enumeration).
+  - Web: экран входа/регистрации + шаг MFA-кода; централизованный HTTP-клиент с Bearer-токеном и авто-refresh;
+    раздел «Безопасность» (включение MFA, выход). Домен: валидация IAM (35 тестов), API: auth (27 тестов).
+  - Проверено вживую: 401 без токена, register→app, ownerUserId из токена, logout очищает сессию.
+
 ### Fixed / Security
 
 - **SCA-фиксы** (найдены гейтом и устранены): `multer` → ≥2.2.0 (GHSA-72gw-mp4g-v24j, через

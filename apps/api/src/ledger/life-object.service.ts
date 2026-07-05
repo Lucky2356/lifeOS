@@ -35,4 +35,9 @@ export class LifeObjectService {
     const ok = await this.repo.softDelete(id, ownerUserId, new Date());
     if (!ok) throw new NotFoundException('Объект не найден');
   }
+
+  /** Удалить все объекты владельца (право на забвение). */
+  deleteAllForOwner(ownerUserId: string): Promise<number> {
+    return this.repo.softDeleteAllByOwner(ownerUserId, new Date());
+  }
 }

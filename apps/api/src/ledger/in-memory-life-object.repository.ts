@@ -39,4 +39,20 @@ export class InMemoryLifeObjectRepository implements LifeObjectRepository {
     });
     return true;
   }
+
+  async softDeleteAllByOwner(ownerUserId: string, now: Date): Promise<number> {
+    let count = 0;
+    for (const o of this.store.values()) {
+      if (o.ownerUserId === ownerUserId && o.deletedAt === null) {
+        this.store.set(o.id, {
+          ...o,
+          deletedAt: now.toISOString(),
+          hlc: initialHlc(now),
+          version: o.version + 1,
+        });
+        count += 1;
+      }
+    }
+    return count;
+  }
 }

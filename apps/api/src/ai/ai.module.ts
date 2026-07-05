@@ -6,5 +6,6 @@ import { AiSettingsRepository } from './ai-settings.repository';
 @Module({
   controllers: [AiController],
   providers: [AiService, AiSettingsRepository],
+  exports: [AiService],
 })
 export class AiModule {}

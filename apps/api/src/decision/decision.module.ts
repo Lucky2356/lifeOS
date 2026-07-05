@@ -7,5 +7,6 @@ import { InMemoryDecisionRepository } from './in-memory-decision.repository';
 @Module({
   controllers: [DecisionController],
   providers: [DecisionService, { provide: DECISION_REPOSITORY, useClass: InMemoryDecisionRepository }],
+  exports: [DecisionService],
 })
 export class DecisionModule {}

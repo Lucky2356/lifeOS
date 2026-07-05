@@ -9,6 +9,7 @@ export interface HouseholdRepository {
   listMemberships(householdId: string): Promise<Membership[]>;
   findMembership(householdId: string, userId: string): Promise<Membership | null>;
   listMembershipsByUser(userId: string): Promise<Membership[]>;
+  deactivateMembershipsByUser(userId: string, now: Date): Promise<number>;
 
   createTask(t: HouseholdTask): Promise<HouseholdTask>;
   listTasks(householdId: string): Promise<HouseholdTask[]>;

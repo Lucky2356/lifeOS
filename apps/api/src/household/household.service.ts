@@ -126,4 +126,9 @@ export class HouseholdService {
     this.ensure(me.role, 'view_audit');
     return this.repo.listAudit(id);
   }
+
+  /** Убрать пользователя из всех домов (право на забвение — доступ прекращается). */
+  leaveAll(userId: string): Promise<number> {
+    return this.repo.deactivateMembershipsByUser(userId, new Date());
+  }
 }

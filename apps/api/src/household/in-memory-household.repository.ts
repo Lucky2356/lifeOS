@@ -41,6 +41,17 @@ export class InMemoryHouseholdRepository implements HouseholdRepository {
     return [...this.memberships.values()].filter((m) => m.userId === userId && m.deletedAt === null);
   }
 
+  async deactivateMembershipsByUser(userId: string, now: Date): Promise<number> {
+    let count = 0;
+    for (const m of this.memberships.values()) {
+      if (m.userId === userId && m.deletedAt === null) {
+        this.memberships.set(m.id, { ...m, deletedAt: now.toISOString(), version: m.version + 1 });
+        count += 1;
+      }
+    }
+    return count;
+  }
+
   async createTask(t: HouseholdTask): Promise<HouseholdTask> {
     this.tasks.set(t.id, t);
     return t;

@@ -7,5 +7,6 @@ import { InMemoryHouseholdRepository } from './in-memory-household.repository';
 @Module({
   controllers: [HouseholdController],
   providers: [HouseholdService, { provide: HOUSEHOLD_REPOSITORY, useClass: InMemoryHouseholdRepository }],
+  exports: [HouseholdService],
 })
 export class HouseholdModule {}

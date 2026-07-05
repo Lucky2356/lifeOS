@@ -18,5 +18,6 @@ import { LifeObjectService } from './life-object.service';
         db ? new DrizzleLifeObjectRepository(db) : new InMemoryLifeObjectRepository(),
     },
   ],
+  exports: [LifeObjectService],
 })
 export class LedgerModule {}

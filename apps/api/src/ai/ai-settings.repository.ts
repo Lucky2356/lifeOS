@@ -14,4 +14,8 @@ export class AiSettingsRepository {
     this.store.set(userId, settings);
     return settings;
   }
+
+  async delete(userId: string): Promise<void> {
+    this.store.delete(userId);
+  }
 }

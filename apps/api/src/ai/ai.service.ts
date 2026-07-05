@@ -27,6 +27,10 @@ export class AiService {
     return this.settingsRepo.save(userId, mergeAiSettings(current, patch));
   }
 
+  resetSettings(userId: string): Promise<void> {
+    return this.settingsRepo.delete(userId);
+  }
+
   private providerFor(settings: AiSettings): AiProvider {
     if (settings.provider === 'claude' && this.claudeKey) {
       return new ClaudeAiProvider(this.claudeKey);

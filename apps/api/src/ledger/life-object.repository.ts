@@ -11,6 +11,7 @@ export interface LifeObjectRepository {
   findById(id: string, ownerUserId: string): Promise<LifeObject | null>;
   save(obj: LifeObject): Promise<LifeObject>;
   softDelete(id: string, ownerUserId: string, now: Date): Promise<boolean>;
+  softDeleteAllByOwner(ownerUserId: string, now: Date): Promise<number>;
 }
 
 export const LIFE_OBJECT_REPOSITORY = Symbol('LIFE_OBJECT_REPOSITORY');

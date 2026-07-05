@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { initialHlc, lifeObjectSchema, type LifeObject } from '@life-os/domain';
 import type { Database } from '../db/drizzle.provider';
 import { lifeObjects } from '../db/schema';
@@ -73,5 +73,14 @@ export class DrizzleLifeObjectRepository implements LifeObjectRepository {
       .set({ deletedAt: now.toISOString(), hlc: initialHlc(now), version: existing.version + 1 })
       .where(eq(lifeObjects.id, id));
     return true;
+  }
+
+  async softDeleteAllByOwner(ownerUserId: string, now: Date): Promise<number> {
+    const rows = await this.db
+      .update(lifeObjects)
+      .set({ deletedAt: now.toISOString(), hlc: initialHlc(now), version: sql`${lifeObjects.version} + 1` })
+      .where(and(eq(lifeObjects.ownerUserId, ownerUserId), isNull(lifeObjects.deletedAt)))
+      .returning({ id: lifeObjects.id });
+    return rows.length;
   }
 }

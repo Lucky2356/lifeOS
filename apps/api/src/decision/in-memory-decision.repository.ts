@@ -33,4 +33,20 @@ export class InMemoryDecisionRepository implements DecisionRepository {
     this.store.set(id, { ...d, deletedAt: now.toISOString(), hlc: initialHlc(now), version: d.version + 1 });
     return true;
   }
+
+  async softDeleteAllByOwner(ownerUserId: string, now: Date): Promise<number> {
+    let count = 0;
+    for (const d of this.store.values()) {
+      if (d.ownerUserId === ownerUserId && d.deletedAt === null) {
+        this.store.set(d.id, {
+          ...d,
+          deletedAt: now.toISOString(),
+          hlc: initialHlc(now),
+          version: d.version + 1,
+        });
+        count += 1;
+      }
+    }
+    return count;
+  }
 }

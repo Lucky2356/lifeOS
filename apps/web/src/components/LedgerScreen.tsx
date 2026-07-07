@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { objectTypeLabels, type LifeObject } from '@life-os/domain';
-import { api } from '../lib/api';
+import { offlineLedger } from '../lib/offline-ledger';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { AddObjectModal } from './AddObjectModal';
 import type { Theme } from '../lib/theme';
@@ -20,8 +20,8 @@ export function LedgerScreen({
 
   const load = useCallback(() => {
     setError(null);
-    api
-      .listObjects()
+    offlineLedger
+      .list()
       .then(setObjects)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Ошибка загрузки'));
   }, []);

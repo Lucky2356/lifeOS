@@ -1,8 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
 import {
   createLifeObjectInputSchema,
+  lifeObjectSchema,
   updateLifeObjectInputSchema,
   type CreateLifeObjectInput,
+  type LifeObject,
   type UpdateLifeObjectInput,
 } from '@life-os/domain';
 import { CurrentUserId } from '../common/current-user.decorator';
@@ -38,6 +40,12 @@ export class LifeObjectController {
     @CurrentUserId() userId: string,
   ) {
     return this.service.update(id, patch, userId);
+  }
+
+  /** Offline-first upsert: клиент присылает полный объект со своим id (ADR 0003). */
+  @Put(':id')
+  upsert(@Body(new ZodValidationPipe(lifeObjectSchema)) obj: LifeObject, @CurrentUserId() userId: string) {
+    return this.service.upsert(obj, userId);
   }
 
   @Delete(':id')

@@ -45,4 +45,25 @@ describe('LifeObjectService', () => {
     const created = await service.create({ type: 'document', title: 'Чужое' }, userA);
     await expect(service.remove(created.id, userB)).rejects.toThrow();
   });
+
+  it('upsert создаёт объект по клиентскому id (offline-first)', async () => {
+    const obj = await service.create({ type: 'document', title: 'Локально' }, userA);
+    const fresh = new LifeObjectService(new InMemoryLifeObjectRepository());
+    const saved = await fresh.upsert(obj, userA);
+    expect(saved.id).toBe(obj.id);
+    expect((await fresh.list(userA)).map((o) => o.id)).toContain(obj.id);
+  });
+
+  it('upsert применяет LWW по version: устаревшая запись не затирает новую', async () => {
+    const v0 = await service.create({ type: 'document', title: 'v0' }, userA);
+    const v1 = { ...v0, title: 'v1', version: 1 };
+    await service.upsert(v1, userA);
+    const result = await service.upsert({ ...v0, title: 'stale', version: 0 }, userA);
+    expect(result.title).toBe('v1');
+  });
+
+  it('upsert отклоняет объект чужого владельца', async () => {
+    const obj = await service.create({ type: 'document', title: 'Чужое' }, userA);
+    await expect(service.upsert(obj, userB)).rejects.toThrow();
+  });
 });

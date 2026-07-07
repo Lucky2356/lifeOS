@@ -8,6 +8,7 @@ import { DecisionsScreen } from './components/DecisionsScreen';
 import { NavigatorScreen } from './components/NavigatorScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { LoginScreen } from './components/LoginScreen';
+import { SyncIndicator } from './components/SyncIndicator';
 import { useTheme } from './lib/theme';
 import { authStore } from './lib/auth-store';
 import { setUnauthHandler } from './lib/http';
@@ -46,6 +47,7 @@ export function App() {
 
   return (
     <div className="app">
+      <SyncIndicator />
       <Sidebar active={route} onNavigate={navigate} />
       {route === 'ledger' && selectedId ? (
         <ObjectDetailScreen

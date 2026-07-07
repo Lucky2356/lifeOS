@@ -1,7 +1,8 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   applyLifeObjectUpdate,
   createLifeObject,
+  lifeObjectSchema,
   type CreateLifeObjectInput,
   type LifeObject,
   type UpdateLifeObjectInput,
@@ -39,5 +40,21 @@ export class LifeObjectService {
   /** Удалить все объекты владельца (право на забвение). */
   deleteAllForOwner(ownerUserId: string): Promise<number> {
     return this.repo.softDeleteAllByOwner(ownerUserId, new Date());
+  }
+
+  /**
+   * Upsert объекта по клиентскому id (offline-first, ADR 0003). Клиент генерирует UUIDv7 и полный
+   * объект локально; сервер принимает его как источник. Разрешение конфликтов — по version (LWW).
+   */
+  async upsert(incoming: LifeObject, ownerUserId: string): Promise<LifeObject> {
+    const obj = lifeObjectSchema.parse({ ...incoming, ownerUserId });
+    const existing = await this.repo.findByIdUnscoped(obj.id);
+    if (existing && existing.ownerUserId !== ownerUserId) {
+      throw new ForbiddenException('Объект принадлежит другому пользователю');
+    }
+    if (!existing) return this.repo.create(obj);
+    // Last-Writer-Wins по version: не даём устаревшей записи затереть более новую.
+    if (obj.version < existing.version) return existing;
+    return this.repo.save(obj);
   }
 }

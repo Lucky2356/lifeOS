@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/drizzle/**',
       'apps/api/drizzle/**',
       'scripts/**',
+      'infra/**',
     ],
   },
   js.configs.recommended,

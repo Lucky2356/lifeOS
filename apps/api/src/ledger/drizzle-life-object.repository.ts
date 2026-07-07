@@ -60,6 +60,12 @@ export class DrizzleLifeObjectRepository implements LifeObjectRepository {
     return row ? toDomain(row) : null;
   }
 
+  async findByIdUnscoped(id: string): Promise<LifeObject | null> {
+    const rows = await this.db.select().from(lifeObjects).where(eq(lifeObjects.id, id)).limit(1);
+    const row = rows[0];
+    return row ? toDomain(row) : null;
+  }
+
   async save(obj: LifeObject): Promise<LifeObject> {
     await this.db.update(lifeObjects).set(toRow(obj)).where(eq(lifeObjects.id, obj.id));
     return obj;

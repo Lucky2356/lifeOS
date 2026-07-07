@@ -6,7 +6,7 @@ import {
   type LifeObject,
   type LifeObjectStatus,
 } from '@life-os/domain';
-import { api } from '../lib/api';
+import { offlineLedger } from '../lib/offline-ledger';
 import { aiApi } from '../lib/ai-api';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
@@ -46,9 +46,13 @@ export function ObjectDetailScreen({
 
   const load = useCallback(() => {
     setError(null);
-    api
-      .getObject(id)
+    offlineLedger
+      .get(id)
       .then((o) => {
+        if (!o) {
+          setError('Объект не найден');
+          return;
+        }
         setObj(o);
         setTitle(o.title);
         setValidUntil(o.validUntil ? o.validUntil.slice(0, 10) : '');
@@ -62,7 +66,7 @@ export function ObjectDetailScreen({
   async function save() {
     setBusy(true);
     try {
-      await api.updateObject(id, {
+      await offlineLedger.update(id, {
         title: title.trim(),
         status,
         validUntil: validUntil ? new Date(validUntil).toISOString() : null,
@@ -80,7 +84,7 @@ export function ObjectDetailScreen({
     if (!window.confirm('Удалить объект? Его можно будет восстановить позднее.')) return;
     setBusy(true);
     try {
-      await api.deleteObject(id);
+      await offlineLedger.remove(id);
       onBack();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось удалить');

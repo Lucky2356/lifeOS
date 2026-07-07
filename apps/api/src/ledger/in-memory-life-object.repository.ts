@@ -23,6 +23,10 @@ export class InMemoryLifeObjectRepository implements LifeObjectRepository {
     return o && o.ownerUserId === ownerUserId && o.deletedAt === null ? o : null;
   }
 
+  async findByIdUnscoped(id: string): Promise<LifeObject | null> {
+    return this.store.get(id) ?? null;
+  }
+
   async save(obj: LifeObject): Promise<LifeObject> {
     this.store.set(obj.id, obj);
     return obj;

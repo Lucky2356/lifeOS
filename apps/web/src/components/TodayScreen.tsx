@@ -6,7 +6,7 @@ import {
   type HouseholdTask,
   type LifeObject,
 } from '@life-os/domain';
-import { api } from '../lib/api';
+import { offlineLedger } from '../lib/offline-ledger';
 import { householdApi } from '../lib/household-api';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import type { Theme } from '../lib/theme';
@@ -26,7 +26,7 @@ export function TodayScreen({
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
 
   useEffect(() => {
-    void api.listObjects().then((objects) => {
+    void offlineLedger.list().then((objects) => {
       const flagged = objects
         .filter((o) => {
           const s = lifecycleFor(o.validUntil);

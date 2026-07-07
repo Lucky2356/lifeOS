@@ -14,7 +14,7 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
 
   function handleResult(res: LoginResult) {
     if (res.status === 'authenticated') {
-      authStore.set(res.accessToken, res.refreshToken);
+      authStore.set(res.accessToken, res.refreshToken, res.user.id);
       onAuthenticated();
     } else {
       setChallenge(res.challengeToken);

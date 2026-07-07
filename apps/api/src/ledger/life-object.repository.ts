@@ -9,6 +9,8 @@ export interface LifeObjectRepository {
   create(obj: LifeObject): Promise<LifeObject>;
   findAllByOwner(ownerUserId: string): Promise<LifeObject[]>;
   findById(id: string, ownerUserId: string): Promise<LifeObject | null>;
+  /** Поиск по id без owner-фильтра — для проверки владельца при offline-upsert. */
+  findByIdUnscoped(id: string): Promise<LifeObject | null>;
   save(obj: LifeObject): Promise<LifeObject>;
   softDelete(id: string, ownerUserId: string, now: Date): Promise<boolean>;
   softDeleteAllByOwner(ownerUserId: string, now: Date): Promise<number>;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { objectTypeLabels, objectTypes, type CreateLifeObjectInput } from '@life-os/domain';
-import { api } from '../lib/api';
+import { offlineLedger } from '../lib/offline-ledger';
 
 export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
@@ -19,7 +19,7 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
         title: title.trim(),
         validUntil: validUntil ? new Date(validUntil).toISOString() : null,
       };
-      await api.createObject(input);
+      await offlineLedger.create(input);
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить');

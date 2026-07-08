@@ -7,7 +7,7 @@ import {
   type LifeObject,
 } from '@life-os/domain';
 import { offlineLedger } from '../lib/offline-ledger';
-import { householdApi } from '../lib/household-api';
+import { offlineHousehold as householdApi } from '../lib/offline-household';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import type { Theme } from '../lib/theme';
 

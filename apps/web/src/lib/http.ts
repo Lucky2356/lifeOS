@@ -1,6 +1,14 @@
 import { authStore } from './auth-store';
 
-const BASE = '/api/v1';
+/**
+ * База API. В вебе — относительный путь (проксируется dev-сервером / nginx). В нативных оболочках
+ * (Tauri/Capacitor) нет общего origin с бэкендом, поэтому адрес задаётся при сборке через
+ * VITE_API_BASE (напр. http://localhost:3011/api/v1) либо переопределяется в рантайме (localStorage).
+ */
+const BASE =
+  (typeof localStorage !== 'undefined' && localStorage.getItem('los-api-base')) ||
+  (import.meta.env.VITE_API_BASE as string | undefined) ||
+  '/api/v1';
 
 let unauthHandler: (() => void) | null = null;
 export function setUnauthHandler(fn: () => void) {

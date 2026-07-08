@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Inject, Injectable, NotFoundException, type OnModuleInit } from '@nestjs/common';
 import {
+  playbookProgressSchema,
   startProgress,
   toggleStep,
   validateContentPack,
@@ -48,5 +49,16 @@ export class ContentService implements OnModuleInit {
     const current = await this.progress.findById(progressId);
     if (!current || current.ownerUserId !== ownerUserId) throw new NotFoundException('Прогресс не найден');
     return this.progress.save(toggleStep(current, stepKey));
+  }
+
+  /**
+   * Offline-first upsert прогресса (ADR 0003). Ключ — (владелец, playbookKey), чтобы клиентский
+   * старт офлайн не плодил дублирующие записи. Разрешение конфликтов — LWW по порядку долива.
+   */
+  async upsertProgress(incoming: PlaybookProgress, ownerUserId: string): Promise<PlaybookProgress> {
+    const p = playbookProgressSchema.parse({ ...incoming, ownerUserId });
+    const existing = await this.progress.findByOwnerAndKey(ownerUserId, p.playbookKey);
+    if (!existing) return this.progress.create(p);
+    return this.progress.save({ ...existing, stepStates: p.stepStates, completedAt: p.completedAt });
   }
 }

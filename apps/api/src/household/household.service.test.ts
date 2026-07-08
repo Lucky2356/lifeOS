@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { createHouseholdTask, toggleTaskStatus } from '@life-os/domain';
 import { HouseholdService } from './household.service';
 import { InMemoryHouseholdRepository } from './in-memory-household.repository';
 
@@ -49,6 +50,26 @@ describe('HouseholdService', () => {
     await service.createTask(h.id, owner, { title: 'Купить хлеб' });
     const audit = await service.listAudit(h.id, owner);
     expect(audit.some((e) => e.action === 'create_task')).toBe(true);
+  });
+
+  it('upsert задачи создаёт её офлайн-стилем и применяет LWW по version', async () => {
+    const h = await newHouse();
+    const task = createHouseholdTask({ title: 'Полить цветы' }, h.id);
+    await service.upsertTask(h.id, owner, task);
+    expect((await service.listTasks(h.id, owner)).map((t) => t.id)).toContain(task.id);
+    const done = toggleTaskStatus(task); // version 1
+    await service.upsertTask(h.id, owner, done);
+    const stale = { ...task, title: 'Старое' }; // version 0 — не должно затереть
+    await service.upsertTask(h.id, owner, stale);
+    const current = (await service.listTasks(h.id, owner)).find((t) => t.id === task.id);
+    expect(current?.status).toBe('done');
+    expect(current?.title).toBe('Полить цветы');
+  });
+
+  it('посторонний не может доливать задачу в чужой дом', async () => {
+    const h = await newHouse();
+    const task = createHouseholdTask({ title: 'X' }, h.id);
+    await expect(service.upsertTask(h.id, stranger, task)).rejects.toThrow();
   });
 
   it('ребёнок не видит журнал доступа', async () => {

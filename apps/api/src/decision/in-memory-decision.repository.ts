@@ -22,6 +22,10 @@ export class InMemoryDecisionRepository implements DecisionRepository {
     return d && d.ownerUserId === ownerUserId && d.deletedAt === null ? d : null;
   }
 
+  async findByIdUnscoped(id: string): Promise<Decision | null> {
+    return this.store.get(id) ?? null;
+  }
+
   async save(d: Decision): Promise<Decision> {
     this.store.set(d.id, d);
     return d;

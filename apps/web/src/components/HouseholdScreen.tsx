@@ -7,7 +7,7 @@ import {
   type Membership,
   type Role,
 } from '@life-os/domain';
-import { householdApi } from '../lib/household-api';
+import { offlineHousehold as householdApi } from '../lib/offline-household';
 import { formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
 

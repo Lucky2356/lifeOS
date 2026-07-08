@@ -1,8 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
 import {
   createDecisionInputSchema,
+  decisionSchema,
   updateDecisionInputSchema,
   type CreateDecisionInput,
+  type Decision,
   type UpdateDecisionInput,
 } from '@life-os/domain';
 import { CurrentUserId } from '../common/current-user.decorator';
@@ -38,6 +40,12 @@ export class DecisionController {
     @CurrentUserId() userId: string,
   ) {
     return this.service.update(id, patch, userId);
+  }
+
+  /** Offline-first upsert: клиент присылает полное решение со своим id (ADR 0003). */
+  @Put(':id')
+  upsert(@Body(new ZodValidationPipe(decisionSchema)) decision: Decision, @CurrentUserId() userId: string) {
+    return this.service.upsert(decision, userId);
   }
 
   @Delete(':id')

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { scoreOptions, type Decision, type DecisionCriterion, type DecisionOption } from '@life-os/domain';
-import { decisionApi } from '../lib/decision-api';
+import { offlineDecisions as decisionApi } from '../lib/offline-decisions';
 import type { Theme } from '../lib/theme';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {

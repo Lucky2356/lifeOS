@@ -6,7 +6,7 @@ import {
   type Playbook,
   type PlaybookProgress,
 } from '@life-os/domain';
-import { contentApi } from '../lib/content-api';
+import { offlineNavigator as contentApi } from '../lib/offline-navigator';
 import type { Theme } from '../lib/theme';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {

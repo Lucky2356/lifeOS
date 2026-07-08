@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import {
   createHouseholdTaskInputSchema,
+  householdTaskSchema,
   roleSchema,
   type CreateHouseholdTaskInput,
+  type HouseholdTask,
   type Role,
 } from '@life-os/domain';
 import { z } from 'zod';
@@ -76,6 +78,16 @@ export class HouseholdController {
   @Post(':id/tasks/:taskId/toggle')
   toggleTask(@Param('id') id: string, @Param('taskId') taskId: string, @CurrentUserId() userId: string) {
     return this.service.toggleTask(id, taskId, userId);
+  }
+
+  /** Offline-first upsert задачи дома по клиентскому id (ADR 0003). */
+  @Put(':id/tasks/:taskId')
+  upsertTask(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(householdTaskSchema)) task: HouseholdTask,
+    @CurrentUserId() userId: string,
+  ) {
+    return this.service.upsertTask(id, userId, task);
   }
 
   @Get(':id/audit')

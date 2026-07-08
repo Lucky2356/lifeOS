@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
-import { isOnline, offlineLedger, pendingCount, subscribeSync } from '../lib/offline-ledger';
+import { isOnline, pendingCount, subscribeSync, sync } from '../lib/offline-core';
 
 export function SyncIndicator() {
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -10,7 +10,7 @@ export function SyncIndicator() {
     const on = () => {
       setOnline(true);
       bump();
-      void offlineLedger.sync();
+      void sync();
     };
     const off = () => {
       setOnline(false);

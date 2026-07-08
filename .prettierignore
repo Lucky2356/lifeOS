@@ -3,3 +3,9 @@
 **/.turbo/**
 apps/api/drizzle/**
 pnpm-lock.yaml
+# Нативные/генерируемые проекты — не форматируем
+apps/mobile/android/**
+apps/desktop/src-tauri/target/**
+apps/desktop/src-tauri/gen/**
+apps/desktop/src-tauri/icons/**
+apps/desktop/app-icon.png

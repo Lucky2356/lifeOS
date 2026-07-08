@@ -11,6 +11,21 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // В нативных оболочках (Tauri/Capacitor) нет общего origin с бэкендом — даём указать адрес сервера.
+  const isNative =
+    typeof window !== 'undefined' &&
+    ('__TAURI_INTERNALS__' in window ||
+      Boolean(
+        (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.(),
+      ));
+  const [server, setServer] = useState(
+    () => localStorage.getItem('los-api-base') ?? (import.meta.env.VITE_API_BASE as string) ?? '',
+  );
+  function saveServer(value: string) {
+    setServer(value);
+    if (value.trim()) localStorage.setItem('los-api-base', value.trim());
+    else localStorage.removeItem('los-api-base');
+  }
 
   function handleResult(res: LoginResult) {
     if (res.status === 'authenticated') {
@@ -95,6 +110,18 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
               />
             </div>
           </>
+        )}
+
+        {isNative && !challenge && (
+          <div className="field">
+            <label htmlFor="server">Адрес сервера</label>
+            <input
+              id="server"
+              value={server}
+              onChange={(e) => saveServer(e.target.value)}
+              placeholder="http://192.168.1.10:3011/api/v1"
+            />
+          </div>
         )}
 
         {error && <div style={{ color: 'var(--brick-ink)', fontSize: 13, marginBottom: 10 }}>{error}</div>}

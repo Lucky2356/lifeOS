@@ -1,5 +1,7 @@
-import { Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { playbookProgressSchema, type PlaybookProgress } from '@life-os/domain';
 import { CurrentUserId } from '../common/current-user.decorator';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { ContentService } from './content.service';
 
 @Controller('content')
@@ -30,5 +32,14 @@ export class NavigatorController {
   @Post('progress/:id/steps/:stepKey/toggle')
   toggle(@Param('id') id: string, @Param('stepKey') stepKey: string, @CurrentUserId() userId: string) {
     return this.content.toggle(id, stepKey, userId);
+  }
+
+  /** Offline-first upsert прогресса по клиентскому состоянию (ADR 0003). */
+  @Put('progress/:id')
+  upsert(
+    @Body(new ZodValidationPipe(playbookProgressSchema)) progress: PlaybookProgress,
+    @CurrentUserId() userId: string,
+  ) {
+    return this.content.upsertProgress(progress, userId);
   }
 }

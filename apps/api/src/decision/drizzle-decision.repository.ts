@@ -30,6 +30,11 @@ export class DrizzleDecisionRepository implements DecisionRepository {
     return (rows[0] as Decision | undefined) ?? null;
   }
 
+  async findByIdUnscoped(id: string): Promise<Decision | null> {
+    const rows = await this.db.select().from(decisions).where(eq(decisions.id, id)).limit(1);
+    return (rows[0] as Decision | undefined) ?? null;
+  }
+
   async save(d: Decision): Promise<Decision> {
     await this.db.update(decisions).set(d).where(eq(decisions.id, d.id));
     return d;

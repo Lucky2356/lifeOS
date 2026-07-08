@@ -1,0 +1,15 @@
+{
+  "name": "@life-os/desktop",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Life OS — нативная десктоп-оболочка (Tauri) над общим PWA",
+  "scripts": {
+    "desktop:dev": "tauri dev",
+    "bundle": "tauri build",
+    "icon": "tauri icon app-icon.png",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.1.0"
+  }
+}

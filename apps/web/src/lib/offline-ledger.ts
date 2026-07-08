@@ -5,19 +5,15 @@ import {
   type LifeObject,
   type UpdateLifeObjectInput,
 } from '@life-os/domain';
-import { apiFetch, apiRequest } from './http';
-import { authStore } from './auth-store';
+import { apiFetch } from './http';
+import { currentUserId, enqueue, pendingPaths, sync } from './offline-core';
 
 /**
- * Offline-first слой Life Ledger (ADR 0003): локальный кэш для чтения офлайн + очередь мутаций
- * (outbox), которая проигрывается на сервер через upsert по клиентскому id при возврате сети.
- * Разрешение конфликтов — LWW по version на сервере.
+ * Offline-first слой Life Ledger (ADR 0003): локальный кэш для чтения офлайн + общая очередь
+ * мутаций (offline-core), проигрываемая на сервер через upsert по клиентскому id при возврате сети.
  */
 
 const CACHE = 'los-objects-cache';
-const OUTBOX = 'los-outbox';
-
-type Op = { kind: 'upsert'; obj: LifeObject } | { kind: 'delete'; id: string };
 
 function readCache(): LifeObject[] {
   try {
@@ -29,44 +25,22 @@ function readCache(): LifeObject[] {
 function writeCache(objs: LifeObject[]) {
   localStorage.setItem(CACHE, JSON.stringify(objs));
 }
-function readOutbox(): Op[] {
-  try {
-    return JSON.parse(localStorage.getItem(OUTBOX) ?? '[]') as Op[];
-  } catch {
-    return [];
-  }
-}
-function writeOutbox(ops: Op[]) {
-  localStorage.setItem(OUTBOX, JSON.stringify(ops));
-}
 function putLocal(obj: LifeObject) {
   const objs = readCache().filter((o) => o.id !== obj.id);
   if (obj.deletedAt === null) objs.unshift(obj);
   writeCache(objs);
 }
 
-const listeners = new Set<() => void>();
-export function subscribeSync(fn: () => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
-}
-function notify() {
-  listeners.forEach((f) => f());
-}
-
-export function pendingCount(): number {
-  return readOutbox().length;
-}
-export function isOnline(): boolean {
-  return navigator.onLine;
-}
-
 export const offlineLedger = {
   async list(): Promise<LifeObject[]> {
     try {
-      const objs = await apiFetch<LifeObject[]>('/objects');
-      writeCache(objs);
-      return objs;
+      const server = await apiFetch<LifeObject[]>('/objects');
+      // Не теряем ещё не синхронизированные локальные правки при обновлении из сети.
+      const pending = pendingPaths();
+      const keep = readCache().filter((o) => pending.has(`/objects/${o.id}`));
+      const merged = [...keep, ...server.filter((s) => !keep.some((k) => k.id === s.id))];
+      writeCache(merged);
+      return merged;
     } catch {
       return readCache();
     }
@@ -83,12 +57,9 @@ export const offlineLedger = {
   },
 
   async create(input: CreateLifeObjectInput): Promise<LifeObject> {
-    const userId = authStore.userId ?? '00000000-0000-0000-0000-000000000000';
-    const obj = createLifeObject(input, userId);
+    const obj = createLifeObject(input, currentUserId());
     putLocal(obj);
-    writeOutbox([...readOutbox(), { kind: 'upsert', obj }]);
-    notify();
-    void offlineLedger.sync();
+    enqueue({ path: `/objects/${obj.id}`, method: 'PUT', body: JSON.stringify(obj) });
     return obj;
   },
 
@@ -97,44 +68,17 @@ export const offlineLedger = {
     if (!current) throw new Error('Объект не найден в кэше');
     const updated = applyLifeObjectUpdate(current, patch);
     putLocal(updated);
-    writeOutbox([...readOutbox(), { kind: 'upsert', obj: updated }]);
-    notify();
-    void offlineLedger.sync();
+    enqueue({ path: `/objects/${updated.id}`, method: 'PUT', body: JSON.stringify(updated) });
     return updated;
   },
 
   async remove(id: string): Promise<void> {
     writeCache(readCache().filter((o) => o.id !== id));
-    writeOutbox([...readOutbox(), { kind: 'delete', id }]);
-    notify();
-    void offlineLedger.sync();
+    enqueue({ path: `/objects/${id}`, method: 'DELETE' });
   },
 
-  async sync(): Promise<void> {
-    if (!navigator.onLine) return;
-    const remaining: Op[] = [];
-    for (const op of readOutbox()) {
-      try {
-        const res =
-          op.kind === 'upsert'
-            ? await apiRequest(`/objects/${op.obj.id}`, { method: 'PUT', body: JSON.stringify(op.obj) })
-            : await apiRequest(`/objects/${op.id}`, { method: 'DELETE' });
-        if (!res.ok && res.status !== 404) remaining.push(op);
-      } catch {
-        remaining.push(op);
-      }
-    }
-    writeOutbox(remaining);
-    notify();
-  },
+  sync,
 };
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    void offlineLedger.sync();
-  });
-  // Периодическая попытка досинхронизировать очередь (сервер мог вернуться без offline-события).
-  setInterval(() => {
-    if (pendingCount() > 0) void offlineLedger.sync();
-  }, 15_000);
-}
+// Ре-экспорт для существующих импортов индикатора синхронизации.
+export { isOnline, pendingCount, subscribeSync } from './offline-core';

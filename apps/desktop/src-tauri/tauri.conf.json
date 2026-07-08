@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Life OS",
+  "version": "0.4.0",
+  "identifier": "com.lifeos.app",
+  "build": {
+    "frontendDist": "../../web/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm --filter @life-os/web build",
+    "beforeDevCommand": "pnpm --filter @life-os/web dev"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Life OS",
+        "width": 1100,
+        "height": 780,
+        "minWidth": 380,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "category": "Productivity",
+    "shortDescription": "Операционная система для жизни",
+    "longDescription": "Спокойный, приватный, офлайн-первый помощник для документов, дома, решений и трудных ситуаций.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

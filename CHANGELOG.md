@@ -73,6 +73,25 @@
   авто-синк по событию `online` и периодически. Проверено вживую: создание объекта при
   недоступном сервере → очередь → долив на сервер после восстановления (без дублей).
 
+- **Offline-first для всех модулей (ADR 0003)**: общий движок `offline-core` (единая очередь мутаций,
+  авто-синк и индикатор) для всех модулей. Добавлены server-upsert'ы: `PUT /decisions/:id`
+  (LWW по version), `PUT /households/:id/tasks/:taskId` (членство + права + LWW), `PUT /content/progress/:id`
+  (ключ владелец+playbookKey, LWW по порядку). Клиентские слои `offline-decisions`/`offline-household`/
+  `offline-navigator`: чтение из кэша офлайн, создание/правка/тоггл в очередь, слияние несинхронизированных
+  записей при обновлении списка (не теряются оптимистичные правки). Проверено вживую: решение, созданное
+  офлайн, долилось на сервер с корректным владельцем из JWT. Старые online-only api-файлы удалены.
+  API: +6 тестов (upsert decision/household-task/progress).
+
+- **Нативные приложения — desktop и mobile** (одна кодовая база, общий PWA):
+  - **Desktop (Tauri, `apps/desktop`)**: Rust-оболочка + WebView2, сборка NSIS `.exe` + WiX `.msi`,
+    брендовые иконки. Rust-код полностью компилируется локально; инсталлятор собирает CI (MSVC).
+  - **Mobile (Capacitor, `apps/mobile`)**: нативный Android-проект, сборка `.apk` из общего `dist`.
+  - **Конфигурируемый адрес API**: `VITE_API_BASE` при сборке + рантайм-переопределение (поле
+    «Адрес сервера» на экране входа, `los-api-base`) — для self-hosted бэкенда. Web/PWA без изменений
+    (относительный `/api/v1`).
+  - **CI релиза** (`release.yml`): на тег `v*` собираются и прикрепляются к GitHub Release
+    инсталляторы `.exe`/`.msi` (windows-latest, MSVC) и `.apk` (ubuntu-latest, JDK 17 + Android SDK).
+
 ### Fixed / Security
 
 - **SCA-фиксы** (найдены гейтом и устранены): `multer` → ≥2.2.0 (GHSA-72gw-mp4g-v24j, через
@@ -80,9 +99,12 @@
 
 ### Notes / остаётся
 
-- Persistence: Life Ledger на PostgreSQL/Drizzle; Household/Decision/Navigator — in-memory за тем же
-  портом (Drizzle-swap-in — механический следующий шаг). Полный offline-first данных — local-first
-  движок (ADR 0003), продовая задача. AI-слой — опциональный, отдельный будущий срез (ADR 0005).
+- Persistence: все модули на PostgreSQL/Drizzle (in-memory без `DATABASE_URL`). Offline-first включён
+  для всех модулей (ADR 0003) через `offline-core` + server-upsert'ы с LWW.
+- Нативные оболочки: локальная сборка `.exe` под Windows требует MSVC Build Tools (GNU-тулчейн
+  спотыкается на embed-resource) — в CI используется MSVC. `.apk` собирается в CI (JDK 17 + Android SDK).
+- Дальше по желанию: passkeys/WebAuthn (сейчас TOTP), авто-апдейтеры нативных клиентов (Tauri updater /
+  Capacitor OTA), подпись артефактов. AI-слой — опциональный (ADR 0005).
 
 ### Security
 

@@ -5,6 +5,7 @@ import {
   createHousehold,
   createHouseholdTask,
   createMembership,
+  householdTaskSchema,
   isMembershipActive,
   toggleTaskStatus,
   type CreateHouseholdTaskInput,
@@ -99,6 +100,33 @@ export class HouseholdService {
         resourceId: task.id,
       }),
     );
+    return task;
+  }
+
+  /**
+   * Offline-first upsert задачи по клиентскому id (ADR 0003): клиент создаёт/меняет задачу офлайн
+   * и доливает её при возврате сети. LWW по version; права и членство проверяются как обычно.
+   */
+  async upsertTask(id: string, userId: string, incoming: HouseholdTask): Promise<HouseholdTask> {
+    const me = await this.requireMembership(id, userId);
+    this.ensure(me.role, 'create_task');
+    const task = householdTaskSchema.parse({ ...incoming, householdId: id });
+    const existing = await this.repo.getTask(id, task.id);
+    if (!existing) {
+      await this.repo.createTask(task);
+      await this.repo.addAudit(
+        createAuditEntry({
+          householdId: id,
+          actorUserId: userId,
+          action: 'create_task',
+          resourceType: 'task',
+          resourceId: task.id,
+        }),
+      );
+      return task;
+    }
+    if (task.version < existing.version) return existing;
+    await this.repo.saveTask(task);
     return task;
   }
 

@@ -2,6 +2,7 @@
   "name": "life-os",
   "version": "0.0.0",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@11.9.0",
   "engines": {
     "node": ">=22"

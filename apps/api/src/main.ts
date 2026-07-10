@@ -84,7 +84,26 @@ async function bootstrap(): Promise<void> {
   await ensureSecrets();
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/v1');
-  app.enableCors({ origin: true, credentials: true });
+
+  // CORS. Аутентификация на Bearer-токенах (не cookie), поэтому по умолчанию origin отражается —
+  // так работают веб и нативные оболочки (tauri/capacitor). Для ужесточения задайте ALLOWED_ORIGINS
+  // (список через запятую) — тогда пускаем только их плюс схемы нативных приложений.
+  const nativeOrigins = [
+    'tauri://localhost',
+    'https://tauri.localhost',
+    'capacitor://localhost',
+    'http://localhost',
+    'https://localhost',
+  ];
+  const configured = (process.env.ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  app.enableCors(
+    configured.length > 0
+      ? { origin: [...configured, ...nativeOrigins], credentials: true }
+      : { origin: true, credentials: true },
+  );
 
   // Структурные логи запросов без тел и без PII (только метод/путь/статус).
   app.use(

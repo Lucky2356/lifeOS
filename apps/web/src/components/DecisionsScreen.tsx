@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { scoreOptions, type Decision, type DecisionCriterion, type DecisionOption } from '@life-os/domain';
 import { offlineDecisions as decisionApi } from '../lib/offline-decisions';
 import type { Theme } from '../lib/theme';
+import { PromptDialog } from './Dialog';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   return (
@@ -17,6 +18,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [criteria, setCriteria] = useState<DecisionCriterion[]>([]);
   const [options, setOptions] = useState<DecisionOption[]>([]);
   const [dirty, setDirty] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     void decisionApi.list().then(setDecisions);
@@ -30,9 +32,8 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     setDirty(false);
   }
 
-  async function createNew() {
-    const title = window.prompt('О чём решение?');
-    if (!title) return;
+  async function createNew(title: string) {
+    setCreating(false);
     const d = await decisionApi.create({ title });
     load();
     open(d);
@@ -200,7 +201,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
-          <button className="btn btn-primary" onClick={createNew}>
+          <button className="btn btn-primary" onClick={() => setCreating(true)}>
             <i className="ti ti-plus" aria-hidden="true" /> Новое
           </button>
         </div>
@@ -226,6 +227,16 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             </button>
           ))}
         </div>
+      )}
+      {creating && (
+        <PromptDialog
+          title="Новое решение"
+          label="О чём решение?"
+          placeholder="Например: сменить работу"
+          confirmLabel="Создать"
+          onSubmit={createNew}
+          onCancel={() => setCreating(false)}
+        />
       )}
     </main>
   );

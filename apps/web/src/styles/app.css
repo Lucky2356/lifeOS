@@ -28,6 +28,46 @@ body {
   font-weight: 500;
 }
 
+/* Единый базовый стиль всех форм-контролов — чтобы ничто не падало в браузерный дефолт.
+   Специфичные классы (.field, .kv, .list-row, .inline-input) уточняют размеры поверх этой базы. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 0.5px solid var(--line);
+  border-radius: 9px;
+  padding: 9px 11px;
+}
+input[type='checkbox'],
+input[type='radio'] {
+  padding: 0;
+  accent-color: var(--sage);
+}
+select {
+  cursor: pointer;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px var(--sage-soft);
+}
+/* Единая клавиатурная доступность для интерактивных элементов. */
+.btn:focus-visible,
+.chip:focus-visible,
+.rail-item:focus-visible,
+.reveal-btn:focus-visible,
+.switch:focus-visible,
+.check:focus-visible,
+.card:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+}
+
 .app {
   display: flex;
   min-height: 100vh;

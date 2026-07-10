@@ -7,6 +7,7 @@ import {
   type LifeObjectStatus,
 } from '@life-os/domain';
 import { offlineLedger } from '../lib/offline-ledger';
+import { ConfirmDialog } from './Dialog';
 import { aiApi } from '../lib/ai-api';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
@@ -39,6 +40,7 @@ export function ObjectDetailScreen({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reveal, setReveal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [title, setTitle] = useState('');
   const [validUntil, setValidUntil] = useState('');
@@ -81,7 +83,7 @@ export function ObjectDetailScreen({
   }
 
   async function remove() {
-    if (!window.confirm('Удалить объект? Его можно будет восстановить позднее.')) return;
+    setConfirmDelete(false);
     setBusy(true);
     try {
       await offlineLedger.remove(id);
@@ -184,7 +186,7 @@ export function ObjectDetailScreen({
             <button className="btn" onClick={() => setEditing(true)}>
               <i className="ti ti-edit" aria-hidden="true" /> Изменить
             </button>
-            <button className="btn btn-danger" onClick={remove} disabled={busy}>
+            <button className="btn btn-danger" onClick={() => setConfirmDelete(true)} disabled={busy}>
               <i className="ti ti-trash" aria-hidden="true" /> Удалить
             </button>
           </>
@@ -322,6 +324,16 @@ export function ObjectDetailScreen({
           </div>
         </div>
       </div>
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Удалить объект?"
+          message="Его можно будет восстановить позднее."
+          confirmLabel="Удалить"
+          danger
+          onConfirm={remove}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </main>
   );
 }

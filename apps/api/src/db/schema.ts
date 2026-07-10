@@ -176,6 +176,22 @@ export const appSecrets = pgTable('app_secrets', {
   value: text('value').notNull(),
 });
 
+/** Вложения к объектам реестра: метаданные; сам файл — зашифрованным на диске. */
+export const attachments = pgTable(
+  'attachments',
+  {
+    id: uuid('id').primaryKey(),
+    objectId: uuid('object_id').notNull(),
+    ownerUserId: uuid('owner_user_id').notNull(),
+    filename: text('filename').notNull(),
+    mime: text('mime').notNull(),
+    size: integer('size').notNull(),
+    sensitivity: text('sensitivity').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [index('attachments_object_idx').on(t.objectId)],
+);
+
 /** Дедуп доставки напоминаний: одно правило (offsetDays) для объекта доставляется один раз. */
 export const reminderDeliveries = pgTable(
   'reminder_deliveries',

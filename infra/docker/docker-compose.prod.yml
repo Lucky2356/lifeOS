@@ -37,10 +37,14 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-Life OS <no-reply@lifeos.local>}
+      # Каталог зашифрованных вложений (том сохраняет их между перезапусками).
+      ATTACHMENTS_DIR: /data/attachments
     # Порт API открыт наружу, чтобы к нему могли ходить десктоп-приложение (localhost:3011)
     # и телефон по адресу этой машины в сети (http://<IP-этого-ПК>:3011/api/v1).
     ports:
       - '3011:3011'
+    volumes:
+      - life-os-attachments:/data/attachments
     depends_on:
       db:
         condition: service_healthy
@@ -57,3 +61,4 @@ services:
 
 volumes:
   life-os-db-data:
+  life-os-attachments:

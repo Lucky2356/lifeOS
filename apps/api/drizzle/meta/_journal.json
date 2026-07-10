@@ -43,6 +43,13 @@
       "when": 1783714930629,
       "tag": "0005_fixed_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783715766452,
+      "tag": "0006_clammy_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

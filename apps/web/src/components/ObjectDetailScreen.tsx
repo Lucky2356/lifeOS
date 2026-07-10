@@ -8,6 +8,7 @@ import {
 } from '@life-os/domain';
 import { offlineLedger } from '../lib/offline-ledger';
 import { ConfirmDialog } from './Dialog';
+import { Attachments } from './Attachments';
 import { aiApi } from '../lib/ai-api';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
@@ -244,6 +245,8 @@ export function ObjectDetailScreen({
           </div>
         </>
       )}
+
+      <Attachments objectId={id} />
 
       <div className="section-label">Напоминания</div>
       {reminders.length === 0 ? (

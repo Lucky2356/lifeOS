@@ -16,10 +16,12 @@ export function setUnauthHandler(fn: () => void) {
 }
 
 function withAuth(init: RequestInit | undefined, token: string | null): RequestInit {
+  // Для FormData не выставляем Content-Type — браузер сам добавит multipart boundary.
+  const isForm = typeof FormData !== 'undefined' && init?.body instanceof FormData;
   return {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
       ...(init?.headers ?? {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },

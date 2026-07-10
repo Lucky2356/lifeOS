@@ -173,3 +173,17 @@ export const appSecrets = pgTable('app_secrets', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
+/** Токены сброса пароля: хранится только SHA-256 хэш, с TTL и одноразовым использованием. */
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    createdAt: text('created_at').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    usedAt: text('used_at'),
+  },
+  (t) => [index('reset_token_hash_idx').on(t.tokenHash)],
+);

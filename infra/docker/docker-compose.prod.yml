@@ -27,6 +27,16 @@ services:
       #   JWT_SECRET=...  ENCRYPTION_KEY=...  (напр. `openssl rand -hex 32`)
       JWT_SECRET: ${JWT_SECRET:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      # Адрес веб-приложения — для ссылок сброса пароля в письмах. Укажите публичный адрес сервера.
+      APP_URL: ${APP_URL:-http://45.143.203.142:8080}
+      # Ужесточение CORS (необязательно): список веб-origin через запятую. Нативные приложения — всегда.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      # SMTP для писем сброса пароля (напр. Brevo: smtp-relay.brevo.com:587). Без него письма не шлются.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Life OS <no-reply@lifeos.local>}
     # Порт API открыт наружу, чтобы к нему могли ходить десктоп-приложение (localhost:3011)
     # и телефон по адресу этой машины в сети (http://<IP-этого-ПК>:3011/api/v1).
     ports:

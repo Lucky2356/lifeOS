@@ -11,6 +11,7 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState<'no' | 'form' | 'sent'>('no');
   // В нативных оболочках (Tauri/Capacitor) нет общего origin с бэкендом — даём указать адрес сервера.
   const isNative =
     typeof window !== 'undefined' &&
@@ -43,6 +44,20 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
     }
   }
 
+  async function submitForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await authApi.forgotPassword(email);
+      setForgot('sent');
+    } catch {
+      setError('Не удалось отправить письмо. Проверьте адрес сервера и попробуйте снова.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -66,6 +81,91 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
     } finally {
       setBusy(false);
     }
+  }
+
+  if (forgot !== 'no') {
+    return (
+      <div className="auth-wrap">
+        <form className="auth-card" onSubmit={submitForgot}>
+          <div className="auth-logo">
+            <i className="ti ti-key" aria-hidden="true" />
+          </div>
+          <div className="serif" style={{ fontSize: 22, textAlign: 'center' }}>
+            Сброс пароля
+          </div>
+          {forgot === 'sent' ? (
+            <>
+              <div className="page-sub" style={{ textAlign: 'center', margin: '12px 0 18px' }}>
+                Если {email} зарегистрирован, мы отправили письмо со ссылкой для нового пароля. Проверьте
+                почту, в том числе папку «Спам».
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={() => {
+                  setForgot('no');
+                  setError(null);
+                }}
+              >
+                Вернуться ко входу
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="page-sub" style={{ textAlign: 'center', marginBottom: 16 }}>
+                Введите почту — пришлём ссылку для установки нового пароля.
+              </div>
+              <div className="field">
+                <label htmlFor="forgot-email">Почта</label>
+                <input
+                  id="forgot-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoFocus
+                  placeholder="name@example.com"
+                />
+              </div>
+              {isNative && (
+                <div className="field">
+                  <label htmlFor="forgot-server">Адрес сервера</label>
+                  <input
+                    id="forgot-server"
+                    value={server}
+                    onChange={(e) => saveServer(e.target.value)}
+                    placeholder="http://192.168.1.10:3011/api/v1"
+                  />
+                </div>
+              )}
+              {error && (
+                <div style={{ color: 'var(--brick-ink)', fontSize: 13, marginBottom: 10 }}>{error}</div>
+              )}
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={busy || !email.trim()}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                {busy ? 'Отправляем…' : 'Отправить ссылку'}
+              </button>
+              <div style={{ textAlign: 'center', marginTop: 14, fontSize: 13 }}>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    setForgot('no');
+                    setError(null);
+                  }}
+                >
+                  Назад ко входу
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      </div>
+    );
   }
 
   return (
@@ -149,7 +249,16 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
         </button>
 
         {!challenge && (
-          <div style={{ textAlign: 'center', marginTop: 14, fontSize: 13 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 12,
+              marginTop: 14,
+              fontSize: 13,
+              flexWrap: 'wrap',
+            }}
+          >
             <button
               type="button"
               className="link-btn"
@@ -157,6 +266,18 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
             >
               {mode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
             </button>
+            {mode === 'login' && (
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => {
+                  setForgot('form');
+                  setError(null);
+                }}
+              >
+                Забыли пароль?
+              </button>
+            )}
           </div>
         )}
 

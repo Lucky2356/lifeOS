@@ -8,6 +8,7 @@ import { DecisionsScreen } from './components/DecisionsScreen';
 import { NavigatorScreen } from './components/NavigatorScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { LoginScreen } from './components/LoginScreen';
+import { ResetPasswordScreen } from './components/ResetPasswordScreen';
 import { SyncIndicator } from './components/SyncIndicator';
 import { useTheme } from './lib/theme';
 import { authStore } from './lib/auth-store';
@@ -22,6 +23,17 @@ export function App() {
   const [route, setRoute] = useState<Route>('today');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [androidUpdate, setAndroidUpdate] = useState<AndroidUpdate | null>(null);
+  // Ссылка сброса пароля из письма: ?reset=<token>
+  const [resetToken, setResetToken] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('reset') : null,
+  );
+
+  function clearResetToken() {
+    setResetToken(null);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }
 
   useEffect(() => {
     setUnauthHandler(() => setAuthed(false));
@@ -49,6 +61,10 @@ export function App() {
   function exitToLogin() {
     authStore.clear();
     setAuthed(false);
+  }
+
+  if (resetToken) {
+    return <ResetPasswordScreen token={resetToken} onDone={clearResetToken} />;
   }
 
   if (!authed) {

@@ -11,16 +11,30 @@ const genCode = (base32: string) =>
   }).generate();
 import { InMemoryUserRepository } from './user.repository';
 import { InMemorySessionRepository } from './session.repository';
+import { InMemoryResetTokenRepository } from './reset-token.repository';
+import { EmailService } from './email.service';
 
 const ua = 'test-agent';
 
 describe('AuthService', () => {
   let service: AuthService;
+  let users: InMemoryUserRepository;
+  let resetTokens: InMemoryResetTokenRepository;
+  let capturedResetUrl: string;
 
   beforeEach(() => {
+    users = new InMemoryUserRepository();
+    resetTokens = new InMemoryResetTokenRepository();
+    capturedResetUrl = '';
+    const email = new EmailService();
+    email.sendPasswordReset = async (_to, url) => {
+      capturedResetUrl = url;
+    };
     service = new AuthService(
-      new InMemoryUserRepository(),
+      users,
       new InMemorySessionRepository(),
+      resetTokens,
+      email,
       new JwtService({ secret: 'test-secret' }),
     );
   });
@@ -76,5 +90,30 @@ describe('AuthService', () => {
     const [sessionId] = reg.refreshToken.split('.');
     await service.revokeSession(reg.user.id, sessionId!);
     await expect(service.refresh(reg.refreshToken, ua)).rejects.toThrow();
+  });
+
+  it('сброс пароля по токену: новый пароль работает, старый — нет', async () => {
+    await service.register('a@b.co', 'password1', ua);
+    await service.requestPasswordReset('a@b.co');
+    const token = new URL(capturedResetUrl).searchParams.get('reset')!;
+    expect(token.length).toBeGreaterThan(10);
+
+    await service.resetPassword(token, 'newpassword2');
+    const ok = await service.login('a@b.co', 'newpassword2', ua);
+    expect(ok.status).toBe('authenticated');
+    await expect(service.login('a@b.co', 'password1', ua)).rejects.toThrow();
+  });
+
+  it('запрос сброса для несуществующего e-mail не раскрывает и не падает', async () => {
+    await expect(service.requestPasswordReset('nobody@x.co')).resolves.toBeUndefined();
+    expect(capturedResetUrl).toBe(''); // письмо не отправлялось
+  });
+
+  it('повторное использование токена сброса отклоняется', async () => {
+    await service.register('a@b.co', 'password1', ua);
+    await service.requestPasswordReset('a@b.co');
+    const token = new URL(capturedResetUrl).searchParams.get('reset')!;
+    await service.resetPassword(token, 'newpassword2');
+    await expect(service.resetPassword(token, 'another3pass')).rejects.toThrow();
   });
 });

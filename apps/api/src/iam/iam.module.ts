@@ -8,8 +8,11 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { DrizzleUserRepository } from './drizzle-user.repository';
 import { DrizzleSessionRepository } from './drizzle-session.repository';
+import { DrizzleResetTokenRepository } from './drizzle-reset-token.repository';
 import { InMemoryUserRepository, USER_REPOSITORY } from './user.repository';
 import { InMemorySessionRepository, SESSION_REPOSITORY } from './session.repository';
+import { InMemoryResetTokenRepository, RESET_TOKEN_REPOSITORY } from './reset-token.repository';
+import { EmailService } from './email.service';
 
 @Module({
   imports: [
@@ -19,6 +22,13 @@ import { InMemorySessionRepository, SESSION_REPOSITORY } from './session.reposit
   controllers: [AuthController],
   providers: [
     AuthService,
+    EmailService,
+    {
+      provide: RESET_TOKEN_REPOSITORY,
+      inject: [DRIZZLE],
+      useFactory: (db: Database | null) =>
+        db ? new DrizzleResetTokenRepository(db) : new InMemoryResetTokenRepository(),
+    },
     {
       provide: USER_REPOSITORY,
       inject: [DRIZZLE],

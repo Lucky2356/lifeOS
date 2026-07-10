@@ -60,9 +60,8 @@ jobs:
       - run: pnpm --filter @life-os/domain build
       - name: Build desktop bundles (NSIS + MSI, signed for updater)
         env:
-          # Нативная оболочка не имеет общего origin с бэкендом — адрес API задаётся при сборке.
-          # Пользователь может переопределить его в рантайме (поле «Сервер» на экране входа).
-          VITE_API_BASE: http://localhost:3011/api/v1
+          # Адрес продакшен-сервера по умолчанию (пользователь может сменить в поле «Адрес сервера»).
+          VITE_API_BASE: ${{ vars.API_BASE_URL || 'http://45.143.203.142:3011/api/v1' }}
           APP_VERSION: ${{ github.ref_name }}
           # Подпись апдейтер-артефактов. Приватный ключ — единственный секрет; пароль ключа пустой.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -119,9 +118,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build web for mobile
         env:
-          # По умолчанию — адрес хоста для Android-эмулятора (10.0.2.2 = localhost машины).
-          # На реальном устройстве адрес меняется в рантайме (поле «Сервер» на экране входа).
-          VITE_API_BASE: http://10.0.2.2:3011/api/v1
+          # Адрес продакшен-сервера по умолчанию (пользователь может сменить в поле «Адрес сервера»).
+          VITE_API_BASE: ${{ vars.API_BASE_URL || 'http://45.143.203.142:3011/api/v1' }}
           APP_VERSION: ${{ github.ref_name }}
         run: |
           pnpm --filter @life-os/domain build

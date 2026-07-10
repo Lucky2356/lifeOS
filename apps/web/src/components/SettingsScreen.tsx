@@ -123,7 +123,15 @@ export function SettingsScreen({
             </div>
           </div>
           <div className="page-sub" style={{ marginTop: 24, fontSize: 12 }}>
-            Life OS · версия {__APP_VERSION__} · обновляется автоматически
+            Life OS · версия {__APP_VERSION__} · обновляется автоматически ·{' '}
+            <a
+              href="https://github.com/Lucky2356/lifeOS/blob/main/docs/PRIVACY.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--sage)' }}
+            >
+              Политика конфиденциальности
+            </a>
           </div>
         </>
       )}
@@ -249,7 +257,15 @@ export function SettingsScreen({
           </div>
 
           <div className="page-sub" style={{ marginTop: 24, fontSize: 12 }}>
-            Life OS · версия {__APP_VERSION__} · обновляется автоматически
+            Life OS · версия {__APP_VERSION__} · обновляется автоматически ·{' '}
+            <a
+              href="https://github.com/Lucky2356/lifeOS/blob/main/docs/PRIVACY.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--sage)' }}
+            >
+              Политика конфиденциальности
+            </a>
           </div>
         </>
       )}

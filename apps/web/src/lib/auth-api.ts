@@ -23,4 +23,14 @@ export const authApi = {
     apiFetch<PublicUser>('/auth/mfa/enable', { method: 'POST', body: JSON.stringify({ code }) }),
   sessions: () => apiFetch<SessionInfo[]>('/auth/sessions'),
   logout: () => apiFetch<void>('/auth/logout', { method: 'POST' }),
+  forgotPassword: (email: string) =>
+    apiFetch<{ status: string }>('/auth/password/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, password: string) =>
+    apiFetch<void>('/auth/password/reset', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }),
 };

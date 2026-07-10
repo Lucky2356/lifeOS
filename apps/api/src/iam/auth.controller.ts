@@ -16,6 +16,8 @@ import { Public } from './public.decorator';
 
 const refreshSchema = z.object({ refreshToken: z.string().min(1) });
 const codeSchema = z.object({ code: z.string().min(6).max(6) });
+const forgotSchema = z.object({ email: z.string().email() });
+const resetSchema = z.object({ token: z.string().min(1), password: z.string().min(8).max(200) });
 const tightThrottle = { default: { limit: 10, ttl: 60_000 } };
 
 @Controller('auth')
@@ -59,6 +61,24 @@ export class AuthController {
     @Headers('user-agent') ua = 'unknown',
   ) {
     return this.auth.refresh(body.refreshToken, ua);
+  }
+
+  @Public()
+  @Throttle(tightThrottle)
+  @Post('password/forgot')
+  @HttpCode(202)
+  async forgotPassword(@Body(new ZodValidationPipe(forgotSchema)) body: { email: string }) {
+    await this.auth.requestPasswordReset(body.email);
+    // Всегда 202 — не раскрываем, зарегистрирован ли e-mail.
+    return { status: 'accepted' };
+  }
+
+  @Public()
+  @Throttle(tightThrottle)
+  @Post('password/reset')
+  @HttpCode(204)
+  resetPassword(@Body(new ZodValidationPipe(resetSchema)) body: { token: string; password: string }) {
+    return this.auth.resetPassword(body.token, body.password);
   }
 
   @Post('mfa/setup')

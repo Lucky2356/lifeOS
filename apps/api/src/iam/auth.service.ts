@@ -7,6 +7,8 @@ import { newId, type LoginResult, type PublicUser } from '@life-os/domain';
 import { decryptSecret, encryptSecret, sha256 } from '../common/crypto';
 import { USER_REPOSITORY, type User, type UserRepository } from './user.repository';
 import { SESSION_REPOSITORY, type Session, type SessionRepository } from './session.repository';
+import { RESET_TOKEN_REPOSITORY, type ResetTokenRepository } from './reset-token.repository';
+import { EmailService } from './email.service';
 
 function totpFor(base32Secret: string, label: string): OTPAuth.TOTP {
   return new OTPAuth.TOTP({
@@ -29,6 +31,8 @@ export class AuthService {
   constructor(
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
+    @Inject(RESET_TOKEN_REPOSITORY) private readonly resetTokens: ResetTokenRepository,
+    private readonly email: EmailService,
     private readonly jwt: JwtService,
   ) {}
 
@@ -148,6 +152,47 @@ export class AuthService {
     if (session && session.userId === userId && session.revokedAt === null) {
       session.revokedAt = new Date().toISOString();
       await this.sessions.save(session);
+    }
+  }
+
+  /**
+   * Запрос сброса пароля. Всегда завершается одинаково (без раскрытия, есть ли такой e-mail).
+   * Если пользователь существует — создаём одноразовый токен (TTL 1ч) и шлём ссылку на почту.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.users.findByEmail(email.trim().toLowerCase());
+    if (!user) return;
+    const token = randomBytes(32).toString('hex');
+    const now = new Date();
+    await this.resetTokens.create({
+      id: newId(),
+      userId: user.id,
+      tokenHash: sha256(token),
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 3_600_000).toISOString(),
+      usedAt: null,
+    });
+    const appUrl = (process.env.APP_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+    await this.email.sendPasswordReset(user.email, `${appUrl}/?reset=${token}`);
+  }
+
+  /** Установить новый пароль по токену из письма. Одноразово, инвалидирует все сессии. */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const rec = await this.resetTokens.findByHash(sha256(token));
+    const invalid = new UnauthorizedException('Ссылка сброса недействительна или устарела');
+    if (!rec || rec.usedAt !== null) throw invalid;
+    if (new Date(rec.expiresAt).getTime() < Date.now()) throw invalid;
+
+    const user = await this.mustUser(rec.userId);
+    user.passwordHash = await argonHash(newPassword);
+    await this.users.save(user);
+    await this.resetTokens.markUsed(rec.id, new Date());
+
+    // Безопасность: после смены пароля все активные сессии отзываются.
+    const sessions = await this.sessions.listByUser(user.id);
+    const now = new Date().toISOString();
+    for (const s of sessions) {
+      if (s.revokedAt === null) await this.sessions.save({ ...s, revokedAt: now });
     }
   }
 

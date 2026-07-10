@@ -2,9 +2,11 @@ import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import {
   createHouseholdTaskInputSchema,
   householdTaskSchema,
+  relationshipSchema,
   roleSchema,
   type CreateHouseholdTaskInput,
   type HouseholdTask,
+  type Relationship,
   type Role,
 } from '@life-os/domain';
 import { z } from 'zod';
@@ -21,7 +23,15 @@ const addMemberSchema = z.object({
   userId: z.string().uuid(),
   displayName: z.string().min(1).max(120),
   role: roleSchema,
+  relationship: relationshipSchema.default('other'),
   expiresAt: z.string().datetime().nullable().default(null),
+});
+
+const inviteMemberSchema = z.object({
+  email: z.string().email(),
+  relationship: relationshipSchema,
+  displayName: z.string().min(1).max(120).optional(),
+  role: roleSchema.optional(),
 });
 
 @Controller('households')
@@ -55,10 +65,27 @@ export class HouseholdController {
   addMember(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(addMemberSchema))
-    body: { userId: string; displayName: string; role: Role; expiresAt: string | null },
+    body: {
+      userId: string;
+      displayName: string;
+      role: Role;
+      relationship: Relationship;
+      expiresAt: string | null;
+    },
     @CurrentUserId() userId: string,
   ) {
     return this.service.addMember(id, userId, body);
+  }
+
+  /** Пригласить зарегистрированного пользователя по e-mail (добавляет реального человека). */
+  @Post(':id/members/invite')
+  invite(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(inviteMemberSchema))
+    body: { email: string; relationship: Relationship; displayName?: string; role?: Role },
+    @CurrentUserId() userId: string,
+  ) {
+    return this.service.addMemberByEmail(id, userId, body);
   }
 
   @Get(':id/tasks')

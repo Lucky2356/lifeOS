@@ -78,6 +78,7 @@ export const memberships = pgTable(
     userId: uuid('user_id').notNull(),
     displayName: text('display_name').notNull(),
     role: text('role').notNull(),
+    relationship: text('relationship').notNull().default('other'),
     expiresAt: text('expires_at'),
   },
   (t) => [index('memberships_user_idx').on(t.userId), index('memberships_household_idx').on(t.householdId)],

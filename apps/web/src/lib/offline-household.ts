@@ -6,6 +6,7 @@ import {
   type Household,
   type HouseholdTask,
   type Membership,
+  type Relationship,
   type Role,
 } from '@life-os/domain';
 import { apiFetch } from './http';
@@ -60,8 +61,20 @@ export const offlineHousehold = {
     }
   },
 
-  addMember: (id: string, body: { userId: string; displayName: string; role: Role }) =>
-    apiFetch<Membership>(`/households/${id}/members`, { method: 'POST', body: JSON.stringify(body) }),
+  addMember: (
+    id: string,
+    body: { userId: string; displayName: string; role: Role; relationship: Relationship },
+  ) => apiFetch<Membership>(`/households/${id}/members`, { method: 'POST', body: JSON.stringify(body) }),
+
+  /** Пригласить уже зарегистрированного пользователя по e-mail. */
+  invite: (
+    id: string,
+    body: { email: string; relationship: Relationship; displayName?: string; role?: Role },
+  ) =>
+    apiFetch<Membership>(`/households/${id}/members/invite`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 
   async tasks(id: string): Promise<HouseholdTask[]> {
     try {

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DRIZZLE, type Database } from '../db/drizzle.provider';
+import { IamModule } from '../iam/iam.module';
 import { DrizzleHouseholdRepository } from './drizzle-household.repository';
 import { HouseholdController } from './household.controller';
 import { HOUSEHOLD_REPOSITORY } from './household.repository';
@@ -7,6 +8,7 @@ import { HouseholdService } from './household.service';
 import { InMemoryHouseholdRepository } from './in-memory-household.repository';
 
 @Module({
+  imports: [IamModule],
   controllers: [HouseholdController],
   providers: [
     HouseholdService,

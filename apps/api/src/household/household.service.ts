@@ -1,10 +1,11 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   can,
   createAuditEntry,
   createHousehold,
   createHouseholdTask,
   createMembership,
+  defaultRoleForRelationship,
   householdTaskSchema,
   isMembershipActive,
   toggleTaskStatus,
@@ -12,13 +13,18 @@ import {
   type Household,
   type HouseholdTask,
   type Membership,
+  type Relationship,
   type Role,
 } from '@life-os/domain';
+import { USER_REPOSITORY, type UserRepository } from '../iam/user.repository';
 import { HOUSEHOLD_REPOSITORY, type HouseholdRepository } from './household.repository';
 
 @Injectable()
 export class HouseholdService {
-  constructor(@Inject(HOUSEHOLD_REPOSITORY) private readonly repo: HouseholdRepository) {}
+  constructor(
+    @Inject(HOUSEHOLD_REPOSITORY) private readonly repo: HouseholdRepository,
+    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
+  ) {}
 
   private async requireMembership(householdId: string, userId: string): Promise<Membership> {
     const m = await this.repo.findMembership(householdId, userId);
@@ -36,7 +42,13 @@ export class HouseholdService {
     const household = createHousehold(name, userId);
     await this.repo.createHousehold(household);
     await this.repo.addMembership(
-      createMembership({ householdId: household.id, userId, displayName, role: 'owner' }),
+      createMembership({
+        householdId: household.id,
+        userId,
+        displayName,
+        role: 'owner',
+        relationship: 'self',
+      }),
     );
     return household;
   }
@@ -63,11 +75,57 @@ export class HouseholdService {
   async addMember(
     id: string,
     userId: string,
-    input: { userId: string; displayName: string; role: Role; expiresAt?: string | null },
+    input: {
+      userId: string;
+      displayName: string;
+      role: Role;
+      relationship?: Relationship;
+      expiresAt?: string | null;
+    },
   ): Promise<Membership> {
     const me = await this.requireMembership(id, userId);
     this.ensure(me.role, 'manage_members');
     const membership = createMembership({ householdId: id, ...input });
+    await this.repo.addMembership(membership);
+    await this.repo.addAudit(
+      createAuditEntry({
+        householdId: id,
+        actorUserId: userId,
+        action: 'add_member',
+        resourceType: 'membership',
+        resourceId: membership.id,
+      }),
+    );
+    return membership;
+  }
+
+  /**
+   * Пригласить в дом уже зарегистрированного пользователя по e-mail. Роль по умолчанию берётся из
+   * родственного статуса. Так добавляют реального человека (со своим аккаунтом), а не «пустого» участника.
+   */
+  async addMemberByEmail(
+    id: string,
+    userId: string,
+    input: { email: string; relationship: Relationship; displayName?: string; role?: Role },
+  ): Promise<Membership> {
+    const me = await this.requireMembership(id, userId);
+    this.ensure(me.role, 'manage_members');
+
+    const user = await this.users.findByEmail(input.email.trim().toLowerCase());
+    if (!user) {
+      throw new NotFoundException('Пользователь с такой почтой ещё не зарегистрирован в Life OS');
+    }
+    const existing = await this.repo.findMembership(id, user.id);
+    if (existing && isMembershipActive(existing)) {
+      throw new ConflictException('Этот человек уже в вашем доме');
+    }
+    const membership = createMembership({
+      householdId: id,
+      userId: user.id,
+      displayName: input.displayName?.trim() || input.email.split('@')[0] || input.email,
+      role: input.role ?? defaultRoleForRelationship(input.relationship),
+      relationship: input.relationship,
+    });
     await this.repo.addMembership(membership);
     await this.repo.addAudit(
       createAuditEntry({

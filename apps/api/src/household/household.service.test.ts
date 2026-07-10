@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createHouseholdTask, toggleTaskStatus } from '@life-os/domain';
 import { HouseholdService } from './household.service';
 import { InMemoryHouseholdRepository } from './in-memory-household.repository';
+import { InMemoryUserRepository, type User } from '../iam/user.repository';
 
 const owner = '00000000-0000-0000-0000-0000000000a1';
 const stranger = '00000000-0000-0000-0000-0000000000b2';
@@ -9,10 +10,25 @@ const childUser = '00000000-0000-0000-0000-0000000000c3';
 
 describe('HouseholdService', () => {
   let service: HouseholdService;
+  let usersRepo: InMemoryUserRepository;
 
   beforeEach(() => {
-    service = new HouseholdService(new InMemoryHouseholdRepository());
+    usersRepo = new InMemoryUserRepository();
+    service = new HouseholdService(new InMemoryHouseholdRepository(), usersRepo);
   });
+
+  function seedUser(id: string, email: string): Promise<User> {
+    return usersRepo.create({
+      id,
+      email,
+      passwordHash: 'x',
+      mfaEnabled: false,
+      mfaSecretEnc: null,
+      status: 'active',
+      locale: 'ru',
+      createdAt: new Date().toISOString(),
+    });
+  }
 
   async function newHouse() {
     return service.create('Наш дом', owner, 'Алекс');
@@ -70,6 +86,27 @@ describe('HouseholdService', () => {
     const h = await newHouse();
     const task = createHouseholdTask({ title: 'X' }, h.id);
     await expect(service.upsertTask(h.id, stranger, task)).rejects.toThrow();
+  });
+
+  it('приглашает зарегистрированного пользователя по e-mail со статусом и ролью по умолчанию', async () => {
+    const h = await newHouse();
+    await seedUser(childUser, 'kid@example.com');
+    const m = await service.addMemberByEmail(h.id, owner, {
+      email: 'kid@example.com',
+      relationship: 'child',
+    });
+    expect(m.userId).toBe(childUser);
+    expect(m.relationship).toBe('child');
+    expect(m.role).toBe('child'); // роль по умолчанию из статуса «ребёнок»
+    const members = await service.listMembers(h.id, owner);
+    expect(members.map((x) => x.userId)).toContain(childUser);
+  });
+
+  it('приглашение незарегистрированной почты отклоняется', async () => {
+    const h = await newHouse();
+    await expect(
+      service.addMemberByEmail(h.id, owner, { email: 'nobody@example.com', relationship: 'friend' }),
+    ).rejects.toThrow();
   });
 
   it('ребёнок не видит журнал доступа', async () => {

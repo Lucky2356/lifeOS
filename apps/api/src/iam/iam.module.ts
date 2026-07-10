@@ -35,6 +35,6 @@ import { InMemorySessionRepository, SESSION_REPOSITORY } from './session.reposit
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
-  exports: [AuthService],
+  exports: [AuthService, USER_REPOSITORY],
 })
 export class IamModule {}

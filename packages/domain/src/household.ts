@@ -14,6 +14,53 @@ export const roleLabels: Record<Role, { ru: string; en: string }> = {
   guest: { ru: 'Гость', en: 'Guest' },
 };
 
+/** Родственный/семейный статус участника — отдельно от роли (роль = права, статус = кто это). */
+export const relationships = [
+  'self',
+  'husband',
+  'wife',
+  'partner',
+  'child',
+  'parent',
+  'sibling',
+  'mother_in_law',
+  'father_in_law',
+  'son_in_law',
+  'daughter_in_law',
+  'grandparent',
+  'grandchild',
+  'roommate',
+  'friend',
+  'other',
+] as const;
+export type Relationship = (typeof relationships)[number];
+export const relationshipSchema = z.enum(relationships);
+
+export const relationshipLabels: Record<Relationship, { ru: string; en: string }> = {
+  self: { ru: 'Я', en: 'Me' },
+  husband: { ru: 'Муж', en: 'Husband' },
+  wife: { ru: 'Жена', en: 'Wife' },
+  partner: { ru: 'Партнёр (девушка/парень)', en: 'Partner' },
+  child: { ru: 'Ребёнок', en: 'Child' },
+  parent: { ru: 'Родитель', en: 'Parent' },
+  sibling: { ru: 'Брат / сестра', en: 'Sibling' },
+  mother_in_law: { ru: 'Тёща / свекровь', en: 'Mother-in-law' },
+  father_in_law: { ru: 'Тесть / свёкор', en: 'Father-in-law' },
+  son_in_law: { ru: 'Зять', en: 'Son-in-law' },
+  daughter_in_law: { ru: 'Сноха / невестка', en: 'Daughter-in-law' },
+  grandparent: { ru: 'Бабушка / дедушка', en: 'Grandparent' },
+  grandchild: { ru: 'Внук / внучка', en: 'Grandchild' },
+  roommate: { ru: 'Сосед по дому', en: 'Roommate' },
+  friend: { ru: 'Друг', en: 'Friend' },
+  other: { ru: 'Другое', en: 'Other' },
+};
+
+/** Разумная роль по умолчанию для родственного статуса (можно переопределить вручную). */
+export function defaultRoleForRelationship(rel: Relationship): Role {
+  if (rel === 'child' || rel === 'grandchild') return 'child';
+  return 'adult';
+}
+
 /** Действия уровня контура для проверки прав (role-level capabilities). */
 export const householdActions = [
   'manage_household',
@@ -56,6 +103,7 @@ export const membershipSchema = baseEntitySchema.extend({
   userId: z.string().uuid(),
   displayName: z.string().min(1).max(120),
   role: roleSchema,
+  relationship: relationshipSchema.default('other'),
   expiresAt: z.string().datetime().nullable(),
 });
 export type Membership = z.infer<typeof membershipSchema>;
@@ -90,7 +138,14 @@ export function createHousehold(name: string, createdBy: string, now: Date = new
 }
 
 export function createMembership(
-  input: { householdId: string; userId: string; displayName: string; role: Role; expiresAt?: string | null },
+  input: {
+    householdId: string;
+    userId: string;
+    displayName: string;
+    role: Role;
+    relationship?: Relationship;
+    expiresAt?: string | null;
+  },
   now: Date = new Date(),
 ): Membership {
   const ts = now.toISOString();
@@ -105,6 +160,7 @@ export function createMembership(
     userId: input.userId,
     displayName: input.displayName,
     role: input.role,
+    relationship: input.relationship ?? 'other',
     expiresAt: input.expiresAt ?? null,
   };
 }

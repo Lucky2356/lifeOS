@@ -7,8 +7,17 @@ import { z } from 'zod';
 export const aiModules = ['ledger', 'household', 'decision', 'navigator'] as const;
 export type AiModule = (typeof aiModules)[number];
 
-export const aiProviderNameSchema = z.enum(['noop', 'claude']);
+export const aiProviderNameSchema = z.enum(['noop', 'claude', 'openai', 'deepseek', 'gemini', 'custom']);
 export type AiProviderName = z.infer<typeof aiProviderNameSchema>;
+
+/** Провайдеры для выбора в настройках (noop не показываем — это «выключено»). */
+export const aiProviderOptions: Array<{ name: AiProviderName; label: string; hint: string }> = [
+  { name: 'claude', label: 'Anthropic Claude', hint: 'ANTHROPIC_API_KEY' },
+  { name: 'openai', label: 'OpenAI (GPT)', hint: 'OPENAI_API_KEY' },
+  { name: 'deepseek', label: 'DeepSeek', hint: 'DEEPSEEK_API_KEY' },
+  { name: 'gemini', label: 'Google Gemini', hint: 'GEMINI_API_KEY' },
+  { name: 'custom', label: 'Другой (OpenAI-совместимый)', hint: 'AI_CUSTOM_BASE_URL + ключ + модель' },
+];
 
 export const aiSettingsSchema = z.object({
   globalEnabled: z.boolean(),

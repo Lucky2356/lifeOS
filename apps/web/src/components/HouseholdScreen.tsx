@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  defaultRoleForRelationship,
+  relationshipLabels,
+  relationships,
   roleLabels,
   type AuditEntry,
   type Household,
   type HouseholdTask,
   type Membership,
+  type Relationship,
   type Role,
 } from '@life-os/domain';
 import { offlineHousehold as householdApi } from '../lib/offline-household';
@@ -31,6 +35,13 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState('');
+  // Панель добавления участника.
+  const [addMode, setAddMode] = useState<'closed' | 'invite' | 'manual'>('closed');
+  const [mEmail, setMEmail] = useState('');
+  const [mName, setMName] = useState('');
+  const [mRel, setMRel] = useState<Relationship>('partner');
+  const [mError, setMError] = useState<string | null>(null);
+  const [mBusy, setMBusy] = useState(false);
 
   const loadDetail = useCallback((id: string) => {
     void Promise.all([householdApi.members(id), householdApi.tasks(id), householdApi.audit(id)]).then(
@@ -75,10 +86,44 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     loadDetail(household.id);
   }
 
-  async function addMember(role: Role, name: string) {
+  function resetAdd() {
+    setAddMode('closed');
+    setMEmail('');
+    setMName('');
+    setMRel('partner');
+    setMError(null);
+  }
+
+  async function submitMember() {
     if (!household) return;
-    await householdApi.addMember(household.id, { userId: crypto.randomUUID(), displayName: name, role });
-    loadDetail(household.id);
+    setMBusy(true);
+    setMError(null);
+    try {
+      if (addMode === 'invite') {
+        if (!mEmail.trim()) throw new Error('Введите e-mail');
+        await householdApi.invite(household.id, { email: mEmail.trim(), relationship: mRel });
+      } else {
+        if (!mName.trim()) throw new Error('Введите имя');
+        await householdApi.addMember(household.id, {
+          userId: crypto.randomUUID(),
+          displayName: mName.trim(),
+          relationship: mRel,
+          role: defaultRoleForRelationship(mRel),
+        });
+      }
+      resetAdd();
+      loadDetail(household.id);
+    } catch (e) {
+      setMError(
+        e instanceof Error && e.message.includes('404')
+          ? 'Пользователь с такой почтой ещё не зарегистрирован'
+          : e instanceof Error && e.message.includes('409')
+            ? 'Этот человек уже в вашем доме'
+            : 'Не удалось добавить участника',
+      );
+    } finally {
+      setMBusy(false);
+    }
   }
 
   return (
@@ -110,15 +155,83 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         <>
           <div className="section-label">
             Участники
-            <span style={{ display: 'flex', gap: 6 }}>
-              <button className="reveal-btn" onClick={() => addMember('adult', 'Мария')}>
-                <i className="ti ti-user-plus" aria-hidden="true" /> взрослый
+            {addMode === 'closed' && (
+              <button className="reveal-btn" onClick={() => setAddMode('invite')}>
+                <i className="ti ti-user-plus" aria-hidden="true" /> добавить
               </button>
-              <button className="reveal-btn" onClick={() => addMember('child', 'Даша')}>
-                <i className="ti ti-user-plus" aria-hidden="true" /> ребёнок
-              </button>
-            </span>
+            )}
           </div>
+
+          {addMode !== 'closed' && (
+            <div className="list-card" style={{ marginBottom: 14, padding: 14 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <button
+                  className={`btn ${addMode === 'invite' ? 'btn-primary' : ''}`}
+                  onClick={() => setAddMode('invite')}
+                >
+                  Пригласить по почте
+                </button>
+                <button
+                  className={`btn ${addMode === 'manual' ? 'btn-primary' : ''}`}
+                  onClick={() => setAddMode('manual')}
+                >
+                  Без аккаунта
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10 }}>
+                {addMode === 'invite' ? (
+                  <>
+                    <label className="page-sub">
+                      E-mail человека (он должен быть зарегистрирован в Life OS)
+                    </label>
+                    <input
+                      className="inline-input"
+                      type="email"
+                      value={mEmail}
+                      onChange={(e) => setMEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      autoFocus
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="page-sub">Имя (участник без своего аккаунта, напр. ребёнок)</label>
+                    <input
+                      className="inline-input"
+                      value={mName}
+                      onChange={(e) => setMName(e.target.value)}
+                      placeholder="Как зовут"
+                      autoFocus
+                    />
+                  </>
+                )}
+
+                <label className="page-sub">Кто это для вас</label>
+                <select value={mRel} onChange={(e) => setMRel(e.target.value as Relationship)}>
+                  {relationships
+                    .filter((r) => r !== 'self')
+                    .map((r) => (
+                      <option key={r} value={r}>
+                        {relationshipLabels[r].ru}
+                      </option>
+                    ))}
+                </select>
+
+                {mError && <div style={{ color: 'var(--brick-ink)', fontSize: 13 }}>{mError}</div>}
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-primary" onClick={submitMember} disabled={mBusy}>
+                    {mBusy ? 'Добавляем…' : addMode === 'invite' ? 'Пригласить' : 'Добавить'}
+                  </button>
+                  <button className="btn btn-ghost" onClick={resetAdd}>
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid" style={{ marginBottom: 22 }}>
             {members.map((m) => (
               <div className="card" key={m.id} style={{ cursor: 'default' }}>
@@ -126,7 +239,9 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   <span className={`avatar ${roleTint[m.role]}`}>{m.displayName.slice(0, 1)}</span>
                   <div>
                     <div className="card-title">{m.displayName}</div>
-                    <div className="card-meta">{roleLabels[m.role].ru}</div>
+                    <div className="card-meta">
+                      {relationshipLabels[m.relationship ?? 'other'].ru} · {roleLabels[m.role].ru}
+                    </div>
                   </div>
                 </div>
               </div>

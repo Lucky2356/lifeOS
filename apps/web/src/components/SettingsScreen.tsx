@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { aiModules, type AiModule, type AiSettings } from '@life-os/domain';
+import { aiModules, aiProviderOptions, type AiModule, type AiSettings } from '@life-os/domain';
 import { aiApi } from '../lib/ai-api';
 import { authApi } from '../lib/auth-api';
 import type { Theme } from '../lib/theme';
@@ -144,8 +144,24 @@ export function SettingsScreen({
             <div className="list-row">
               <i className="ti ti-cpu" aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
               <span style={{ flex: 1 }}>Провайдер ИИ</span>
-              <span className="list-row-meta" style={{ textTransform: 'capitalize' }}>
-                {settings.provider}
+              <select
+                value={settings.provider === 'noop' ? 'claude' : settings.provider}
+                onChange={(e) => patch({ provider: e.target.value as AiSettings['provider'] })}
+                aria-label="Провайдер ИИ"
+              >
+                {aiProviderOptions.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="list-row">
+              <i className="ti ti-key" aria-hidden="true" style={{ color: 'var(--ink-3)' }} />
+              <span className="page-sub" style={{ flex: 1 }}>
+                Ключ провайдера задаётся на сервере (
+                {aiProviderOptions.find((p) => p.name === settings.provider)?.hint ?? 'ключ в окружении'}).
+                Без ключа ИИ просто не подключается — приложение работает как обычно.
               </span>
             </div>
           </div>

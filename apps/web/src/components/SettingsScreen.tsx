@@ -4,6 +4,11 @@ import { aiApi } from '../lib/ai-api';
 import { authApi } from '../lib/auth-api';
 import { accountApi } from '../lib/account-api';
 import { authStore } from '../lib/auth-store';
+import {
+  notificationPermission,
+  notificationsSupported,
+  requestNotificationPermission,
+} from '../lib/notifications';
 import type { Theme } from '../lib/theme';
 
 const moduleLabels: Record<AiModule, { icon: string; label: string }> = {
@@ -44,6 +49,7 @@ export function SettingsScreen({
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
   const [notifyEmail, setNotifyEmail] = useState<boolean | null>(null);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission>(notificationPermission());
   const isLocal = authStore.isLocal;
 
   useEffect(() => {
@@ -116,9 +122,38 @@ export function SettingsScreen({
         выключайте в любой момент.
       </div>
 
+      {notificationsSupported() && (
+        <>
+          <div className="section-label">Уведомления на устройстве</div>
+          <div className="list-card">
+            <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+              <i className="ti ti-bell-ringing" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+              <span style={{ flex: 1 }}>
+                Напоминания о сроках на этом устройстве
+                <span className="page-sub"> · работают и без аккаунта</span>
+              </span>
+              {notifPerm === 'granted' ? (
+                <span className="pill pill-ok">включены</span>
+              ) : notifPerm === 'denied' ? (
+                <span className="pill pill-none">запрещены в браузере</span>
+              ) : (
+                <button
+                  className="btn"
+                  onClick={() => void requestNotificationPermission().then(setNotifPerm)}
+                >
+                  Разрешить
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {isLocal && (
         <>
-          <div className="section-label">Аккаунт</div>
+          <div className="section-label" style={{ marginTop: 22 }}>
+            Аккаунт
+          </div>
           <div className="list-card">
             <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
               <i className="ti ti-device-desktop" aria-hidden="true" style={{ color: 'var(--ink-2)' }} />

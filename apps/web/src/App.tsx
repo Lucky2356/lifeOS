@@ -14,6 +14,7 @@ import { useTheme } from './lib/theme';
 import { authStore } from './lib/auth-store';
 import { setUnauthHandler } from './lib/http';
 import { initNativeUpdate, openApkDownload, type AndroidUpdate } from './lib/native-update';
+import { startReminderWatcher } from './lib/notifications';
 
 type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'settings';
 
@@ -39,6 +40,8 @@ export function App() {
     setUnauthHandler(() => setAuthed(false));
     // Desktop (Tauri) обновляется тихо; Android — баннер с предложением установить свежий APK.
     initNativeUpdate(setAndroidUpdate);
+    // Локальные уведомления о приближающихся сроках (PWA/локальный режим).
+    startReminderWatcher();
   }, []);
 
   function navigate(key: string) {

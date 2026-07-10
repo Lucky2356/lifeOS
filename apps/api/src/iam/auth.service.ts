@@ -53,6 +53,7 @@ export class AuthService {
       status: 'active',
       locale: 'ru',
       createdAt: now,
+      notifyEmail: true,
     };
     await this.users.create(user);
     return this.issueSession(user, userAgent);

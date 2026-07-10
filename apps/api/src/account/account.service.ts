@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AiService } from '../ai/ai.service';
 import { DecisionService } from '../decision/decision.service';
 import { HouseholdService } from '../household/household.service';
 import { LifeObjectService } from '../ledger/life-object.service';
+import { USER_REPOSITORY, type UserRepository } from '../iam/user.repository';
 
 @Injectable()
 export class AccountService {
@@ -11,7 +12,22 @@ export class AccountService {
     private readonly decisions: DecisionService,
     private readonly households: HouseholdService,
     private readonly ai: AiService,
+    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}
+
+  async getNotifications(userId: string): Promise<{ notifyEmail: boolean }> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundException('Пользователь не найден');
+    return { notifyEmail: user.notifyEmail };
+  }
+
+  async setNotifications(userId: string, notifyEmail: boolean): Promise<{ notifyEmail: boolean }> {
+    const user = await this.users.findById(userId);
+    if (!user) throw new NotFoundException('Пользователь не найден');
+    user.notifyEmail = notifyEmail;
+    await this.users.save(user);
+    return { notifyEmail };
+  }
 
   /** Экспорт всех данных пользователя (переносимость данных). */
   async exportAll(userId: string) {

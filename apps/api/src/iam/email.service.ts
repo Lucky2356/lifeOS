@@ -53,4 +53,23 @@ export class EmailService {
     }
     await this.transport.sendMail({ from: this.from, to, subject, text, html });
   }
+
+  /** Дайджест приближающихся дедлайнов. */
+  async sendReminderDigest(to: string, items: Array<{ title: string; daysLeft: number }>): Promise<void> {
+    const phrase = (d: number) =>
+      d < 0 ? `просрочено на ${-d} дн.` : d === 0 ? 'истекает сегодня' : `истекает через ${d} дн.`;
+    const appUrl = (process.env.APP_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+    const lines = items.map((i) => `• ${i.title} — ${phrase(i.daysLeft)}`).join('\n');
+    const htmlLines = items.map((i) => `<li>${i.title} — ${phrase(i.daysLeft)}</li>`).join('');
+    const subject = `Life OS: ${items.length} ${items.length === 1 ? 'дело требует' : 'дел требуют'} внимания`;
+    const text = `Приближаются сроки:\n\n${lines}\n\nОткрыть Life OS: ${appUrl}`;
+    const html =
+      `<p>Приближаются сроки:</p><ul>${htmlLines}</ul>` + `<p><a href="${appUrl}">Открыть Life OS</a></p>`;
+
+    if (!this.transport) {
+      logger.warn({ items }, 'SMTP не настроен — дайджест напоминаний (не отправлен по почте)');
+      return;
+    }
+    await this.transport.sendMail({ from: this.from, to, subject, text, html });
+  }
 }

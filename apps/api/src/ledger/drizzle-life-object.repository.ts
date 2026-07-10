@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { initialHlc, lifeObjectSchema, type LifeObject } from '@life-os/domain';
 import type { Database } from '../db/drizzle.provider';
 import { lifeObjects } from '../db/schema';
@@ -64,6 +64,14 @@ export class DrizzleLifeObjectRepository implements LifeObjectRepository {
     const rows = await this.db.select().from(lifeObjects).where(eq(lifeObjects.id, id)).limit(1);
     const row = rows[0];
     return row ? toDomain(row) : null;
+  }
+
+  async findAllWithDeadline(): Promise<LifeObject[]> {
+    const rows = await this.db
+      .select()
+      .from(lifeObjects)
+      .where(and(isNull(lifeObjects.deletedAt), isNotNull(lifeObjects.validUntil)));
+    return rows.map(toDomain);
   }
 
   async save(obj: LifeObject): Promise<LifeObject> {

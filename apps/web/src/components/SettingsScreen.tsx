@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { aiModules, aiProviderOptions, type AiModule, type AiSettings } from '@life-os/domain';
 import { aiApi } from '../lib/ai-api';
 import { authApi } from '../lib/auth-api';
+import { accountApi } from '../lib/account-api';
 import { authStore } from '../lib/auth-store';
 import type { Theme } from '../lib/theme';
 
@@ -42,15 +43,30 @@ export function SettingsScreen({
   const [mfaCode, setMfaCode] = useState('');
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
+  const [notifyEmail, setNotifyEmail] = useState<boolean | null>(null);
   const isLocal = authStore.isLocal;
 
   useEffect(() => {
-    if (isLocal) return; // в локальном режиме настройки ИИ на сервере не запрашиваем
+    if (isLocal) return; // в локальном режиме серверные настройки не запрашиваем
     void aiApi
       .getSettings()
       .then(setSettings)
       .catch(() => {});
+    void accountApi
+      .getNotifications()
+      .then((n) => setNotifyEmail(n.notifyEmail))
+      .catch(() => {});
   }, [isLocal]);
+
+  async function toggleNotifyEmail() {
+    const next = !(notifyEmail ?? true);
+    setNotifyEmail(next);
+    try {
+      await accountApi.setNotifications(next);
+    } catch {
+      setNotifyEmail(!next); // откат при ошибке
+    }
+  }
 
   async function patch(p: Parameters<typeof aiApi.updateSettings>[0]) {
     const updated = await aiApi.updateSettings(p);
@@ -205,6 +221,20 @@ export function SettingsScreen({
                 {aiProviderOptions.find((p) => p.name === settings.provider)?.hint ?? 'ключ в окружении'}).
                 Без ключа ИИ просто не подключается — приложение работает как обычно.
               </span>
+            </div>
+          </div>
+
+          <div className="section-label" style={{ marginTop: 22 }}>
+            Напоминания
+          </div>
+          <div className="list-card">
+            <div className="list-row">
+              <i className="ti ti-bell" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+              <span style={{ flex: 1 }}>
+                Письма о приближающихся сроках
+                <span className="page-sub"> · дайджест на почту, когда документы скоро истекают</span>
+              </span>
+              <Switch on={notifyEmail ?? true} onClick={toggleNotifyEmail} />
             </div>
           </div>
 

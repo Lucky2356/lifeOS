@@ -9,6 +9,7 @@ export interface User {
   status: 'active';
   locale: string;
   createdAt: string;
+  notifyEmail: boolean;
 }
 
 export interface UserRepository {

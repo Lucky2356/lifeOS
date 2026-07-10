@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgTable, text, uuid, index } from 'drizzle-orm/pg-core';
+import { boolean, integer, jsonb, pgTable, text, uuid, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 /**
  * Таблица объектов жизни (Life Ledger). Timestamps/hlc хранятся как ISO-текст —
@@ -36,6 +36,8 @@ export const users = pgTable('users', {
   status: text('status').notNull(),
   locale: text('locale').notNull(),
   createdAt: text('created_at').notNull(),
+  // Слать ли email-напоминания о приближающихся дедлайнах (дайджест).
+  notifyEmail: boolean('notify_email').notNull().default(true),
 });
 
 export const sessions = pgTable(
@@ -173,6 +175,19 @@ export const appSecrets = pgTable('app_secrets', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
+/** Дедуп доставки напоминаний: одно правило (offsetDays) для объекта доставляется один раз. */
+export const reminderDeliveries = pgTable(
+  'reminder_deliveries',
+  {
+    id: uuid('id').primaryKey(),
+    objectId: uuid('object_id').notNull(),
+    ownerUserId: uuid('owner_user_id').notNull(),
+    offsetDays: integer('offset_days').notNull(),
+    deliveredAt: text('delivered_at').notNull(),
+  },
+  (t) => [uniqueIndex('reminder_delivery_uniq').on(t.objectId, t.offsetDays)],
+);
 
 /** Токены сброса пароля: хранится только SHA-256 хэш, с TTL и одноразовым использованием. */
 export const passwordResetTokens = pgTable(

@@ -27,6 +27,7 @@ describe('HouseholdService', () => {
       status: 'active',
       locale: 'ru',
       createdAt: new Date().toISOString(),
+      notifyEmail: true,
     });
   }
 

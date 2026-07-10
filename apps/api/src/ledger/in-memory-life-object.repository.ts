@@ -27,6 +27,10 @@ export class InMemoryLifeObjectRepository implements LifeObjectRepository {
     return this.store.get(id) ?? null;
   }
 
+  async findAllWithDeadline(): Promise<LifeObject[]> {
+    return [...this.store.values()].filter((o) => o.deletedAt === null && o.validUntil !== null);
+  }
+
   async save(obj: LifeObject): Promise<LifeObject> {
     this.store.set(obj.id, obj);
     return obj;

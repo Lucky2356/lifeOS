@@ -45,6 +45,6 @@ import { EmailService } from './email.service';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
-  exports: [AuthService, USER_REPOSITORY],
+  exports: [AuthService, USER_REPOSITORY, EmailService],
 })
 export class IamModule {}

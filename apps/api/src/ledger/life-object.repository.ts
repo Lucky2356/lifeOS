@@ -11,6 +11,8 @@ export interface LifeObjectRepository {
   findById(id: string, ownerUserId: string): Promise<LifeObject | null>;
   /** Поиск по id без owner-фильтра — для проверки владельца при offline-upsert. */
   findByIdUnscoped(id: string): Promise<LifeObject | null>;
+  /** Все живые объекты с дедлайном (validUntil) по всем владельцам — для движка напоминаний. */
+  findAllWithDeadline(): Promise<LifeObject[]>;
   save(obj: LifeObject): Promise<LifeObject>;
   softDelete(id: string, ownerUserId: string, now: Date): Promise<boolean>;
   softDeleteAllByOwner(ownerUserId: string, now: Date): Promise<number>;

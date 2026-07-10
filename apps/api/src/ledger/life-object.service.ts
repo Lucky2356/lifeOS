@@ -21,6 +21,11 @@ export class LifeObjectService {
     return this.repo.findAllByOwner(ownerUserId);
   }
 
+  /** Все живые объекты с дедлайном (для движка напоминаний). */
+  allWithDeadline(): Promise<LifeObject[]> {
+    return this.repo.findAllWithDeadline();
+  }
+
   async get(id: string, ownerUserId: string): Promise<LifeObject> {
     const found = await this.repo.findById(id, ownerUserId);
     if (!found) throw new NotFoundException('Объект не найден');

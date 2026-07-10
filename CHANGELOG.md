@@ -92,6 +92,15 @@
   - **CI релиза** (`release.yml`): на тег `v*` собираются и прикрепляются к GitHub Release
     инсталляторы `.exe`/`.msi` (windows-latest, MSVC) и `.apk` (ubuntu-latest, JDK 17 + Android SDK).
 
+- **Автообновление нативных приложений** (веб уже обновлялся через service worker):
+  - **Desktop (Tauri): тихое авто-обновление** из GitHub Releases — проверка `latest.json`, проверка
+    подписи (ed25519, публичный ключ в конфиге), скачивание нового `-setup.exe` и перезапуск.
+    Плагины `tauri-plugin-updater`/`-process`; артефакты подписываются в CI (секрет
+    `TAURI_SIGNING_PRIVATE_KEY`, пароль ключа пустой); генерируется и публикуется `latest.json`.
+  - **Android (Capacitor): проверка + установка в один тап** — приложение читает `mobile-update.json`
+    и предлагает баннером установить свежий APK (тихая замена пакета без стора Android'ом не разрешена).
+  - Клиентский модуль `native-update.ts` (детект Tauri/Capacitor), баннер обновления в `App`.
+
 ### Fixed / Security
 
 - **SCA-фиксы** (найдены гейтом и устранены): `multer` → ≥2.2.0 (GHSA-72gw-mp4g-v24j, через

@@ -1,0 +1,4 @@
+
+# Секретный ключ подписи апдейтера — НИКОГДА не коммитить
+lifeos-updater.key
+lifeos-updater.key.pub

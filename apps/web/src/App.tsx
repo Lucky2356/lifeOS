@@ -12,6 +12,7 @@ import { SyncIndicator } from './components/SyncIndicator';
 import { useTheme } from './lib/theme';
 import { authStore } from './lib/auth-store';
 import { setUnauthHandler } from './lib/http';
+import { initNativeUpdate, openApkDownload, type AndroidUpdate } from './lib/native-update';
 
 type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'settings';
 
@@ -20,9 +21,12 @@ export function App() {
   const [authed, setAuthed] = useState(authStore.isAuthenticated);
   const [route, setRoute] = useState<Route>('today');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [androidUpdate, setAndroidUpdate] = useState<AndroidUpdate | null>(null);
 
   useEffect(() => {
     setUnauthHandler(() => setAuthed(false));
+    // Desktop (Tauri) обновляется тихо; Android — баннер с предложением установить свежий APK.
+    initNativeUpdate(setAndroidUpdate);
   }, []);
 
   function navigate(key: string) {
@@ -48,6 +52,19 @@ export function App() {
   return (
     <div className="app">
       <SyncIndicator />
+      {androidUpdate && (
+        <div className="update-banner" role="status">
+          <span>Доступна новая версия {androidUpdate.version}. Обновите приложение — данные сохранятся.</span>
+          <span style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-primary" onClick={() => openApkDownload(androidUpdate.apkUrl)}>
+              Обновить
+            </button>
+            <button className="btn btn-ghost" onClick={() => setAndroidUpdate(null)} aria-label="Позже">
+              Позже
+            </button>
+          </span>
+        </div>
+      )}
       <Sidebar active={route} onNavigate={navigate} />
       {route === 'ledger' && selectedId ? (
         <ObjectDetailScreen

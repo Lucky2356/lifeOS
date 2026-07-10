@@ -1,6 +1,6 @@
 [package]
 name = "life-os-desktop"
-version = "0.4.0"
+version = "0.5.0"
 description = "Life OS — операционная система для жизни"
 authors = ["Life OS"]
 edition = "2021"
@@ -15,6 +15,9 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+serde_json = "1"
 
 [profile.release]
 codegen-units = 1

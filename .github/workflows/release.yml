@@ -58,21 +58,45 @@ jobs:
           workspaces: apps/desktop/src-tauri
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @life-os/domain build
-      - name: Build desktop bundles (NSIS + MSI)
+      - name: Build desktop bundles (NSIS + MSI, signed for updater)
         env:
           # Нативная оболочка не имеет общего origin с бэкендом — адрес API задаётся при сборке.
           # Пользователь может переопределить его в рантайме (поле «Сервер» на экране входа).
           VITE_API_BASE: http://localhost:3011/api/v1
           APP_VERSION: ${{ github.ref_name }}
+          # Подпись апдейтер-артефактов. Приватный ключ — единственный секрет; пароль ключа пустой.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: pnpm --filter @life-os/desktop exec tauri build --bundles nsis,msi
-      - name: Collect installers
+      - name: Collect installers + build updater manifest (latest.json)
         shell: bash
         run: |
           mkdir dist-desktop
-          cp apps/desktop/src-tauri/target/release/bundle/nsis/*.exe dist-desktop/ 2>/dev/null || true
+          NSIS_DIR=apps/desktop/src-tauri/target/release/bundle/nsis
+          cp "$NSIS_DIR"/*.exe dist-desktop/ 2>/dev/null || true
+          cp "$NSIS_DIR"/*.exe.sig dist-desktop/ 2>/dev/null || true
           cp apps/desktop/src-tauri/target/release/bundle/msi/*.msi dist-desktop/ 2>/dev/null || true
+          # latest.json — то, что читает встроенный updater Tauri (endpoint релиза).
+          VERSION="${GITHUB_REF_NAME#v}"
+          SETUP=$(ls "$NSIS_DIR"/*-setup.exe | head -1)
+          SIG=$(cat "$SETUP.sig")
+          # Пробелы в имени файла GitHub отдаёт как точки в browser_download_url.
+          URLNAME=$(basename "$SETUP" | tr ' ' '.')
+          cat > dist-desktop/latest.json <<JSON
+          {
+            "version": "$VERSION",
+            "notes": "Life OS $GITHUB_REF_NAME",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "$SIG",
+                "url": "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${URLNAME}"
+              }
+            }
+          }
+          JSON
           ls -la dist-desktop
-      - name: Attach installers to release
+      - name: Attach installers + latest.json to release
         uses: softprops/action-gh-release@v2
         with:
           files: dist-desktop/*
@@ -109,12 +133,23 @@ jobs:
           cd apps/mobile/android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-      - name: Rename APK
-        run: cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "life-os-${{ github.ref_name }}.apk"
-      - name: Attach APK to release
+      - name: Rename APK + build update manifest (mobile-update.json)
+        run: |
+          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "life-os-${{ github.ref_name }}.apk"
+          # mobile-update.json — приложение читает его на старте и предлагает установить свежий APK.
+          cat > mobile-update.json <<JSON
+          {
+            "version": "${{ github.ref_name }}",
+            "apkUrl": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/life-os-${{ github.ref_name }}.apk",
+            "notes": "Life OS ${{ github.ref_name }}"
+          }
+          JSON
+      - name: Attach APK + manifest to release
         uses: softprops/action-gh-release@v2
         with:
-          files: life-os-${{ github.ref_name }}.apk
+          files: |
+            life-os-${{ github.ref_name }}.apk
+            mobile-update.json
 
   images:
     name: Build and push container images (GHCR)

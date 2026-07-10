@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Базовые возможности главного окна Life OS",
   "windows": ["main"],
-  "permissions": ["core:default", "shell:allow-open"]
+  "permissions": ["core:default", "shell:allow-open", "updater:default", "process:default"]
 }

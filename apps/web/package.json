@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@life-os/domain": "workspace:*",
+    "@tauri-apps/plugin-process": "^2.2.0",
+    "@tauri-apps/plugin-updater": "^2.7.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

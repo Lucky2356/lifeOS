@@ -674,3 +674,23 @@ body {
   background: var(--sage-soft);
   color: var(--sage-ink);
 }
+
+/* Баннер обновления нативной оболочки (Android) — спокойный, вверху, не перекрывает работу. */
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  font-size: 13px;
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+  border-bottom: 0.5px solid var(--line);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  z-index: 60;
+}

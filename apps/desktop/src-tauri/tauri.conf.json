@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Life OS",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "identifier": "com.lifeos.app",
   "build": {
     "frontendDist": "../../web/dist",
@@ -24,9 +24,16 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://github.com/Lucky2356/lifeOS/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ4NURGRUUzRUUzQkY5RTUKUldUbCtUdnU0LzVkU0N1czJSZjhLYVNNeVh3dW40NmdGTW1SSm9tckFVS2ZsZHo4Y09ZUTYybVIK"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
+    "createUpdaterArtifacts": true,
     "category": "Productivity",
     "shortDescription": "Операционная система для жизни",
     "longDescription": "Спокойный, приватный, офлайн-первый помощник для документов, дома, решений и трудных ситуаций.",

@@ -164,3 +164,12 @@ export const playbookProgress = pgTable(
   },
   (t) => [index('progress_owner_idx').on(t.ownerUserId)],
 );
+
+/**
+ * Секреты уровня установки (JWT/шифрование). Генерируются случайно при первом старте и хранятся
+ * здесь, чтобы не завязываться на общий небезопасный дефолт из исходников (уникально на инсталляцию).
+ */
+export const appSecrets = pgTable('app_secrets', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});

@@ -22,6 +22,13 @@
       "when": 1783695762200,
       "tag": "0002_married_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783696697282,
+      "tag": "0003_lovely_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

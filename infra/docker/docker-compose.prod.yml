@@ -22,10 +22,11 @@ services:
     environment:
       DATABASE_URL: postgres://lifeos:${POSTGRES_PASSWORD:-lifeos}@db:5432/lifeos
       PORT: 3011
-      # Стабильные секреты — иначе после перезапуска токены/MFA перестают действовать.
-      # ОБЯЗАТЕЛЬНО задайте свои в .env для продакшена.
-      JWT_SECRET: ${JWT_SECRET:-change-me-please-a-long-random-jwt-secret}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-please-a-long-random-encryption-key}
+      # Секреты можно не задавать — API сгенерирует стойкие случайные при первом старте и сохранит
+      # их в БД (уникально на установку). Для явного контроля задайте свои в infra/docker/.env:
+      #   JWT_SECRET=...  ENCRYPTION_KEY=...  (напр. `openssl rand -hex 32`)
+      JWT_SECRET: ${JWT_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     # Порт API открыт наружу, чтобы к нему могли ходить десктоп-приложение (localhost:3011)
     # и телефон по адресу этой машины в сети (http://<IP-этого-ПК>:3011/api/v1).
     ports:

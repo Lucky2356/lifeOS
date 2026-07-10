@@ -27,6 +27,13 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
     else localStorage.removeItem('los-api-base');
   }
 
+  function continueLocal() {
+    // Локальный режим: постоянный локальный id, без сервера. Данные останутся на устройстве.
+    const existing = authStore.userId;
+    authStore.setLocal(existing && authStore.isLocal ? existing : crypto.randomUUID());
+    onAuthenticated();
+  }
+
   function handleResult(res: LoginResult) {
     if (res.status === 'authenticated') {
       authStore.set(res.accessToken, res.refreshToken, res.user.id);
@@ -151,6 +158,26 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
               {mode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
             </button>
           </div>
+        )}
+
+        {!challenge && (
+          <>
+            <div className="auth-divider">
+              <span>или</span>
+            </div>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={continueLocal}
+            >
+              <i className="ti ti-device-desktop" aria-hidden="true" /> Продолжить без аккаунта
+            </button>
+            <div className="page-sub" style={{ textAlign: 'center', marginTop: 8, fontSize: 12 }}>
+              Данные останутся на этом устройстве. Аккаунт можно создать позже — для входа с телефона и
+              синхронизации.
+            </div>
+          </>
         )}
       </form>
     </div>

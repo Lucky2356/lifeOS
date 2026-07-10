@@ -28,6 +28,23 @@ body {
   font-weight: 500;
 }
 
+/* Разделитель «или» на экране входа. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--line);
+}
+
 /* Единый базовый стиль всех форм-контролов — чтобы ничто не падало в браузерный дефолт.
    Специфичные классы (.field, .kv, .list-row, .inline-input) уточняют размеры поверх этой базы. */
 input,
@@ -713,6 +730,11 @@ textarea:focus {
 .sync-online {
   background: var(--sage-soft);
   color: var(--sage-ink);
+}
+.sync-local {
+  background: var(--panel);
+  color: var(--ink-2);
+  border: 0.5px solid var(--line);
 }
 
 /* Баннер обновления нативной оболочки (Android) — спокойный, вверху, не перекрывает работу. */

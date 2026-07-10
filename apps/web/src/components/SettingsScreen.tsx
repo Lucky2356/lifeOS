@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { aiModules, aiProviderOptions, type AiModule, type AiSettings } from '@life-os/domain';
 import { aiApi } from '../lib/ai-api';
 import { authApi } from '../lib/auth-api';
+import { authStore } from '../lib/auth-store';
 import type { Theme } from '../lib/theme';
 
 const moduleLabels: Record<AiModule, { icon: string; label: string }> = {
@@ -41,10 +42,15 @@ export function SettingsScreen({
   const [mfaCode, setMfaCode] = useState('');
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
+  const isLocal = authStore.isLocal;
 
   useEffect(() => {
-    void aiApi.getSettings().then(setSettings);
-  }, []);
+    if (isLocal) return; // в локальном режиме настройки ИИ на сервере не запрашиваем
+    void aiApi
+      .getSettings()
+      .then(setSettings)
+      .catch(() => {});
+  }, [isLocal]);
 
   async function patch(p: Parameters<typeof aiApi.updateSettings>[0]) {
     const updated = await aiApi.updateSettings(p);
@@ -94,7 +100,35 @@ export function SettingsScreen({
         выключайте в любой момент.
       </div>
 
-      {settings && (
+      {isLocal && (
+        <>
+          <div className="section-label">Аккаунт</div>
+          <div className="list-card">
+            <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+              <i className="ti ti-device-desktop" aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+              <span style={{ flex: 1 }}>
+                Локальный режим
+                <span className="page-sub"> · данные только на этом устройстве</span>
+              </span>
+              <button className="btn btn-primary" onClick={onLogout}>
+                Создать аккаунт
+              </button>
+            </div>
+            <div className="list-row">
+              <span className="page-sub">
+                Аккаунт добавляет вход с других устройств, синхронизацию, семейный доступ и двухфакторную
+                защиту. Уже созданные локально данные загрузятся при первом входе. ИИ-подсказки тоже доступны
+                с аккаунтом (ключ провайдера — на сервере).
+              </span>
+            </div>
+          </div>
+          <div className="page-sub" style={{ marginTop: 24, fontSize: 12 }}>
+            Life OS · версия {__APP_VERSION__} · обновляется автоматически
+          </div>
+        </>
+      )}
+
+      {!isLocal && settings && (
         <>
           <div className="ai-hero">
             <span className="ai-hero-icon">

@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState } from 'react';
 import { isOnline, pendingCount, subscribeSync, sync } from '../lib/offline-core';
+import { authStore } from '../lib/auth-store';
 
 export function SyncIndicator() {
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -24,6 +25,15 @@ export function SyncIndicator() {
       window.removeEventListener('offline', off);
     };
   }, []);
+
+  // Локальный режим: спокойный постоянный статус, без «очереди синхронизации».
+  if (authStore.isLocal) {
+    return (
+      <div className="sync-indicator sync-local" title="Данные хранятся только на этом устройстве">
+        <i className="ti ti-device-desktop" aria-hidden="true" /> Локально
+      </div>
+    );
+  }
 
   const pending = pendingCount();
   if (online && pending === 0) return null;

@@ -12,6 +12,7 @@ import {
   type Role,
 } from '@life-os/domain';
 import { offlineHousehold as householdApi } from '../lib/offline-household';
+import { authStore } from '../lib/auth-store';
 import { formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
 
@@ -28,7 +29,15 @@ const roleTint: Record<Role, string> = {
   guest: 'tint-muted',
 };
 
-export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
+export function HouseholdScreen({
+  theme,
+  onToggleTheme,
+  onCreateAccount,
+}: {
+  theme: Theme;
+  onToggleTheme: () => void;
+  onCreateAccount: () => void;
+}) {
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
@@ -140,7 +149,24 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         </button>
       </div>
 
-      {!loading && !household && (
+      {authStore.isLocal && (
+        <div className="state">
+          <i
+            className="ti ti-users"
+            aria-hidden="true"
+            style={{ fontSize: 26, color: 'var(--ink-3)', display: 'block', marginBottom: 8 }}
+          />
+          «Дом» — это общий контур для семьи с ролями и совместными задачами. Для совместного доступа нужен
+          аккаунт и синхронизация между устройствами.
+          <div style={{ marginTop: 12 }}>
+            <button className="btn btn-primary" onClick={onCreateAccount}>
+              Создать аккаунт
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!authStore.isLocal && !loading && !household && (
         <div className="state">
           Создайте общий контур для семьи — с ролями, задачами и журналом доступа.
           <div style={{ marginTop: 12 }}>
@@ -151,7 +177,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         </div>
       )}
 
-      {household && (
+      {!authStore.isLocal && household && (
         <>
           <div className="section-label">
             Участники

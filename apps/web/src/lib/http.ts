@@ -28,6 +28,10 @@ function withAuth(init: RequestInit | undefined, token: string | null): RequestI
 
 /** Fetch с access-токеном и однократным авто-refresh при 401. Возвращает сырой Response. */
 export async function apiRequest(path: string, init?: RequestInit): Promise<Response> {
+  // Локальный режим: сервер не используется — сразу «сеть недоступна», работаем из кэша.
+  if (authStore.isLocal) {
+    return Promise.reject(new Error('local-mode'));
+  }
   let res = await fetch(`${BASE}${path}`, withAuth(init, authStore.access));
 
   if (res.status === 401 && authStore.refresh) {

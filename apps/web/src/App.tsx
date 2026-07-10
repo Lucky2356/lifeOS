@@ -45,6 +45,12 @@ export function App() {
     setRoute('today');
   }
 
+  // Выход из локального режима к экрану входа/регистрации (данные на устройстве сохраняются в кэше).
+  function exitToLogin() {
+    authStore.clear();
+    setAuthed(false);
+  }
+
   if (!authed) {
     return <LoginScreen onAuthenticated={() => setAuthed(true)} />;
   }
@@ -78,7 +84,7 @@ export function App() {
       ) : route === 'ledger' ? (
         <LedgerScreen theme={theme} onToggleTheme={toggle} onSelect={setSelectedId} />
       ) : route === 'household' ? (
-        <HouseholdScreen theme={theme} onToggleTheme={toggle} />
+        <HouseholdScreen theme={theme} onToggleTheme={toggle} onCreateAccount={exitToLogin} />
       ) : route === 'decisions' ? (
         <DecisionsScreen theme={theme} onToggleTheme={toggle} />
       ) : route === 'navigator' ? (

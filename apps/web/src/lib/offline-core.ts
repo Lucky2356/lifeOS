@@ -66,7 +66,8 @@ export function enqueue(op: OutboxOp) {
 }
 
 export async function sync(): Promise<void> {
-  if (!navigator.onLine) return;
+  // В локальном режиме сервера нет — очередь просто ждёт (переиграется, если создадут аккаунт).
+  if (authStore.isLocal || !navigator.onLine) return;
   const remaining: OutboxOp[] = [];
   for (const op of readOutbox()) {
     try {

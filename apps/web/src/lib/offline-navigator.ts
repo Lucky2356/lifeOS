@@ -1,6 +1,11 @@
 import { startProgress, toggleStep, type Playbook, type PlaybookProgress } from '@life-os/domain';
+import bundledPack from '@content-pack-ru';
 import { apiFetch, apiRequest } from './http';
 import { currentUserId, enqueue, pendingPaths } from './offline-core';
+
+// Пак РФ вшит в клиент — Навигатор работает офлайн и в локальном режиме без сервера.
+const bundledPlaybooks: Playbook[] = bundledPack.playbooks;
+const bundledMeta = { packId: bundledPack.packId, version: bundledPack.version };
 
 /**
  * Offline-first слой Crisis Navigator (ADR 0003). Контент плейбуков кэшируется для чтения офлайн;
@@ -42,8 +47,8 @@ function packMeta(): PackMeta {
   try {
     return JSON.parse(localStorage.getItem(CACHE_PACK) ?? '') as PackMeta;
   } catch {
-    // Первый офлайн-старт без ранее виденного прогресса — пак РФ по умолчанию (уточнится онлайн).
-    return { packId: 'ru', version: '0' };
+    // Первый старт без ранее виденного прогресса — метаданные из вшитого пака.
+    return bundledMeta;
   }
 }
 
@@ -56,6 +61,8 @@ export const offlineNavigator = {
     } catch {
       all = readPlaybooks();
     }
+    // Нет сервера/кэша (офлайн или локальный режим) — берём вшитый пак.
+    if (all.length === 0) all = bundledPlaybooks;
     return kind ? all.filter((p) => p.kind === kind) : all;
   },
 
@@ -63,7 +70,7 @@ export const offlineNavigator = {
     try {
       return await apiFetch<Playbook>(`/content/playbooks/${key}`);
     } catch {
-      const p = readPlaybooks().find((x) => x.key === key);
+      const p = readPlaybooks().find((x) => x.key === key) ?? bundledPlaybooks.find((x) => x.key === key);
       if (!p) throw new Error('Плейбук недоступен офлайн');
       return p;
     }

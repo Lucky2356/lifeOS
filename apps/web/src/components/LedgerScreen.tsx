@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
-import { objectTypeLabels, type LifeObject } from '@life-os/domain';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { objectTypeLabels, type LifeObject, type ObjectType } from '@life-os/domain';
 import { offlineLedger } from '../lib/offline-ledger';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { AddObjectModal } from './AddObjectModal';
 import type { Theme } from '../lib/theme';
+
+/** Совпадает ли объект с поисковым запросом (название + текстовые значения полей). */
+function matchesQuery(o: LifeObject, q: string): boolean {
+  if (!q) return true;
+  const hay = [o.title, ...Object.values(o.data).filter((v): v is string => typeof v === 'string')]
+    .join(' ')
+    .toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
 
 export function LedgerScreen({
   theme,
@@ -17,6 +26,22 @@ export function LedgerScreen({
   const [objects, setObjects] = useState<LifeObject[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<ObjectType | 'all'>('all');
+
+  // Типы, реально присутствующие в реестре — из них строим чипы-фильтры.
+  const presentTypes = useMemo(() => {
+    const set = new Set<ObjectType>((objects ?? []).map((o) => o.type));
+    return [...set].sort((a, b) => objectTypeLabels[a].ru.localeCompare(objectTypeLabels[b].ru));
+  }, [objects]);
+
+  const filtered = useMemo(
+    () =>
+      (objects ?? []).filter(
+        (o) => (typeFilter === 'all' || o.type === typeFilter) && matchesQuery(o, query),
+      ),
+    [objects, typeFilter, query],
+  );
 
   const load = useCallback(() => {
     setError(null);
@@ -53,15 +78,47 @@ export function LedgerScreen({
         </div>
       </div>
 
-      <div className="filters">
-        <span className="chip active">Все</span>
-        <span className="chip">Документы</span>
-        <span className="chip">Вещи</span>
-        <span className="chip">Подписки</span>
-        <span className="chip">Страховки</span>
-        <span className="chip">Здоровье</span>
-        <span className="chip">Финансы</span>
-      </div>
+      {objects && objects.length > 0 && (
+        <>
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <i
+              className="ti ti-search"
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--ink-3)',
+              }}
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Поиск по реестру"
+              aria-label="Поиск по реестру"
+              style={{ width: '100%', paddingLeft: 34 }}
+            />
+          </div>
+          <div className="filters">
+            <button
+              className={`chip ${typeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setTypeFilter('all')}
+            >
+              Все
+            </button>
+            {presentTypes.map((t) => (
+              <button
+                key={t}
+                className={`chip ${typeFilter === t ? 'active' : ''}`}
+                onClick={() => setTypeFilter(t)}
+              >
+                {objectTypeLabels[t].ru}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {error && (
         <div className="state">
@@ -85,9 +142,13 @@ export function LedgerScreen({
         </div>
       )}
 
-      {!error && objects && objects.length > 0 && (
+      {!error && objects && objects.length > 0 && filtered.length === 0 && (
+        <div className="state">Ничего не найдено. Измените запрос или фильтр.</div>
+      )}
+
+      {!error && objects && filtered.length > 0 && (
         <div className="grid">
-          {objects.map((o) => {
+          {filtered.map((o) => {
             const pill = lifecyclePill(o);
             return (
               <button key={o.id} className="card" onClick={() => onSelect(o.id)}>

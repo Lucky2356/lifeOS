@@ -16,6 +16,8 @@ export interface SessionRepository {
   findById(id: string): Promise<Session | null>;
   save(session: Session): Promise<Session>;
   listByUser(userId: string): Promise<Session[]>;
+  /** Удалить протухшие сессии (expiresAt < now). Возвращает число удалённых. */
+  deleteExpired(now: Date): Promise<number>;
 }
 
 export const SESSION_REPOSITORY = Symbol('SESSION_REPOSITORY');
@@ -42,5 +44,17 @@ export class InMemorySessionRepository implements SessionRepository {
     return [...this.store.values()]
       .filter((s) => s.userId === userId && s.revokedAt === null)
       .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt));
+  }
+
+  async deleteExpired(now: Date): Promise<number> {
+    const iso = now.toISOString();
+    let n = 0;
+    for (const [id, s] of this.store) {
+      if (s.expiresAt < iso) {
+        this.store.delete(id);
+        n += 1;
+      }
+    }
+    return n;
   }
 }

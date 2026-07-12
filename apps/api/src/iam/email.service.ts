@@ -2,6 +2,16 @@ import { Injectable } from '@nestjs/common';
 import nodemailer, { type Transporter } from 'nodemailer';
 import { logger } from '../common/logger';
 
+/** Экранирование пользовательского текста перед вставкой в HTML-тело письма (против инъекции разметки). */
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Отправка писем через универсальный SMTP (подходит любой провайдер: Brevo, Gmail, Mailgun и т.п.).
  * Настраивается переменными окружения: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM.
@@ -60,7 +70,7 @@ export class EmailService {
       d < 0 ? `просрочено на ${-d} дн.` : d === 0 ? 'истекает сегодня' : `истекает через ${d} дн.`;
     const appUrl = (process.env.APP_URL ?? 'http://localhost:8080').replace(/\/$/, '');
     const lines = items.map((i) => `• ${i.title} — ${phrase(i.daysLeft)}`).join('\n');
-    const htmlLines = items.map((i) => `<li>${i.title} — ${phrase(i.daysLeft)}</li>`).join('');
+    const htmlLines = items.map((i) => `<li>${escapeHtml(i.title)} — ${phrase(i.daysLeft)}</li>`).join('');
     const subject = `Life OS: ${items.length} ${items.length === 1 ? 'дело требует' : 'дел требуют'} внимания`;
     const text = `Приближаются сроки:\n\n${lines}\n\nОткрыть Life OS: ${appUrl}`;
     const html =

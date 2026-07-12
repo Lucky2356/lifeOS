@@ -51,4 +51,22 @@ describe('AttachmentService', () => {
     await expect(service.download(a.id, userB)).rejects.toThrow();
     await expect(service.remove(a.id, userB)).rejects.toThrow();
   });
+
+  it('removeForObject каскадно стирает все вложения объекта (файл + запись)', async () => {
+    const a1 = await service.upload(objectId, userA, fileOf('image/png'));
+    const a2 = await service.upload(objectId, userA, fileOf('application/pdf'));
+    await service.removeForObject(objectId);
+    expect(await service.list(objectId, userA)).toHaveLength(0);
+    await expect(service.download(a1.id, userA)).rejects.toThrow(); // записи нет
+    await expect(service.download(a2.id, userA)).rejects.toThrow();
+  });
+
+  it('removeAllForOwner стирает вложения только этого владельца', async () => {
+    const objB = await objects.create({ type: 'document', title: 'Чужой' }, userB);
+    const mine = await service.upload(objectId, userA, fileOf('image/png'));
+    const theirs = await service.upload(objB.id, userB, fileOf('image/png'));
+    await service.removeAllForOwner(userA);
+    await expect(service.download(mine.id, userA)).rejects.toThrow();
+    expect((await service.list(objB.id, userB)).map((x) => x.id)).toContain(theirs.id);
+  });
 });

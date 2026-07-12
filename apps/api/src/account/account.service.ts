@@ -3,6 +3,7 @@ import { AiService } from '../ai/ai.service';
 import { DecisionService } from '../decision/decision.service';
 import { HouseholdService } from '../household/household.service';
 import { LifeObjectService } from '../ledger/life-object.service';
+import { AttachmentService } from '../ledger/attachment.service';
 import { USER_REPOSITORY, type UserRepository } from '../iam/user.repository';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class AccountService {
     private readonly households: HouseholdService,
     private readonly ai: AiService,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
+    private readonly attachments: AttachmentService,
   ) {}
 
   async getNotifications(userId: string): Promise<{ notifyEmail: boolean }> {
@@ -48,6 +50,7 @@ export class AccountService {
       this.households.leaveAll(userId),
     ]);
     await this.ai.resetSettings(userId);
+    await this.attachments.removeAllForOwner(userId); // каскад: файлы вложений + записи
     return { deletedObjects, deletedDecisions, removedMemberships };
   }
 }

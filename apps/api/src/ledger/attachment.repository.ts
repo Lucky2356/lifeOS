@@ -6,6 +6,10 @@ export interface AttachmentRepository {
   listByObject(objectId: string, ownerUserId: string): Promise<Attachment[]>;
   findById(id: string, ownerUserId: string): Promise<Attachment | null>;
   delete(id: string, ownerUserId: string): Promise<boolean>;
+  /** Удалить все вложения объекта; возвращает id удалённых (чтобы стереть файлы с диска). */
+  deleteByObject(objectId: string): Promise<string[]>;
+  /** Удалить все вложения владельца (право на забвение); возвращает id удалённых. */
+  deleteByOwner(ownerUserId: string): Promise<string[]>;
 }
 
 export const ATTACHMENT_REPOSITORY = Symbol('ATTACHMENT_REPOSITORY');
@@ -35,5 +39,17 @@ export class InMemoryAttachmentRepository implements AttachmentRepository {
     if (!a || a.ownerUserId !== ownerUserId) return false;
     this.store.delete(id);
     return true;
+  }
+
+  async deleteByObject(objectId: string): Promise<string[]> {
+    const ids = [...this.store.values()].filter((a) => a.objectId === objectId).map((a) => a.id);
+    ids.forEach((id) => this.store.delete(id));
+    return ids;
+  }
+
+  async deleteByOwner(ownerUserId: string): Promise<string[]> {
+    const ids = [...this.store.values()].filter((a) => a.ownerUserId === ownerUserId).map((a) => a.id);
+    ids.forEach((id) => this.store.delete(id));
+    return ids;
   }
 }

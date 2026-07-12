@@ -15,6 +15,8 @@ export interface User {
 export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
+  /** Пакетная выборка по id (без N+1 в рассылке напоминаний). */
+  findByIds(ids: string[]): Promise<User[]>;
   create(user: User): Promise<User>;
   save(user: User): Promise<User>;
 }
@@ -32,6 +34,10 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | null> {
     return this.store.get(id) ?? null;
+  }
+
+  async findByIds(ids: string[]): Promise<User[]> {
+    return ids.map((id) => this.store.get(id)).filter((u): u is User => u !== undefined);
   }
 
   async create(user: User): Promise<User> {

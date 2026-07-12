@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import {
   createLifeObjectInputSchema,
   lifeObjectSchema,
@@ -10,10 +21,14 @@ import {
 import { CurrentUserId } from '../common/current-user.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { LifeObjectService } from './life-object.service';
+import { AttachmentService } from './attachment.service';
 
 @Controller('objects')
 export class LifeObjectController {
-  constructor(private readonly service: LifeObjectService) {}
+  constructor(
+    private readonly service: LifeObjectService,
+    private readonly attachments: AttachmentService,
+  ) {}
 
   @Post()
   create(
@@ -44,13 +59,20 @@ export class LifeObjectController {
 
   /** Offline-first upsert: клиент присылает полный объект со своим id (ADR 0003). */
   @Put(':id')
-  upsert(@Body(new ZodValidationPipe(lifeObjectSchema)) obj: LifeObject, @CurrentUserId() userId: string) {
+  upsert(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(lifeObjectSchema)) obj: LifeObject,
+    @CurrentUserId() userId: string,
+  ) {
+    // id в пути (ключ дедупа outbox) должен совпадать с id в теле.
+    if (obj.id !== id) throw new BadRequestException('id в пути и в теле не совпадают');
     return this.service.upsert(obj, userId);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id') id: string, @CurrentUserId() userId: string) {
-    return this.service.remove(id, userId);
+  async remove(@Param('id') id: string, @CurrentUserId() userId: string) {
+    await this.service.remove(id, userId); // валидирует владельца и наличие
+    await this.attachments.removeForObject(id); // каскад: стереть вложения (файлы + записи)
   }
 }

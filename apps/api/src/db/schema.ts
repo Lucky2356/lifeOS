@@ -192,7 +192,11 @@ export const attachments = pgTable(
   (t) => [index('attachments_object_idx').on(t.objectId)],
 );
 
-/** Дедуп доставки напоминаний: одно правило (offsetDays) для объекта доставляется один раз. */
+/**
+ * Дедуп доставки напоминаний: одно правило (offsetDays) для объекта и КОНКРЕТНОГО дедлайна
+ * доставляется один раз. `deadline` в ключе — чтобы при переносе срока (validUntil) пороги
+ * пере-взводились: новый дедлайн даёт новые ключи, и напоминание срабатывает заново.
+ */
 export const reminderDeliveries = pgTable(
   'reminder_deliveries',
   {
@@ -200,9 +204,10 @@ export const reminderDeliveries = pgTable(
     objectId: uuid('object_id').notNull(),
     ownerUserId: uuid('owner_user_id').notNull(),
     offsetDays: integer('offset_days').notNull(),
+    deadline: text('deadline').notNull().default(''),
     deliveredAt: text('delivered_at').notNull(),
   },
-  (t) => [uniqueIndex('reminder_delivery_uniq').on(t.objectId, t.offsetDays)],
+  (t) => [uniqueIndex('reminder_delivery_uniq').on(t.objectId, t.offsetDays, t.deadline)],
 );
 
 /** Токены сброса пароля: хранится только SHA-256 хэш, с TTL и одноразовым использованием. */

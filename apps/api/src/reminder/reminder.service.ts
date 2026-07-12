@@ -50,7 +50,7 @@ export class ReminderService {
       if (!o.validUntil) continue;
       for (const r of computeReminders(o.validUntil, defaultReminderRules)) {
         if (new Date(r.fireAt).getTime() > now.getTime()) continue; // порог ещё не наступил
-        if (delivered.has(deliveryKey(o.id, r.offsetDays))) continue; // уже доставляли
+        if (delivered.has(deliveryKey(o.id, r.offsetDays, o.validUntil))) continue; // уже доставляли
         if (!byOwner.has(o.ownerUserId)) {
           byOwner.set(o.ownerUserId, new Map());
           toRecordByOwner.set(o.ownerUserId, []);
@@ -61,14 +61,19 @@ export class ReminderService {
           objectId: o.id,
           ownerUserId: o.ownerUserId,
           offsetDays: r.offsetDays,
+          deadline: o.validUntil,
           deliveredAt: now.toISOString(),
         });
       }
     }
 
+    // Пакетно подгружаем владельцев (без N+1 при росте числа пользователей).
+    const owners = await this.users.findByIds([...byOwner.keys()]);
+    const ownerById = new Map(owners.map((u) => [u.id, u]));
+
     let sent = 0;
     for (const [ownerId, objMap] of byOwner) {
-      const user = await this.users.findById(ownerId);
+      const user = ownerById.get(ownerId);
       if (!user || user.notifyEmail === false) continue; // уважаем настройку
 
       const items: ReminderDigestItem[] = [...objMap.values()].map((o) => ({
@@ -76,12 +81,16 @@ export class ReminderService {
         daysLeft: daysUntil(o.validUntil, now) ?? 0,
       }));
 
-      await this.email.sendReminderDigest(user.email, items);
-      sent += 1;
-
-      // Фиксируем доставку только если SMTP настроен — иначе догоним после настройки почты.
-      if (this.email.configured) {
-        await this.deliveries.recordMany(toRecordByOwner.get(ownerId) ?? []);
+      // Изоляция ошибок: сбой отправки одному (bounce/таймаут SMTP) не должен срывать рассылку
+      // остальным. Доставку фиксируем ТОЛЬКО при успешной отправке и настроенном SMTP.
+      try {
+        await this.email.sendReminderDigest(user.email, items);
+        sent += 1;
+        if (this.email.configured) {
+          await this.deliveries.recordMany(toRecordByOwner.get(ownerId) ?? []);
+        }
+      } catch (err) {
+        logger.error({ err, ownerId }, 'Напоминания: не удалось отправить дайджест — пропускаем');
       }
     }
     return { sent };

@@ -8,6 +8,7 @@ import { HouseholdService } from '../household/household.service';
 import { InMemoryHouseholdRepository } from '../household/in-memory-household.repository';
 import { AiService } from '../ai/ai.service';
 import { InMemoryAiSettingsRepository } from '../ai/ai-settings.repository';
+import type { AttachmentService } from '../ledger/attachment.service';
 
 const user = '00000000-0000-0000-0000-0000000000a1';
 
@@ -23,7 +24,8 @@ describe('AccountService', () => {
     decisions = new DecisionService(new InMemoryDecisionRepository());
     households = new HouseholdService(new InMemoryHouseholdRepository());
     ai = new AiService(new InMemoryAiSettingsRepository());
-    account = new AccountService(ledger, decisions, households, ai);
+    const attachments = { removeAllForOwner: async () => {} } as unknown as AttachmentService;
+    account = new AccountService(ledger, decisions, households, ai, undefined!, attachments);
   });
 
   it('экспорт собирает данные пользователя', async () => {

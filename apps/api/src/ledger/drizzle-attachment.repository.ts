@@ -36,4 +36,20 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
       .returning({ id: attachments.id });
     return rows.length > 0;
   }
+
+  async deleteByObject(objectId: string): Promise<string[]> {
+    const rows = await this.db
+      .delete(attachments)
+      .where(eq(attachments.objectId, objectId))
+      .returning({ id: attachments.id });
+    return rows.map((r) => r.id);
+  }
+
+  async deleteByOwner(ownerUserId: string): Promise<string[]> {
+    const rows = await this.db
+      .delete(attachments)
+      .where(eq(attachments.ownerUserId, ownerUserId))
+      .returning({ id: attachments.id });
+    return rows.map((r) => r.id);
+  }
 }

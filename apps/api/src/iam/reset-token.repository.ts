@@ -13,6 +13,8 @@ export interface ResetTokenRepository {
   create(t: ResetToken): Promise<ResetToken>;
   findByHash(tokenHash: string): Promise<ResetToken | null>;
   markUsed(id: string, now: Date): Promise<void>;
+  /** Удалить протухшие/использованные токены (expiresAt < now или usedAt != null). Возвращает число. */
+  deleteExpired(now: Date): Promise<number>;
 }
 
 export const RESET_TOKEN_REPOSITORY = Symbol('RESET_TOKEN_REPOSITORY');
@@ -33,5 +35,17 @@ export class InMemoryResetTokenRepository implements ResetTokenRepository {
   async markUsed(id: string, now: Date): Promise<void> {
     const t = this.store.get(id);
     if (t) this.store.set(id, { ...t, usedAt: now.toISOString() });
+  }
+
+  async deleteExpired(now: Date): Promise<number> {
+    const iso = now.toISOString();
+    let n = 0;
+    for (const [id, t] of this.store) {
+      if (t.usedAt !== null || t.expiresAt < iso) {
+        this.store.delete(id);
+        n += 1;
+      }
+    }
+    return n;
   }
 }

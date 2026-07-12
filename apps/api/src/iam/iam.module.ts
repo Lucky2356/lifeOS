@@ -13,16 +13,22 @@ import { InMemoryUserRepository, USER_REPOSITORY } from './user.repository';
 import { InMemorySessionRepository, SESSION_REPOSITORY } from './session.repository';
 import { InMemoryResetTokenRepository, RESET_TOKEN_REPOSITORY } from './reset-token.repository';
 import { EmailService } from './email.service';
+import { MaintenanceService } from './maintenance.service';
 
 @Module({
   imports: [
-    JwtModule.register({ secret: process.env.JWT_SECRET ?? 'dev-insecure-jwt-secret' }),
+    // registerAsync: секрет читается фабрикой на DI-этапе (после ensureSecrets в bootstrap),
+    // а не при вычислении декоратора модуля — иначе per-install JWT_SECRET из app_secrets не применялся бы.
+    JwtModule.registerAsync({
+      useFactory: () => ({ secret: process.env.JWT_SECRET || 'dev-insecure-jwt-secret' }),
+    }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
     EmailService,
+    MaintenanceService,
     {
       provide: RESET_TOKEN_REPOSITORY,
       inject: [DRIZZLE],

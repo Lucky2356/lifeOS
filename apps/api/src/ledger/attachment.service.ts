@@ -63,4 +63,16 @@ export class AttachmentService {
     await this.storage.remove(id);
     await this.repo.delete(id, ownerUserId);
   }
+
+  /** Каскад при удалении объекта: стереть все его вложения (файлы с диска + записи). */
+  async removeForObject(objectId: string): Promise<void> {
+    const ids = await this.repo.deleteByObject(objectId);
+    await Promise.all(ids.map((id) => this.storage.remove(id)));
+  }
+
+  /** Каскад при «праве на забвение»: стереть все вложения владельца. */
+  async removeAllForOwner(ownerUserId: string): Promise<void> {
+    const ids = await this.repo.deleteByOwner(ownerUserId);
+    await Promise.all(ids.map((id) => this.storage.remove(id)));
+  }
 }

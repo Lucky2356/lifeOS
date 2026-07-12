@@ -30,6 +30,6 @@ import { ATTACHMENT_REPOSITORY, InMemoryAttachmentRepository } from './attachmen
         db ? new DrizzleAttachmentRepository(db) : new InMemoryAttachmentRepository(),
     },
   ],
-  exports: [LifeObjectService],
+  exports: [LifeObjectService, AttachmentService],
 })
 export class LedgerModule {}

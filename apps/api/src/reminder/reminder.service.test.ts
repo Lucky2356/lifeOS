@@ -47,7 +47,7 @@ describe('ReminderService', () => {
 
   async function addObjectDueInDays(days: number, title = 'Загранпаспорт') {
     const validUntil = new Date(Date.now() + days * 86_400_000).toISOString();
-    await objectsRepo.create(createLifeObject({ type: objectTypes[0], title, validUntil }, userId));
+    return objectsRepo.create(createLifeObject({ type: objectTypes[0], title, validUntil }, userId));
   }
 
   it('шлёт дайджест по сработавшим порогам и не дублирует при повторном прогоне', async () => {
@@ -76,5 +76,55 @@ describe('ReminderService', () => {
     await addObjectDueInDays(200); // до 90-дневного порога ещё далеко
     const res = await service.run();
     expect(res.sent).toBe(0);
+  });
+
+  it('перенос дедлайна пере-взводит напоминания (новый дедлайн — новые ключи)', async () => {
+    await usersRepo.create(makeUser());
+    const obj = await addObjectDueInDays(5);
+    expect((await service.run()).sent).toBe(1);
+    expect((await service.run()).sent).toBe(0); // повтор без изменений — тишина
+
+    // Продлеваем срок: те же пороги для НОВОГО дедлайна должны сработать заново.
+    const newValidUntil = new Date(Date.now() + 6 * 86_400_000).toISOString();
+    await objectsRepo.save({ ...obj, validUntil: newValidUntil });
+    expect((await service.run()).sent).toBe(1);
+  });
+
+  it('сбой отправки одному не срывает рассылку остальным', async () => {
+    const userB = '00000000-0000-0000-0000-0000000000b2';
+    await usersRepo.create(makeUser());
+    await usersRepo.create(makeUser({ id: userB, email: 'bad@b.co' }));
+    await objectsRepo.create(
+      createLifeObject(
+        {
+          type: objectTypes[0],
+          title: 'Мой',
+          validUntil: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+        },
+        userId,
+      ),
+    );
+    await objectsRepo.create(
+      createLifeObject(
+        {
+          type: objectTypes[0],
+          title: 'Чужой',
+          validUntil: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+        },
+        userB,
+      ),
+    );
+    const failing = {
+      configured: true,
+      sendReminderDigest: async (to: string) => {
+        if (to === 'bad@b.co') throw new Error('SMTP bounce');
+        sent.push({ to, items: [] });
+      },
+    } as unknown as EmailService;
+    const svc = new ReminderService(new LifeObjectService(objectsRepo), usersRepo, deliveries, failing);
+
+    const res = await svc.run();
+    expect(res.sent).toBe(1); // один прошёл, несмотря на падение другого
+    expect(sent.map((s) => s.to)).toEqual(['a@b.co']);
   });
 });

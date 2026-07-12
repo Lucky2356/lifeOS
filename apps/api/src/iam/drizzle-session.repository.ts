@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, lt } from 'drizzle-orm';
 import type { Database } from '../db/drizzle.provider';
 import { sessions } from '../db/schema';
 import type { Session, SessionRepository } from './session.repository';
@@ -28,5 +28,13 @@ export class DrizzleSessionRepository implements SessionRepository {
       .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)))
       .orderBy(desc(sessions.lastSeenAt));
     return rows as Session[];
+  }
+
+  async deleteExpired(now: Date): Promise<number> {
+    const rows = await this.db
+      .delete(sessions)
+      .where(lt(sessions.expiresAt, now.toISOString()))
+      .returning({ id: sessions.id });
+    return rows.length;
   }
 }

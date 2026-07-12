@@ -7,7 +7,6 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import pinoHttp from 'pino-http';
-import { AppModule } from './app.module';
 import { logger } from './common/logger';
 
 const INSECURE_DEFAULTS = new Set([
@@ -82,6 +81,10 @@ async function runMigrations(): Promise<void> {
 async function bootstrap(): Promise<void> {
   await runMigrations();
   await ensureSecrets();
+  // ВАЖНО: граф модулей грузим динамически ТОЛЬКО после ensureSecrets(). Статический импорт наверху
+  // вычислял бы JwtModule.register и crypto.ts (ключ на уровне модуля) раньше, чем секреты попадут в
+  // process.env — тогда per-install секреты из app_secrets игнорировались бы (см. фикс безопасности).
+  const { AppModule } = await import('./app.module');
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/v1');
 

@@ -187,6 +187,8 @@ export const attachments = pgTable(
     mime: text('mime').notNull(),
     size: integer('size').notNull(),
     sensitivity: text('sensitivity').notNull(),
+    // Идентификатор ключа шифрования файла (ротация). null — легаси (до введения keyId).
+    encryptionKeyId: text('encryption_key_id'),
     createdAt: text('created_at').notNull(),
   },
   (t) => [index('attachments_object_idx').on(t.objectId)],

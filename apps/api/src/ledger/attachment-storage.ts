@@ -16,8 +16,8 @@ export class AttachmentStorage {
     await writeFile(join(this.dir, id), encryptBuffer(content));
   }
 
-  async load(id: string): Promise<Buffer> {
-    return decryptBuffer(await readFile(join(this.dir, id)));
+  async load(id: string, keyId?: string | null): Promise<Buffer> {
+    return decryptBuffer(await readFile(join(this.dir, id)), keyId);
   }
 
   async remove(id: string): Promise<void> {

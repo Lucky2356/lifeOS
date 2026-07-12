@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Database } from '../db/drizzle.provider';
 import { users } from '../db/schema';
 import type { User, UserRepository } from './user.repository';
@@ -23,6 +23,11 @@ export class DrizzleUserRepository implements UserRepository {
   async findByIds(ids: string[]): Promise<User[]> {
     if (ids.length === 0) return [];
     const rows = await this.db.select().from(users).where(inArray(users.id, ids));
+    return rows as User[];
+  }
+
+  async listWithMfaSecret(): Promise<User[]> {
+    const rows = await this.db.select().from(users).where(isNotNull(users.mfaSecretEnc));
     return rows as User[];
   }
 

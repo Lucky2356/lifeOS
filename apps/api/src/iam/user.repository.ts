@@ -17,6 +17,8 @@ export interface UserRepository {
   findById(id: string): Promise<User | null>;
   /** Пакетная выборка по id (без N+1 в рассылке напоминаний). */
   findByIds(ids: string[]): Promise<User[]>;
+  /** Пользователи с зашифрованным MFA-секретом (для ротации ключей шифрования). */
+  listWithMfaSecret(): Promise<User[]>;
   create(user: User): Promise<User>;
   save(user: User): Promise<User>;
 }
@@ -38,6 +40,10 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findByIds(ids: string[]): Promise<User[]> {
     return ids.map((id) => this.store.get(id)).filter((u): u is User => u !== undefined);
+  }
+
+  async listWithMfaSecret(): Promise<User[]> {
+    return [...this.store.values()].filter((u) => u.mfaSecretEnc !== null);
   }
 
   async create(user: User): Promise<User> {

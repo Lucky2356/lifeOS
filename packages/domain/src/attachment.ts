@@ -10,6 +10,8 @@ export const attachmentSchema = z.object({
   mime: z.string().max(150),
   size: z.number().int().nonnegative(),
   sensitivity: sensitivitySchema,
+  // Идентификатор ключа шифрования файла (для ротации). null — легаси (зашифрован до введения keyId).
+  encryptionKeyId: z.string().nullable().default(null),
   createdAt: z.string().datetime(),
 });
 export type Attachment = z.infer<typeof attachmentSchema>;

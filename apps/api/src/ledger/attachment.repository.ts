@@ -10,6 +10,10 @@ export interface AttachmentRepository {
   deleteByObject(objectId: string): Promise<string[]>;
   /** Удалить все вложения владельца (право на забвение); возвращает id удалённых. */
   deleteByOwner(ownerUserId: string): Promise<string[]>;
+  /** Все вложения (для ротации ключей шифрования). */
+  listAll(): Promise<Attachment[]>;
+  /** Обновить идентификатор ключа шифрования после перешифровки файла. */
+  setKeyId(id: string, encryptionKeyId: string): Promise<void>;
 }
 
 export const ATTACHMENT_REPOSITORY = Symbol('ATTACHMENT_REPOSITORY');
@@ -51,5 +55,14 @@ export class InMemoryAttachmentRepository implements AttachmentRepository {
     const ids = [...this.store.values()].filter((a) => a.ownerUserId === ownerUserId).map((a) => a.id);
     ids.forEach((id) => this.store.delete(id));
     return ids;
+  }
+
+  async listAll(): Promise<Attachment[]> {
+    return [...this.store.values()];
+  }
+
+  async setKeyId(id: string, encryptionKeyId: string): Promise<void> {
+    const a = this.store.get(id);
+    if (a) this.store.set(id, { ...a, encryptionKeyId });
   }
 }

@@ -52,4 +52,13 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
       .returning({ id: attachments.id });
     return rows.map((r) => r.id);
   }
+
+  async listAll(): Promise<Attachment[]> {
+    const rows = await this.db.select().from(attachments);
+    return rows.map((r) => attachmentSchema.parse(r));
+  }
+
+  async setKeyId(id: string, encryptionKeyId: string): Promise<void> {
+    await this.db.update(attachments).set({ encryptionKeyId }).where(eq(attachments.id, id));
+  }
 }

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DRIZZLE, type Database } from '../db/drizzle.provider';
+import { IamModule } from '../iam/iam.module';
 import { DrizzleLifeObjectRepository } from './drizzle-life-object.repository';
 import { InMemoryLifeObjectRepository } from './in-memory-life-object.repository';
 import { LifeObjectController } from './life-object.controller';
@@ -10,13 +11,17 @@ import { AttachmentService } from './attachment.service';
 import { AttachmentStorage } from './attachment-storage';
 import { DrizzleAttachmentRepository } from './drizzle-attachment.repository';
 import { ATTACHMENT_REPOSITORY, InMemoryAttachmentRepository } from './attachment.repository';
+import { EncryptionRotationController } from './encryption-rotation.controller';
+import { EncryptionRotationService } from './encryption-rotation.service';
 
 @Module({
-  controllers: [LifeObjectController, AttachmentController],
+  imports: [IamModule],
+  controllers: [LifeObjectController, AttachmentController, EncryptionRotationController],
   providers: [
     LifeObjectService,
     AttachmentService,
     AttachmentStorage,
+    EncryptionRotationService,
     {
       provide: LIFE_OBJECT_REPOSITORY,
       inject: [DRIZZLE],

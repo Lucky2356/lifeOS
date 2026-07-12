@@ -6,6 +6,7 @@ import {
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { maxAttachmentBytes, newId, sniffAttachmentMime, type Attachment } from '@life-os/domain';
+import { currentKeyId } from '../common/crypto';
 import { LifeObjectService } from './life-object.service';
 import { AttachmentStorage } from './attachment-storage';
 import { ATTACHMENT_REPOSITORY, type AttachmentRepository } from './attachment.repository';
@@ -43,6 +44,7 @@ export class AttachmentService {
       mime: detected,
       size: file.size,
       sensitivity: obj.sensitivity,
+      encryptionKeyId: currentKeyId(), // фиксируем, каким ключом зашифрован файл (для ротации)
       createdAt: new Date().toISOString(),
     };
     await this.storage.save(attachment.id, file.buffer);
@@ -56,7 +58,7 @@ export class AttachmentService {
   async download(id: string, ownerUserId: string): Promise<{ meta: Attachment; content: Buffer }> {
     const meta = await this.repo.findById(id, ownerUserId);
     if (!meta) throw new NotFoundException('Вложение не найдено');
-    return { meta, content: await this.storage.load(id) };
+    return { meta, content: await this.storage.load(id, meta.encryptionKeyId) };
   }
 
   async remove(id: string, ownerUserId: string): Promise<void> {

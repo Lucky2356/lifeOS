@@ -78,9 +78,11 @@ export async function syncReminderNotifications(now: Date = new Date()): Promise
   return newKeys.length;
 }
 
+let watcherStarted = false;
 /** Запустить наблюдатель: на старте, при фокусе окна и периодически (пока приложение открыто). */
 export function startReminderWatcher(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || watcherStarted) return; // защита от повторной подписки/таймеров
+  watcherStarted = true;
   void syncReminderNotifications();
   window.addEventListener('focus', () => void syncReminderNotifications());
   setInterval(() => void syncReminderNotifications(), 6 * 3_600_000);

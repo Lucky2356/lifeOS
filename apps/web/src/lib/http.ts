@@ -15,6 +15,35 @@ export function setUnauthHandler(fn: () => void) {
   unauthHandler = fn;
 }
 
+/**
+ * Single-flight refresh: параллельные запросы, получившие 401, ждут ОДИН общий refresh, а не дёргают
+ * его каждый. Иначе refresh-секрет ротируется на сервере, и все, кроме первого, шлют устаревший
+ * токен → 401 → неожиданный разлогин. Возвращает true, если refresh удался.
+ */
+let refreshing: Promise<boolean> | null = null;
+function refreshOnce(): Promise<boolean> {
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    const token = authStore.refresh;
+    if (!token) return false;
+    const r = await fetch(`${BASE}/auth/token/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: token }),
+    });
+    if (!r.ok) return false;
+    const data = (await r.json()) as { status: string; accessToken?: string; refreshToken?: string };
+    if (data.status === 'authenticated' && data.accessToken && data.refreshToken) {
+      authStore.set(data.accessToken, data.refreshToken);
+      return true;
+    }
+    return false;
+  })().finally(() => {
+    refreshing = null;
+  });
+  return refreshing;
+}
+
 function withAuth(init: RequestInit | undefined, token: string | null): RequestInit {
   // Для FormData не выставляем Content-Type — браузер сам добавит multipart boundary.
   const isForm = typeof FormData !== 'undefined' && init?.body instanceof FormData;
@@ -37,18 +66,8 @@ export async function apiRequest(path: string, init?: RequestInit): Promise<Resp
   let res = await fetch(`${BASE}${path}`, withAuth(init, authStore.access));
 
   if (res.status === 401 && authStore.refresh) {
-    const r = await fetch(`${BASE}/auth/token/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: authStore.refresh }),
-    });
-    if (r.ok) {
-      const data = (await r.json()) as { status: string; accessToken?: string; refreshToken?: string };
-      if (data.status === 'authenticated' && data.accessToken && data.refreshToken) {
-        authStore.set(data.accessToken, data.refreshToken);
-        res = await fetch(`${BASE}${path}`, withAuth(init, data.accessToken));
-      }
-    }
+    const ok = await refreshOnce();
+    if (ok) res = await fetch(`${BASE}${path}`, withAuth(init, authStore.access));
   }
 
   if (res.status === 401) {

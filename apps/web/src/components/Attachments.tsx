@@ -54,7 +54,10 @@ export function Attachments({ objectId }: { objectId: string }) {
 
   async function open(id: string) {
     try {
-      window.open(await attachmentsApi.blobUrl(id), '_blank', 'noopener');
+      const url = await attachmentsApi.blobUrl(id);
+      window.open(url, '_blank', 'noopener');
+      // Освобождаем blob после того, как новая вкладка успела его загрузить (иначе утечка памяти).
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       setError('Не удалось открыть файл');
     }

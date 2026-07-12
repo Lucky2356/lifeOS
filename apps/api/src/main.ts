@@ -7,6 +7,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import pinoHttp from 'pino-http';
+import helmet from 'helmet';
 import { logger } from './common/logger';
 
 const INSECURE_DEFAULTS = new Set([
@@ -86,6 +87,9 @@ async function bootstrap(): Promise<void> {
   // process.env — тогда per-install секреты из app_secrets игнорировались бы (см. фикс безопасности).
   const { AppModule } = await import('./app.module');
   const app = await NestFactory.create(AppModule);
+  // Security-заголовки на API. CSP отключаем — API отдаёт только JSON (CSP задаётся на edge/Caddy для
+  // веба); остальные защиты helmet (nosniff, frameguard, hidePoweredBy, referrer-policy и т.п.) полезны.
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.setGlobalPrefix('api/v1');
 
   // CORS. Аутентификация на Bearer-токенах (не cookie), поэтому по умолчанию origin отражается —

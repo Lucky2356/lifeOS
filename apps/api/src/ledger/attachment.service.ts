@@ -5,7 +5,7 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
-import { allowedAttachmentMimes, maxAttachmentBytes, newId, type Attachment } from '@life-os/domain';
+import { maxAttachmentBytes, newId, sniffAttachmentMime, type Attachment } from '@life-os/domain';
 import { LifeObjectService } from './life-object.service';
 import { AttachmentStorage } from './attachment-storage';
 import { ATTACHMENT_REPOSITORY, type AttachmentRepository } from './attachment.repository';
@@ -28,17 +28,19 @@ export class AttachmentService {
   async upload(objectId: string, ownerUserId: string, file?: UploadedFile): Promise<Attachment> {
     const obj = await this.objects.get(objectId, ownerUserId); // бросит NotFound, если не владелец
     if (!file) throw new BadRequestException('Файл не передан');
-    if (!(allowedAttachmentMimes as readonly string[]).includes(file.mimetype)) {
+    if (file.size > maxAttachmentBytes) throw new PayloadTooLargeException('Файл больше 10 МБ');
+    // Тип определяем по СОДЕРЖИМОМУ (магические байты), не доверяя MIME от клиента.
+    const detected = sniffAttachmentMime(file.buffer);
+    if (!detected) {
       throw new BadRequestException('Недопустимый тип файла (PDF или изображение)');
     }
-    if (file.size > maxAttachmentBytes) throw new PayloadTooLargeException('Файл больше 10 МБ');
 
     const attachment: Attachment = {
       id: newId(),
       objectId,
       ownerUserId,
       filename: file.originalname.slice(0, 255),
-      mime: file.mimetype,
+      mime: detected,
       size: file.size,
       sensitivity: obj.sensitivity,
       createdAt: new Date().toISOString(),

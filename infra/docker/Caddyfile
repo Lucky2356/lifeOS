@@ -1,0 +1,22 @@
+# Caddy как TLS-терминатор и reverse-proxy перед приложением.
+# Домен задаётся переменной окружения DOMAIN (в infra/docker/.env). Caddy сам получает и продлевает
+# сертификат Let's Encrypt (ACME) — нужен публичный домен, указывающий на этот сервер, и открытые 80/443.
+{$DOMAIN} {
+	encode gzip
+
+	# Security-заголовки на кромке (edge). HSTS включаем, т.к. весь трафик уже под TLS.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# CSP: всё со своего origin. 'unsafe-inline' для стилей — в приложении есть inline-стили
+		# (style-атрибуты/иконочный шрифт). Скрипты — только свои (SW/PWA работают в рамках 'self').
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# Веб (nginx) сам проксирует /api на сервис api — единая точка входа для веба и нативных приложений.
+	reverse_proxy web:80
+}

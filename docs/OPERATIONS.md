@@ -28,6 +28,33 @@ GitHub Actions:
 Секреты — только через переменные окружения/секрет-менеджер, не в репозитории (`.env` в `.gitignore`,
 `POSTGRES_PASSWORD` через env). Пароль БД в prod-compose берётся из `POSTGRES_PASSWORD`.
 
+### 2.1 TLS (Caddy + Let's Encrypt) — реализовано
+
+Prod-стек (`docker-compose.prod.yml`) публикует наружу **только Caddy** (`80`/`443`); `api` и `web`
+портов наружу не имеют и доступны лишь внутри сети compose. Caddy терминирует TLS и проксирует на
+`web` (тот сам проксирует `/api` на `api`). Требуется публичный **домен**, указывающий на сервер:
+
+```bash
+echo "DOMAIN=lifeos.example.com" >> infra/docker/.env   # + POSTGRES_PASSWORD, при желании SMTP_*
+docker compose -f infra/docker/docker-compose.prod.yml up -d --build
+# Caddy сам получит сертификат Let's Encrypt; приложение — https://lifeos.example.com
+```
+
+`APP_URL` и `ALLOWED_ORIGINS` по умолчанию берутся из `DOMAIN` (`https://<DOMAIN>`). Нативные сборки
+должны смотреть на `https://<DOMAIN>/api/v1` — задайте repo-переменную `API_BASE_URL` перед релизом.
+Security-заголовки (HSTS/CSP/X-Frame-Options/…) выставляет Caddy (`infra/docker/Caddyfile`), API
+дополнительно защищён `helmet`.
+
+### 2.2 Обновление инсталляции с существующими данными (секреты)
+
+API генерирует стойкие per-install секреты (`JWT_SECRET`, `ENCRYPTION_KEY`) при первом старте и хранит
+в таблице `app_secrets`. **Внимание при обновлении сервера, который ранее работал на старой версии без
+этих секретов:** прежние токены и данные, зашифрованные предыдущим (небезопасным дефолтным) ключом,
+станут нечитаемыми — пользователям потребуется перелогин, а зашифрованные MFA-секреты/вложения, сделанные
+старым ключом, расшифровать новым не выйдет. Если на текущем прод-сервере уже есть такие данные и их
+нужно сохранить — задайте прежние `ENCRYPTION_KEY`/`JWT_SECRET` явно в `infra/docker/.env` **до** апдейта.
+Для чистой установки пункт неактуален.
+
 ## 3. Миграции БД без даунтайма
 
 - Инструмент: **Drizzle** (`pnpm --filter @life-os/api db:generate` → SQL в `apps/api/drizzle`, `db:migrate` применяет).

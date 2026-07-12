@@ -8,8 +8,17 @@ import { InMemoryLifeObjectRepository } from './in-memory-life-object.repository
 const userA = '00000000-0000-0000-0000-0000000000a1';
 const userB = '00000000-0000-0000-0000-0000000000b2';
 
-function fileOf(mime: string, bytes = 10): UploadedFile {
-  return { originalname: 'scan.png', mimetype: mime, size: bytes, buffer: Buffer.alloc(bytes, 7) };
+// Магические байты реальных типов — чтобы пройти валидацию содержимого.
+const MAGIC: Record<string, number[]> = {
+  'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  'application/pdf': [0x25, 0x50, 0x44, 0x46],
+  'image/jpeg': [0xff, 0xd8, 0xff],
+};
+function fileOf(mime: string, bytes = 32): UploadedFile {
+  const buf = Buffer.alloc(bytes, 7);
+  const sig = MAGIC[mime];
+  if (sig) Buffer.from(sig).copy(buf, 0);
+  return { originalname: 'scan.png', mimetype: mime, size: bytes, buffer: buf };
 }
 
 describe('AttachmentService', () => {
@@ -40,6 +49,25 @@ describe('AttachmentService', () => {
 
   it('отклоняет недопустимый тип файла', async () => {
     await expect(service.upload(objectId, userA, fileOf('text/plain'))).rejects.toThrow();
+  });
+
+  it('отклоняет подделку MIME: заявлен image/png, но содержимое не PNG', async () => {
+    const spoof: UploadedFile = {
+      originalname: 'evil.png',
+      mimetype: 'image/png', // клиент врёт
+      size: 4,
+      buffer: Buffer.from('<ht'), // не магические байты картинки
+    };
+    await expect(service.upload(objectId, userA, spoof)).rejects.toThrow();
+  });
+
+  it('MIME берётся из содержимого, а не из заявленного клиентом', async () => {
+    // Клиент заявил pdf, но байты — PNG: сохраняем как image/png.
+    const a = await service.upload(objectId, userA, {
+      ...fileOf('image/png'),
+      mimetype: 'application/pdf',
+    });
+    expect(a.mime).toBe('image/png');
   });
 
   it('нельзя грузить к чужому объекту', async () => {

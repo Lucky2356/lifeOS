@@ -28,8 +28,12 @@
 ## 3. Аутентификация и доступ
 
 - Argon2id для паролей; обязательная поддержка MFA (TOTP + passkeys/WebAuthn).
-- Сессии: короткий access-токен + ротируемый refresh, хранение хэшей, список сессий/устройств, revoke.
-- Авторизация row-level (RLS в PostgreSQL) + проверки в API. Отдельные урезанные права child/guest.
+- Сессии: короткий access-токен (15м, в памяти) + ротируемый refresh, хранение хэшей, список
+  сессий/устройств, revoke. **Веб:** refresh — в `httpOnly; Secure; SameSite=Strict` cookie (JS его не
+  видит — защита от кражи при XSS); access не персистится. **Нативные оболочки** (Tauri/Capacitor) —
+  Bearer + refresh в защищённом хранилище приложения. CSRF: SameSite=Strict + API на Bearer-заголовке.
+- Авторизация: проверки владения на каждом объекте в API (row-level в PostgreSQL — план, см. дорожную
+  карту прод-готовности). Отдельные урезанные права child/guest.
 
 ## 4. Данные
 

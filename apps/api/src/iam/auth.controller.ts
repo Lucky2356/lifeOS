@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Headers, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
 import {
   loginInputSchema,
   mfaVerifyInputSchema,
@@ -13,8 +14,10 @@ import { CurrentSessionId, CurrentUserId } from '../common/current-user.decorato
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
+import { REFRESH_COOKIE, applyAuthResult, clearRefreshCookie, isWebClient } from './auth-cookie';
 
-const refreshSchema = z.object({ refreshToken: z.string().min(1) });
+// refresh для веб-клиента приходит в httpOnly-cookie, для нативного — в теле; поэтому поле опционально.
+const refreshSchema = z.object({ refreshToken: z.string().min(1).optional() });
 const codeSchema = z.object({ code: z.string().min(6).max(6) });
 const forgotSchema = z.object({ email: z.string().email() });
 const resetSchema = z.object({ token: z.string().min(1), password: z.string().min(8).max(200) });
@@ -27,40 +30,53 @@ export class AuthController {
   @Public()
   @Throttle(tightThrottle)
   @Post('register')
-  register(
+  async register(
     @Body(new ZodValidationPipe(registerInputSchema)) body: RegisterInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Headers('user-agent') ua = 'unknown',
   ) {
-    return this.auth.register(body.email, body.password, ua);
+    return applyAuthResult(req, res, await this.auth.register(body.email, body.password, ua));
   }
 
   @Public()
   @Throttle(tightThrottle)
   @Post('login')
-  login(
+  async login(
     @Body(new ZodValidationPipe(loginInputSchema)) body: LoginInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Headers('user-agent') ua = 'unknown',
   ) {
-    return this.auth.login(body.email, body.password, ua);
+    return applyAuthResult(req, res, await this.auth.login(body.email, body.password, ua));
   }
 
   @Public()
   @Throttle(tightThrottle)
   @Post('mfa/verify')
-  mfaVerify(
+  async mfaVerify(
     @Body(new ZodValidationPipe(mfaVerifyInputSchema)) body: MfaVerifyInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Headers('user-agent') ua = 'unknown',
   ) {
-    return this.auth.mfaVerify(body.challengeToken, body.code, ua);
+    return applyAuthResult(req, res, await this.auth.mfaVerify(body.challengeToken, body.code, ua));
   }
 
   @Public()
   @Post('token/refresh')
-  refresh(
-    @Body(new ZodValidationPipe(refreshSchema)) body: { refreshToken: string },
+  async refresh(
+    @Body(new ZodValidationPipe(refreshSchema)) body: { refreshToken?: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Headers('user-agent') ua = 'unknown',
   ) {
-    return this.auth.refresh(body.refreshToken, ua);
+    // Веб: токен из httpOnly-cookie; нативный: из тела. Куки-режим неуязвим к CSRF (SameSite=Strict,
+    // а новый токен возвращается в теле, недоступном чужому origin из-за CORS).
+    const token = isWebClient(req)
+      ? (req.cookies?.[REFRESH_COOKIE] as string | undefined)
+      : body.refreshToken;
+    return applyAuthResult(req, res, await this.auth.refresh(token ?? '', ua));
   }
 
   @Public()
@@ -107,7 +123,13 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(204)
-  logout(@CurrentUserId() userId: string, @CurrentSessionId() sessionId: string) {
-    return this.auth.revokeSession(userId, sessionId);
+  async logout(
+    @CurrentUserId() userId: string,
+    @CurrentSessionId() sessionId: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    clearRefreshCookie(req, res);
+    await this.auth.revokeSession(userId, sessionId);
   }
 }

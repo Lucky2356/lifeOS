@@ -1,4 +1,4 @@
-import { authStore } from './auth-store';
+import { authStore, isNativeShell } from './auth-store';
 
 /**
  * База API. В вебе — относительный путь (проксируется dev-сервером / nginx). В нативных оболочках
@@ -20,20 +20,26 @@ export function setUnauthHandler(fn: () => void) {
  * его каждый. Иначе refresh-секрет ротируется на сервере, и все, кроме первого, шлют устаревший
  * токен → 401 → неожиданный разлогин. Возвращает true, если refresh удался.
  */
+const CLIENT_MODE = isNativeShell() ? 'native' : 'web';
+
 let refreshing: Promise<boolean> | null = null;
 function refreshOnce(): Promise<boolean> {
   if (refreshing) return refreshing;
   refreshing = (async () => {
-    const token = authStore.refresh;
-    if (!token) return false;
+    // Веб: refresh-токен уходит из httpOnly-cookie автоматически (credentials: include), тело пустое.
+    // Нативный: refresh шлём в теле из localStorage.
+    const nativeToken = isNativeShell() ? authStore.refresh : null;
+    if (isNativeShell() && !nativeToken) return false;
     const r = await fetch(`${BASE}/auth/token/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: token }),
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-Client': CLIENT_MODE },
+      body: JSON.stringify(nativeToken ? { refreshToken: nativeToken } : {}),
     });
     if (!r.ok) return false;
     const data = (await r.json()) as { status: string; accessToken?: string; refreshToken?: string };
-    if (data.status === 'authenticated' && data.accessToken && data.refreshToken) {
+    if (data.status === 'authenticated' && data.accessToken) {
+      // На вебе refreshToken отсутствует (в cookie); на нативном — приходит в теле.
       authStore.set(data.accessToken, data.refreshToken);
       return true;
     }
@@ -49,8 +55,10 @@ function withAuth(init: RequestInit | undefined, token: string | null): RequestI
   const isForm = typeof FormData !== 'undefined' && init?.body instanceof FormData;
   return {
     ...init,
+    credentials: 'include', // отправлять httpOnly refresh-cookie (веб); на нативном куки нет — безвредно
     headers: {
       ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      'X-Client': CLIENT_MODE,
       ...(init?.headers ?? {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -65,7 +73,7 @@ export async function apiRequest(path: string, init?: RequestInit): Promise<Resp
   }
   let res = await fetch(`${BASE}${path}`, withAuth(init, authStore.access));
 
-  if (res.status === 401 && authStore.refresh) {
+  if (res.status === 401 && authStore.canRefresh) {
     const ok = await refreshOnce();
     if (ok) res = await fetch(`${BASE}${path}`, withAuth(init, authStore.access));
   }

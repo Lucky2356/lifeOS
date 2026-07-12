@@ -8,6 +8,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import pinoHttp from 'pino-http';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { logger } from './common/logger';
 
 const INSECURE_DEFAULTS = new Set([
@@ -90,6 +91,7 @@ async function bootstrap(): Promise<void> {
   // Security-заголовки на API. CSP отключаем — API отдаёт только JSON (CSP задаётся на edge/Caddy для
   // веба); остальные защиты helmet (nosniff, frameguard, hidePoweredBy, referrer-policy и т.п.) полезны.
   app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(cookieParser());
   app.setGlobalPrefix('api/v1');
 
   // CORS. Аутентификация на Bearer-токенах (не cookie), поэтому по умолчанию origin отражается —

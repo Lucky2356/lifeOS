@@ -157,6 +157,9 @@ importers:
       '@simplewebauthn/browser':
         specifier: ^13.3.0
         version: 13.3.0
+      '@tabler/icons-webfont':
+        specifier: 3.24.0
+        version: 3.24.0
       '@tauri-apps/plugin-process':
         specifier: ^2.2.0
         version: 2.3.1
@@ -1523,6 +1526,12 @@ packages:
   '@simplewebauthn/server@13.3.2':
     resolution: {integrity: sha512-KEDhfcGP1PAKRVSDjA3npTQFqS2b/srm+ipoNBNHdkzrHAlaRQUTE+a5f4ywsx6thxAw1NU2rYcLEY1949RGbQ==}
     engines: {node: '>=20.0.0'}
+
+  '@tabler/icons-webfont@3.24.0':
+    resolution: {integrity: sha512-PqbkFapKx28sXYNmQOA4rrh3Q6wqsYRZ99ZkrHQIWMdy63G0d/O0XyiwQqFti266PhrEQACO9ytoeW6LFJHsGg==}
+
+  '@tabler/icons@3.24.0':
+    resolution: {integrity: sha512-qNis9e90QcdxAGV3wNIeX0Ba2R7ktm0cnqOToKHJfC2kj3fvJwEVLsw63K0/fm7NW8rSZjDSTQRmMnSg8g/wrg==}
 
   '@tauri-apps/api@2.11.1':
     resolution: {integrity: sha512-M2FPuYND2m+wh5hfW9ZpSdxMPdEJovPBWwoHJmwUpysTYNHaOkVFN419m/K0LIgjb/7KU2vBgsUepJWugQCvAA==}
@@ -5111,6 +5120,12 @@ snapshots:
       '@peculiar/asn1-schema': 2.8.0
       '@peculiar/asn1-x509': 2.8.0
       '@peculiar/x509': 1.14.3
+
+  '@tabler/icons-webfont@3.24.0':
+    dependencies:
+      '@tabler/icons': 3.24.0
+
+  '@tabler/icons@3.24.0': {}
 
   '@tauri-apps/api@2.11.1': {}
 

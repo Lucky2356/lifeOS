@@ -1,5 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+// Иконки Tabler самохостятся (бандлятся Vite), а не грузятся с CDN: работает офлайн/в локальном
+// режиме и не блокируется CSP (font-src/style-src 'self') в проде.
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
 import './styles/app.css';
 import { App } from './App';
 

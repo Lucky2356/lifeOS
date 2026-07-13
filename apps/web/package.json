@@ -13,6 +13,7 @@
   "dependencies": {
     "@life-os/domain": "workspace:*",
     "@simplewebauthn/browser": "^13.3.0",
+    "@tabler/icons-webfont": "3.24.0",
     "@tauri-apps/plugin-process": "^2.2.0",
     "@tauri-apps/plugin-updater": "^2.7.0",
     "react": "^19.1.0",

@@ -2,17 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { objectTypeLabels, type LifeObject, type ObjectType } from '@life-os/domain';
 import { offlineLedger } from '../lib/offline-ledger';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
+import { matchesQuery } from '../lib/ledger-search';
 import { AddObjectModal } from './AddObjectModal';
 import type { Theme } from '../lib/theme';
-
-/** Совпадает ли объект с поисковым запросом (название + текстовые значения полей). */
-function matchesQuery(o: LifeObject, q: string): boolean {
-  if (!q) return true;
-  const hay = [o.title, ...Object.values(o.data).filter((v): v is string => typeof v === 'string')]
-    .join(' ')
-    .toLowerCase();
-  return hay.includes(q.toLowerCase());
-}
 
 export function LedgerScreen({
   theme,

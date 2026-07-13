@@ -4,6 +4,7 @@ import { aiApi } from '../lib/ai-api';
 import { authApi } from '../lib/auth-api';
 import { accountApi } from '../lib/account-api';
 import { authStore } from '../lib/auth-store';
+import { webauthnApi } from '../lib/webauthn-api';
 import {
   notificationPermission,
   notificationsSupported,
@@ -48,6 +49,8 @@ export function SettingsScreen({
   const [mfaCode, setMfaCode] = useState('');
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [passkeyMsg, setPasskeyMsg] = useState<'ok' | 'err' | null>(null);
   const [notifyEmail, setNotifyEmail] = useState<boolean | null>(null);
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>(notificationPermission());
   const isLocal = authStore.isLocal;
@@ -82,6 +85,20 @@ export function SettingsScreen({
   async function startMfa() {
     setMfaError(null);
     setMfaSetup(await authApi.mfaSetup());
+  }
+
+  async function addPasskey() {
+    setPasskeyMsg(null);
+    setPasskeyBusy(true);
+    try {
+      await webauthnApi.registerPasskey();
+      setPasskeyMsg('ok');
+      setMfaEnabled(true); // passkey — второй фактор, требование MFA включается
+    } catch {
+      setPasskeyMsg('err');
+    } finally {
+      setPasskeyBusy(false);
+    }
   }
 
   async function confirmMfa() {
@@ -310,6 +327,30 @@ export function SettingsScreen({
                   </button>
                 </div>
                 {mfaError && <div style={{ color: 'var(--brick-ink)', fontSize: 13 }}>{mfaError}</div>}
+              </div>
+            )}
+            {webauthnApi.supported() && (
+              <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+                <i className="ti ti-fingerprint" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+                <span style={{ flex: 1 }}>
+                  Ключ доступа (passkey)
+                  <span className="page-sub"> · Touch ID, Windows Hello, аппаратный ключ</span>
+                  {passkeyMsg === 'ok' && (
+                    <span className="page-sub" style={{ color: 'var(--sage)' }}>
+                      {' '}
+                      · ключ добавлен
+                    </span>
+                  )}
+                  {passkeyMsg === 'err' && (
+                    <span className="page-sub" style={{ color: 'var(--brick-ink)' }}>
+                      {' '}
+                      · не удалось добавить
+                    </span>
+                  )}
+                </span>
+                <button className="btn" onClick={addPasskey} disabled={passkeyBusy}>
+                  {passkeyBusy ? 'Добавление…' : 'Добавить ключ'}
+                </button>
               </div>
             )}
             <div className="list-row">

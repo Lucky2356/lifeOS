@@ -27,7 +27,9 @@
 
 ## 3. Аутентификация и доступ
 
-- Argon2id для паролей; обязательная поддержка MFA (TOTP + passkeys/WebAuthn).
+- Argon2id для паролей; MFA: TOTP **и** passkeys/WebAuthn (второй фактор). Passkey регистрируется в
+  настройках, вход по ключу — на шаге второго фактора; challenge-и церемоний носятся в коротких
+  подписанных JWT (без состояния), публичный ключ и счётчик — в `webauthn_credentials`.
 - Сессии: короткий access-токен (15м, в памяти) + ротируемый refresh, хранение хэшей, список
   сессий/устройств, revoke. **Веб:** refresh — в `httpOnly; Secure; SameSite=Strict` cookie (JS его не
   видит — защита от кражи при XSS); access не персистится. **Нативные оболочки** (Tauri/Capacitor) —

@@ -212,6 +212,21 @@ export const reminderDeliveries = pgTable(
   (t) => [uniqueIndex('reminder_delivery_uniq').on(t.objectId, t.offsetDays, t.deadline)],
 );
 
+/** Учётные данные WebAuthn/passkey (второй фактор). Публичный ключ + счётчик подписей. */
+export const webauthnCredentials = pgTable(
+  'webauthn_credentials',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id').notNull(),
+    credentialId: text('credential_id').notNull().unique(), // base64url
+    publicKey: text('public_key').notNull(), // base64url COSE-ключа
+    counter: integer('counter').notNull(),
+    transports: jsonb('transports'), // string[] | null
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [index('webauthn_user_idx').on(t.userId)],
+);
+
 /** Токены сброса пароля: хранится только SHA-256 хэш, с TTL и одноразовым использованием. */
 export const passwordResetTokens = pgTable(
   'password_reset_tokens',

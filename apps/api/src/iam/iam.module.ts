@@ -14,6 +14,13 @@ import { InMemorySessionRepository, SESSION_REPOSITORY } from './session.reposit
 import { InMemoryResetTokenRepository, RESET_TOKEN_REPOSITORY } from './reset-token.repository';
 import { EmailService } from './email.service';
 import { MaintenanceService } from './maintenance.service';
+import { WebauthnController } from './webauthn.controller';
+import { WebauthnService } from './webauthn.service';
+import { DrizzleWebauthnCredentialRepository } from './drizzle-webauthn-credential.repository';
+import {
+  InMemoryWebauthnCredentialRepository,
+  WEBAUTHN_CREDENTIAL_REPOSITORY,
+} from './webauthn-credential.repository';
 
 @Module({
   imports: [
@@ -24,11 +31,18 @@ import { MaintenanceService } from './maintenance.service';
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, WebauthnController],
   providers: [
     AuthService,
     EmailService,
     MaintenanceService,
+    WebauthnService,
+    {
+      provide: WEBAUTHN_CREDENTIAL_REPOSITORY,
+      inject: [DRIZZLE],
+      useFactory: (db: Database | null) =>
+        db ? new DrizzleWebauthnCredentialRepository(db) : new InMemoryWebauthnCredentialRepository(),
+    },
     {
       provide: RESET_TOKEN_REPOSITORY,
       inject: [DRIZZLE],

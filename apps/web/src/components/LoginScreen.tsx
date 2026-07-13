@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { LoginResult } from '@life-os/domain';
 import { authApi } from '../lib/auth-api';
 import { authStore } from '../lib/auth-store';
+import { webauthnApi } from '../lib/webauthn-api';
 
 export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -53,6 +54,19 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
       setForgot('sent');
     } catch {
       setError('Не удалось отправить письмо. Проверьте адрес сервера и попробуйте снова.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitPasskey() {
+    if (!challenge) return;
+    setBusy(true);
+    setError(null);
+    try {
+      handleResult(await webauthnApi.authenticate(challenge));
+    } catch {
+      setError('Не удалось войти по ключу. Попробуйте код из приложения.');
     } finally {
       setBusy(false);
     }
@@ -247,6 +261,18 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: () => void }
                 ? 'Создать аккаунт'
                 : 'Войти'}
         </button>
+
+        {challenge && webauthnApi.supported() && (
+          <button
+            type="button"
+            className="btn"
+            onClick={submitPasskey}
+            disabled={busy}
+            style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
+          >
+            <i className="ti ti-fingerprint" aria-hidden="true" /> Войти по ключу (passkey)
+          </button>
+        )}
 
         {!challenge && (
           <div

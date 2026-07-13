@@ -197,6 +197,22 @@ export class AuthService {
     }
   }
 
+  /** Выдать сессию по userId (для завершения второго фактора через passkey/WebAuthn). */
+  async issueSessionForUser(userId: string, userAgent: string): Promise<LoginResult> {
+    return this.issueSession(await this.mustUser(userId), userAgent);
+  }
+
+  /** Извлечь userId из mfa-challenge токена (шаг второго фактора). */
+  userIdFromMfaChallenge(challengeToken: string): string {
+    try {
+      const payload = this.jwt.verify<{ sub: string; typ: string }>(challengeToken);
+      if (payload.typ !== 'mfa') throw new Error('bad type');
+      return payload.sub;
+    } catch {
+      throw new UnauthorizedException('Сессия входа истекла, войдите заново');
+    }
+  }
+
   private async issueSession(user: User, userAgent: string): Promise<LoginResult> {
     const now = new Date();
     const secret = randomBytes(32).toString('hex');

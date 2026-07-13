@@ -38,4 +38,26 @@ describe('offlineLedger.list — слияние сети и офлайн-оче�
     expect(list).toHaveLength(1);
     expect(list[0]?.title).toBe('локально-изменён');
   });
+
+  it('get() с pending-правкой отдаёт локальную версию и НЕ ходит в сеть', async () => {
+    localStorage.setItem('los-objects-cache', JSON.stringify([obj('A', 'локально-изменён')]));
+    localStorage.setItem('los-outbox', JSON.stringify([{ path: '/objects/A', method: 'PUT', body: '{}' }]));
+    const fetchMock = vi.fn(async () => resp(obj('A', 'старое-с-сервера')));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const got = await offlineLedger.get('A');
+    expect(got?.title).toBe('локально-изменён');
+    expect(fetchMock).not.toHaveBeenCalled(); // серверную версию не тянем и не затираем кэш
+  });
+
+  it('get() без pending тянет с сервера и обновляет кэш', async () => {
+    localStorage.setItem('los-objects-cache', JSON.stringify([]));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => resp(obj('A', 'с-сервера'))),
+    );
+
+    const got = await offlineLedger.get('A');
+    expect(got?.title).toBe('с-сервера');
+  });
 });

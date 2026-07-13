@@ -49,6 +49,11 @@ export const offlineLedger = {
   },
 
   async get(id: string): Promise<LifeObject | null> {
+    // Есть неотправленная правка/удаление этого объекта — доверяем локальной версии, не затираем её
+    // серверной (иначе офлайн-правка визуально откатится до синхронизации).
+    if (pendingPaths().has(`/objects/${id}`)) {
+      return readCache().find((o) => o.id === id) ?? null;
+    }
     try {
       const obj = await apiFetch<LifeObject>(`/objects/${id}`);
       putLocal(obj);

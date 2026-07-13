@@ -29,6 +29,7 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (k
         className={`rail-avatar${active === 'settings' ? ' active' : ''}`}
         title="Настройки"
         aria-label="Настройки"
+        aria-current={active === 'settings' ? 'page' : undefined}
         onClick={() => onNavigate('settings')}
       >
         А

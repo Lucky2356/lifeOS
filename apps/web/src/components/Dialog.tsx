@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import { useEscapeToClose } from '../lib/use-modal';
 
 /**
  * Единые внутренние диалоги в стиле приложения (.overlay/.modal) — вместо нативных
@@ -22,10 +23,18 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const titleId = useId();
+  useEscapeToClose(onCancel);
   return (
     <div className="overlay" onClick={onCancel}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h2 className="serif" style={{ fontSize: 20, margin: '0 0 10px' }}>
+      <div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <h2 id={titleId} className="serif" style={{ fontSize: 20, margin: '0 0 10px' }}>
           {title}
         </h2>
         {message && (
@@ -67,17 +76,22 @@ export function PromptDialog({
   onCancel: () => void;
 }) {
   const [value, setValue] = useState('');
+  const titleId = useId();
+  useEscapeToClose(onCancel);
   return (
     <div className="overlay" onClick={onCancel}>
       <form
         className="modal"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onSubmit={(e) => {
           e.preventDefault();
           if (value.trim()) onSubmit(value.trim());
         }}
       >
-        <h2 className="serif" style={{ fontSize: 20, margin: '0 0 16px' }}>
+        <h2 id={titleId} className="serif" style={{ fontSize: 20, margin: '0 0 16px' }}>
           {title}
         </h2>
         <div className="field">

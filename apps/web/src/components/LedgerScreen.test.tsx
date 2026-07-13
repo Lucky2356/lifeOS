@@ -43,4 +43,15 @@ describe('LedgerScreen — поиск и фильтр по типу', () => {
     expect(screen.queryByText('Загранпаспорт')).toBeNull();
     expect(screen.getByText('ОСАГО')).toBeTruthy();
   });
+
+  it('модалка добавления закрывается по Escape (a11y)', async () => {
+    const user = userEvent.setup();
+    renderLedger();
+    await screen.findByText('Загранпаспорт');
+
+    await user.click(screen.getByRole('button', { name: 'Добавить' }));
+    expect(screen.getByText('Новый объект')).toBeTruthy(); // модалка открыта
+    await user.keyboard('{Escape}');
+    expect(screen.queryByText('Новый объект')).toBeNull(); // закрылась
+  });
 });

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { objectTypeLabels, objectTypes, type CreateLifeObjectInput } from '@life-os/domain';
 import { offlineLedger } from '../lib/offline-ledger';
+import { useEscapeToClose } from '../lib/use-modal';
 
 export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
@@ -8,6 +9,8 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
   const [validUntil, setValidUntil] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
+  useEscapeToClose(onClose);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,8 +32,15 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
 
   return (
     <div className="overlay" onClick={onClose}>
-      <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
-        <h2 className="serif" style={{ fontSize: 20, margin: '0 0 16px' }}>
+      <form
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <h2 id={titleId} className="serif" style={{ fontSize: 20, margin: '0 0 16px' }}>
           Новый объект
         </h2>
         <div className="field">

@@ -1,6 +1,6 @@
 {
   "name": "@life-os/desktop",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "Life OS — нативная десктоп-оболочка (Tauri) над общим PWA",
   "scripts": {

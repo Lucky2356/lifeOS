@@ -149,8 +149,10 @@ textarea:focus {
 /* Main */
 .main {
   flex: 1;
-  padding: 28px 32px;
-  max-width: 900px;
+  min-width: 0;
+  /* Колонка контента центрируется в доступном пространстве: на широких экранах поля растут,
+     а не оставляют весь контент прижатым влево. Ширина колонки ~1040px. */
+  padding: 28px max(32px, calc((100% - 1040px) / 2));
 }
 .page-head {
   display: flex;

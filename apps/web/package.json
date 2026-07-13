@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/fraunces": "^5.2.9",
+    "@fontsource/inter": "^5.2.8",
     "@life-os/domain": "workspace:*",
     "@simplewebauthn/browser": "^13.3.0",
     "@tabler/icons-webfont": "3.24.0",

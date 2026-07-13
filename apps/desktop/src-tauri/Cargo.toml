@@ -1,6 +1,6 @@
 [package]
 name = "life-os-desktop"
-version = "0.9.3"
+version = "0.9.4"
 description = "Life OS — операционная система для жизни"
 authors = ["Life OS"]
 edition = "2021"

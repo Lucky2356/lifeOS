@@ -35,10 +35,12 @@ export const offlineLedger = {
   async list(): Promise<LifeObject[]> {
     try {
       const server = await apiFetch<LifeObject[]>('/objects');
-      // Не теряем ещё не синхронизированные локальные правки при обновлении из сети.
+      // Не теряем ещё не синхронизированные локальные правки при обновлении из сети. Любой объект с
+      // неотправленной мутацией берём из локального кэша (pending PUT) или прячем (pending DELETE —
+      // его нет в кэше), а серверную копию для таких путей игнорируем, иначе удалённое офлайн вернётся.
       const pending = pendingPaths();
       const keep = readCache().filter((o) => pending.has(`/objects/${o.id}`));
-      const merged = [...keep, ...server.filter((s) => !keep.some((k) => k.id === s.id))];
+      const merged = [...keep, ...server.filter((s) => !pending.has(`/objects/${s.id}`))];
       writeCache(merged);
       return merged;
     } catch {

@@ -68,7 +68,8 @@ export async function syncReminderNotifications(now: Date = new Date()): Promise
     if (!o.validUntil) continue;
     for (const r of computeReminders(o.validUntil, defaultReminderRules)) {
       if (new Date(r.fireAt).getTime() > now.getTime()) continue;
-      const key = `${o.id}:${r.offsetDays}`;
+      // Дедлайн в ключе — как на сервере: при переносе срока пороги пере-взводятся.
+      const key = `${o.id}:${r.offsetDays}:${o.validUntil}`;
       if (shown.has(key)) continue;
       void show(`Life OS: ${o.title}`, phrase(daysUntil(o.validUntil, now) ?? 0));
       newKeys.push(key);

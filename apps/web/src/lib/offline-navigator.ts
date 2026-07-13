@@ -81,7 +81,8 @@ export const offlineNavigator = {
       const server = await apiFetch<PlaybookProgress[]>('/content/progress');
       const pending = pendingPaths();
       const keep = readProgress().filter((p) => pending.has(`/content/progress/${p.id}`));
-      const merged = [...keep, ...server.filter((s) => !keep.some((k) => k.id === s.id))];
+      // Игнорируем серверную копию для путей с неотправленной мутацией (консистентно с Ledger/Decisions).
+      const merged = [...keep, ...server.filter((s) => !pending.has(`/content/progress/${s.id}`))];
       writeProgress(merged);
       if (merged[0]) capturePackMeta(merged[0]);
       return merged;

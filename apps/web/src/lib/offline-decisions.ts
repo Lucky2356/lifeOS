@@ -32,9 +32,11 @@ export const offlineDecisions = {
   async list(): Promise<Decision[]> {
     try {
       const server = await apiFetch<Decision[]>('/decisions');
+      // Серверные объекты с неотправленной мутацией игнорируем: pending PUT берём из кэша (keep),
+      // pending DELETE — прячем, иначе удалённое офлайн вернётся до синхронизации.
       const pending = pendingPaths();
       const keep = readCache().filter((d) => pending.has(`/decisions/${d.id}`));
-      const merged = [...keep, ...server.filter((s) => !keep.some((k) => k.id === s.id))];
+      const merged = [...keep, ...server.filter((s) => !pending.has(`/decisions/${s.id}`))];
       writeCache(merged);
       return merged;
     } catch {
@@ -43,6 +45,10 @@ export const offlineDecisions = {
   },
 
   async get(id: string): Promise<Decision | null> {
+    // Есть неотправленная правка/удаление — доверяем локальной версии, не затираем серверной.
+    if (pendingPaths().has(`/decisions/${id}`)) {
+      return readCache().find((x) => x.id === id) ?? null;
+    }
     try {
       const d = await apiFetch<Decision>(`/decisions/${id}`);
       putLocal(d);

@@ -83,7 +83,8 @@ export const offlineHousehold = {
       const keep = readList<HouseholdTask>(tasksKey(id)).filter((t) =>
         pending.has(`/households/${id}/tasks/${t.id}`),
       );
-      const merged = [...keep, ...server.filter((s) => !keep.some((k) => k.id === s.id))];
+      // Игнорируем серверную копию для путей с неотправленной мутацией (консистентно с Ledger/Decisions).
+      const merged = [...keep, ...server.filter((s) => !pending.has(`/households/${id}/tasks/${s.id}`))];
       writeList(tasksKey(id), merged);
       return merged;
     } catch {

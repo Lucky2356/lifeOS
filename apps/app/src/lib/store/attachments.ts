@@ -60,12 +60,12 @@ export const attachmentsStore = {
     return attachment;
   },
 
-  /** Ссылка для просмотра файла. Освобождать через URL.revokeObjectURL. */
-  async blobUrl(id: string): Promise<string> {
+  /** Метаданные вместе с содержимым — для просмотра и для резервной копии. */
+  async read(id: string): Promise<{ meta: Attachment; bytes: ArrayBuffer }> {
     const database = await db();
     const [meta, bytes] = await Promise.all([database.get('attachments', id), database.get('files', id)]);
     if (!meta || !bytes) throw new AttachmentFailure('not-found');
-    return URL.createObjectURL(new Blob([bytes], { type: meta.mime }));
+    return { meta, bytes };
   },
 
   async remove(id: string): Promise<void> {

@@ -75,7 +75,12 @@ export async function syncReminderNotifications(now: Date = new Date()): Promise
   if (fresh.length > 0) {
     await setSetting(SHOWN_KEY, [...shown, ...fresh].slice(-SHOWN_LIMIT));
   }
-  await rescheduleReminders(future);
+  try {
+    await rescheduleReminders(future);
+  } catch {
+    // Планировщик мог отказать (нет прав на будильник) — показанное уже показано, а
+    // приложение всё равно проверит сроки при следующем открытии.
+  }
   return fresh.length;
 }
 
@@ -89,8 +94,8 @@ let watcherStarted = false;
 export async function startReminderWatcher(): Promise<void> {
   if (typeof window === 'undefined' || watcherStarted) return;
   watcherStarted = true;
-  const tick = () => void syncReminderNotifications();
-  await syncReminderNotifications();
+  const tick = () => void syncReminderNotifications().catch(() => {});
+  await syncReminderNotifications().catch(() => {});
   window.addEventListener('focus', tick);
   setInterval(tick, 6 * 3_600_000);
 }

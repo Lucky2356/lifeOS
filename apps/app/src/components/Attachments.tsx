@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Attachment } from '@life-os/domain';
 import { AttachmentFailure, attachmentsStore } from '../lib/store';
+import { openFile } from '../lib/platform-files';
 import { ConfirmDialog } from './Dialog';
 
 function fmtSize(n: number): string {
@@ -51,10 +52,8 @@ export function Attachments({ objectId }: { objectId: string }) {
 
   async function open(id: string) {
     try {
-      const url = await attachmentsStore.blobUrl(id);
-      window.open(url, '_blank', 'noopener');
-      // Освобождаем blob после того, как новая вкладка успела его загрузить (иначе утечка памяти).
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const { meta, bytes } = await attachmentsStore.read(id);
+      await openFile(meta.filename, meta.mime, bytes);
     } catch {
       setError('Не удалось открыть файл');
     }

@@ -13,8 +13,8 @@ import {
   notificationsSupported,
   requestNotificationPermission,
   supportsScheduling,
-  type NotifyPermission,
-} from '../lib/platform-notify';
+} from '../lib/notifications';
+import type { NotifyPermission } from '../lib/platform-notify';
 import { clearAllData } from '../lib/store';
 import { counted, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';

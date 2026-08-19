@@ -68,6 +68,33 @@ export async function saveFile(filename: string, blob: Blob): Promise<SaveTarget
   return 'browser';
 }
 
+/**
+ * Открыть файл вложения в системном просмотрщике.
+ *
+ * В WebView Capacitor blob-ссылка через window.open не открывается — файл нужно положить в кэш и
+ * отдать системе. На десктопе и в браузере blob-ссылки работают штатно.
+ */
+export async function openFile(filename: string, mime: string, bytes: ArrayBuffer): Promise<void> {
+  if (isCapacitor()) {
+    const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+      import('@capacitor/filesystem'),
+      import('@capacitor/share'),
+    ]);
+    const { uri } = await Filesystem.writeFile({
+      path: filename,
+      data: await blobToBase64(new Blob([bytes], { type: mime })),
+      directory: Directory.Cache,
+    });
+    await Share.share({ title: filename, url: uri, dialogTitle: filename });
+    return;
+  }
+
+  const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+  window.open(url, '_blank', 'noopener');
+  // Освобождаем blob после того, как просмотрщик успел его загрузить (иначе утечка памяти).
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export function saveTargetLabel(target: SaveTarget): string {
   if (target === 'downloads') return 'Копия сохранена в папку «Загрузки»';
   if (target === 'shared') return 'Копия готова — выберите, куда её сохранить';

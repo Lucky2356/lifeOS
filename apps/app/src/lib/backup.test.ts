@@ -4,7 +4,7 @@ import { attachmentsStore } from './store/attachments';
 import { ledgerStore } from './store/objects';
 import { decisionsStore } from './store/decisions';
 import { householdStore } from './store/household';
-import { clearAllData, db } from './store/db';
+import { clearAllData } from './store/db';
 
 function pdfFile(name = 'doc.pdf', body = 'содержимое'): File {
   const head = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
@@ -56,10 +56,8 @@ describe('резервная копия', () => {
     await clearAllData();
     await applyBackup(await readBackupFile(exported));
 
-    // Сверяем сами байты в хранилище: URL.createObjectURL в jsdom не реализован.
-    const stored = await (await db()).get('files', added.id);
-    expect(stored).toBeDefined();
-    expect([...new Uint8Array(stored!)]).toEqual([...new Uint8Array(await original.arrayBuffer())]);
+    const { bytes } = await attachmentsStore.read(added.id);
+    expect([...new Uint8Array(bytes)]).toEqual([...new Uint8Array(await original.arrayBuffer())]);
   });
 
   it('сводка считает содержимое копии', async () => {

@@ -58,6 +58,6 @@ describe('attachmentsStore', () => {
     const a = await attachmentsStore.add(obj.id, pdf());
     await attachmentsStore.remove(a.id);
     expect(await attachmentsStore.list(obj.id)).toEqual([]);
-    await expect(attachmentsStore.blobUrl(a.id)).rejects.toMatchObject({ code: 'not-found' });
+    await expect(attachmentsStore.read(a.id)).rejects.toMatchObject({ code: 'not-found' });
   });
 });

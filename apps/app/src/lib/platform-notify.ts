@@ -93,12 +93,21 @@ export async function rescheduleReminders(items: ScheduledReminder[]): Promise<v
   const soonest = [...items].sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, maxScheduled);
   if (soonest.length === 0) return;
 
-  await LocalNotifications.schedule({
-    notifications: soonest.map((r) => ({
-      id: notificationId(r.key),
-      title: r.title,
-      body: r.body,
-      schedule: { at: r.at, allowWhileIdle: true },
-    })),
-  });
+  const plan = (allowWhileIdle: boolean) =>
+    LocalNotifications.schedule({
+      notifications: soonest.map((r) => ({
+        id: notificationId(r.key),
+        title: r.title,
+        body: r.body,
+        schedule: { at: r.at, allowWhileIdle },
+      })),
+    });
+
+  try {
+    // Точный будильник надёжнее, но на Android 12+ право на него пользователь может отозвать.
+    await plan(true);
+  } catch {
+    // Тогда планируем неточно: напоминание придёт с задержкой, но придёт.
+    await plan(false);
+  }
 }

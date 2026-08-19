@@ -38,7 +38,7 @@ describe('createLifeObject', () => {
 });
 
 describe('applyLifeObjectUpdate', () => {
-  it('бампит version, обновляет updatedAt/hlc и применяет патч', () => {
+  it('бампит version, обновляет updatedAt и применяет патч', () => {
     const created = createLifeObject(
       { type: 'document', title: 'Паспорт' },
       owner,

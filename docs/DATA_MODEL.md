@@ -1,120 +1,111 @@
-# Life OS — Доменная модель и схема БД
+# Модель данных
 
-> Единая модель без дублирования сущностей между модулями. Все таблицы несут sync-метаданные (ADR 0003).
+Источник правды — Zod-схемы в `packages/domain/src`. Хранилище — одна база IndexedDB `life-os` на
+устройстве ([ADR 0006](adr/0006-local-only.md)); ни сервера, ни синхронизации нет.
 
-## 1. Соглашения (для всех таблиц)
+## Общие поля
 
-- Первичный ключ: `id UUID` (UUIDv7 — сортируемый по времени, безопасен при офлайн-создании).
-- Sync-метаданные: `created_at`, `updated_at`, `hlc` (hybrid logical clock), `deleted_at` (tombstone),
-  `version INT`.
-- Мультиарендность/изоляция: почти каждая пользовательская запись принадлежит `household_id` (контур)
-  и/или `owner_user_id`. PostgreSQL **Row-Level Security** фильтрует по членству и правам.
-- Шифрование чувствительных полей — на уровне приложения перед записью (см. SECURITY.md); в БД такие
-  поля — зашифрованный blob + метаданные ключа.
+Пользовательские сущности расширяют `baseEntitySchema` (`sync.ts`):
 
-## 2. ER-диаграмма (ядро + модули)
+| Поле                      | Тип              | Зачем                                                              |
+| ------------------------- | ---------------- | ------------------------------------------------------------------ |
+| `id`                      | UUIDv7           | первичный ключ; сортируется по времени создания                    |
+| `createdAt` / `updatedAt` | ISO-8601         | когда создано и когда правилось                                    |
+| `version`                 | int ≥ 0          | растёт при каждой правке; используется при разборе резервных копий |
+| `deletedAt`               | ISO-8601 \| null | tombstone; локально удаление обычное, поле осталось для импорта    |
 
-```mermaid
-erDiagram
-    USER ||--o{ MEMBERSHIP : has
-    HOUSEHOLD ||--o{ MEMBERSHIP : contains
-    HOUSEHOLD ||--o{ LIFE_OBJECT : owns
-    USER ||--o{ LIFE_OBJECT : creates
-    LIFE_OBJECT ||--o{ ATTACHMENT : has
-    LIFE_OBJECT ||--o{ REMINDER : triggers
-    LIFE_OBJECT ||--o{ OBJECT_HISTORY : logs
-    LIFE_OBJECT }o--|| OBJECT_TYPE : "typed by"
-    HOUSEHOLD ||--o{ TASK : has
-    MEMBERSHIP ||--o{ TASK : "assigned to"
-    HOUSEHOLD ||--o{ EXPENSE : tracks
-    HOUSEHOLD ||--o{ SHARE_GRANT : "shares via"
-    LIFE_OBJECT ||--o{ SHARE_GRANT : "shared by"
-    USER ||--o{ DECISION : makes
-    DECISION ||--o{ DECISION_CRITERION : weighs
-    DECISION ||--o{ DECISION_OPTION : compares
-    DECISION ||--o| DECISION_OUTCOME : "resolved by"
-    CONTENT_PACK ||--o{ PLAYBOOK : provides
-    CONTENT_PACK ||--o{ GUIDE : provides
-    PLAYBOOK ||--o{ PLAYBOOK_STEP : contains
-    GUIDE ||--o{ GUIDE_STEP : contains
-    USER ||--o{ PLAYBOOK_PROGRESS : tracks
-    PLAYBOOK ||--o{ PLAYBOOK_PROGRESS : "instantiated as"
-    HOUSEHOLD ||--o{ AUDIT_ENTRY : records
-    USER ||--o{ AI_SETTING : configures
+Заглушки HLC больше нет: она существовала под движок синхронизации, которого не будет.
+
+## Хранилища IndexedDB
+
+Схема задаётся в `apps/app/src/lib/store/db.ts`, версия базы — 1.
+
+| Хранилище     | Ключ        | Индексы        | Что лежит                                                      |
+| ------------- | ----------- | -------------- | -------------------------------------------------------------- |
+| `objects`     | `id`        | —              | `LifeObject` — объекты реестра                                 |
+| `decisions`   | `id`        | —              | `Decision` — решения с критериями и вариантами                 |
+| `households`  | `id`        | —              | `Household` — дом (на устройстве он один)                      |
+| `members`     | `id`        | `by-household` | `Membership` — люди дома                                       |
+| `tasks`       | `id`        | `by-household` | `HouseholdTask` — общие задачи                                 |
+| `progress`    | `id`        | —              | `PlaybookProgress` — прогресс по плейбукам                     |
+| `attachments` | `id`        | `by-object`    | `Attachment` — метаданные вложений                             |
+| `files`       | id вложения | —              | `ArrayBuffer` — сами байты файла                               |
+| `settings`    | строка      | —              | служебное: id владельца, показанные напоминания, флаг миграции |
+
+## Сущности
+
+### LifeObject (`life-object.ts`)
+
+`householdId`, `ownerUserId`, `type` (8 типов из `object-types.ts`), `title`, `data` (свободный
+объект под тип), `status` (`active` / `archived`), `sensitivity` (`normal` / `sensitive` / `high`),
+`validFrom`, `validUntil`.
+
+`validUntil` — то, из чего считаются напоминания и состояние жизненного цикла (`lifecycleFor`:
+`overdue` / `due_soon` / `ok` / `none`).
+
+### Attachment (`attachment.ts`)
+
+`objectId`, `ownerUserId`, `filename`, `mime`, `size`, `sensitivity`, `createdAt`.
+
+- Тип определяется по «магическим байтам» содержимого (`sniffAttachmentMime`), а не по расширению и
+  не по MIME, который сообщает система. Разрешены PDF, JPEG, PNG, WebP, HEIC.
+- Лимит — 25 МБ (`maxAttachmentBytes`).
+- `sensitivity` наследуется от объекта: скан паспорта не менее чувствителен, чем сам паспорт.
+- Удаление объекта каскадно удаляет его вложения и их байты.
+- Поля `encryptionKeyId` больше нет: файлы на устройстве не шифруются (см. [SECURITY.md](SECURITY.md)).
+
+### Household / Membership / HouseholdTask
+
+- `Household`: `name`, `createdBy`. На устройстве создаётся один дом.
+- `Membership`: `householdId`, `userId`, `displayName`, `role`, `relationship`. Роль локально ничего
+  не разрешает и не запрещает — это пометка «кто это в доме»; в интерфейсе показывается
+  родственный статус. Ролевой матрицы, share-грантов и гостевых сроков нет.
+- `HouseholdTask`: `householdId`, `title`, `assigneeMembershipId`, `dueAt`, `status` (`open`/`done`).
+  Удаление человека снимает его с задач, сами задачи остаются.
+
+### Decision (`decision.ts`)
+
+`ownerUserId`, `title`, `context`, `status` (`draft`/`decided`), `criteria[]` (label + weight 1..5),
+`options[]` (label + `scores` по criterionId, 0..5), `chosenOptionId`, `expectedOutcome`,
+`actualOutcome`, `decidedAt`.
+
+Балл варианта — `Σ(weight × score)` (`scoreOptions`), отсортировано по убыванию.
+
+### PlaybookProgress (`content.ts`)
+
+`ownerUserId`, `packId`, `packVersion`, `playbookKey`, `stepStates` (ключ шага → выполнен),
+`startedAt`, `completedAt`. Один прогресс на плейбук: повторный старт возвращает начатый.
+
+Сами плейбуки — не данные пользователя, а контент: они приходят из вшитого пака
+(`content-packs/ru/pack.json`, схема `contentPackSchema`).
+
+## Резервная копия
+
+Формат — `backupSchema` в `apps/app/src/lib/backup.ts`:
+
+```json
+{
+  "app": "life-os",
+  "schema": 1,
+  "exportedAt": "2026-08-19T12:00:00.000Z",
+  "appVersion": "1.0.0",
+  "objects": [],
+  "decisions": [],
+  "households": [],
+  "members": [],
+  "tasks": [],
+  "progress": [],
+  "attachments": [{ "…метаданные Attachment": null, "data": "<base64>" }]
+}
 ```
 
-## 3. Ключевые сущности
+Импорт проверяет файл теми же доменными схемами и заменяет содержимое базы целиком. Метаданные
+вложения без байтов в копию не попадают — копия не должна обещать того, чего в ней нет.
 
-### IAM
+## Миграции
 
-- **USER** — `id`, `email`, `password_hash` (argon2id), `mfa_type` (none/totp/passkey), `mfa_secret`
-  (зашифрован), `locale`, `status`, `created_at`, ...
-- **SESSION** — `id`, `user_id`, `device_id`, `refresh_token_hash`, `expires_at`, `revoked_at`,
-  `last_seen_at`, `ip_hash`, `user_agent`.
-- **AI_SETTING** — `user_id`, `ai_global_enabled` (bool), `per_module` (jsonb: ledger/household/...),
-  `provider`, `privacy_share_sensitive` (bool, default false).
-
-### Household OS
-
-- **HOUSEHOLD** — `id`, `name`, `created_by`, ...
-- **MEMBERSHIP** — `id`, `household_id`, `user_id`, `role` (owner/adult/child/guest),
-  `permissions` (jsonb override), `expires_at` (для гостя), `status`.
-- **SHARE_GRANT** — row-level шаринг: `id`, `household_id`, `resource_type`, `resource_id`,
-  `grantee_membership_id` (или весь household), `access_level` (view/edit/manage), `expires_at`.
-- **TASK** — `id`, `household_id`, `title`, `assignee_membership_id`, `due_at`, `recurrence`,
-  `status`, `linked_object_id?`.
-- **EXPENSE** — `id`, `household_id`, `amount`(зашифр.), `currency`, `paid_by_membership_id`,
-  `split` (jsonb доли), `category`, `occurred_at`.
-- **AUDIT_ENTRY** — `id`, `household_id`, `actor_user_id`, `action`, `resource_type`, `resource_id`,
-  `at`, `context` (jsonb, без чувствительного содержимого).
-
-### Life Ledger (ядро)
-
-- **OBJECT_TYPE** — справочник типов: document / warranty_item / subscription / insurance / property /
-  vehicle / health_record / financial_obligation. Расширяемо; часть типов приходит из content pack
-  (справочники региона).
-- **LIFE_OBJECT** — `id`, `household_id`, `owner_user_id`, `type_id`, `title`,
-  `data` (jsonb по схеме типа; чувствительные поля зашифрованы), `status`,
-  `valid_from`, `valid_until`/`deadline`, `sensitivity` (normal/sensitive/high), sync-метаданные.
-- **ATTACHMENT** — `id`, `object_id`, `filename`, `content_type`, `size`, `storage_key`,
-  `encryption_key_id`, `scan_status` (pending/clean/blocked), `checksum`.
-- **REMINDER** — `id`, `object_id`, `rule` (напр. «за 30/7/1 день до deadline»), `channel`,
-  `next_fire_at`, `status`. **Считается правилами, без ИИ.**
-- **OBJECT_HISTORY** — неизменяемый журнал изменений объекта: `id`, `object_id`, `actor_user_id`,
-  `change` (jsonb diff), `at`.
-
-### Decision Companion
-
-- **DECISION** — `id`, `owner_user_id`, `title`, `context`, `status`, `decided_at?`.
-- **DECISION_CRITERION** — `id`, `decision_id`, `label`, `weight`.
-- **DECISION_OPTION** — `id`, `decision_id`, `label`, `scores` (jsonb: criterion_id→score), `pros`, `cons`.
-- **DECISION_OUTCOME** — `id`, `decision_id`, `chosen_option_id`, `expected`, `actual?`,
-  `reviewed_at?` — для анализа паттернов со временем.
-
-### Content Pack Engine (данные пака — версионируются отдельно)
-
-- **CONTENT_PACK** — `pack_id`, `version`, `region`, `locales`, `checksum`, `status`.
-- **PLAYBOOK** (Crisis) — `id`, `pack_id`, `pack_version`, `key`, `title_i18n`, `applies_when` (jsonb).
-- **PLAYBOOK_STEP** — `id`, `playbook_id`, `order`, `title_i18n`, `description_i18n`,
-  `required_document_types` (jsonb, абстрактные типы), `references` (инстанции/ссылки), `embeds_guide?`.
-- **GUIDE** (Bureaucracy) — `id`, `pack_id`, `pack_version`, `key`, `title_i18n`, `deadlines`.
-- **GUIDE_STEP** — `id`, `guide_id`, `order`, `title_i18n`, `required_document_types`, `status_model`.
-- **PLAYBOOK_PROGRESS** — прогресс пользователя: `id`, `user_id`/`household_id`, `playbook_id`,
-  `pack_version`, `step_states` (jsonb), `started_at`, `completed_at?`. (Аналогично GUIDE_PROGRESS.)
-
-### Billing (заглушка, вне core — ADR монетизации)
-
-- **DONATION_INTENT** — `id`, `user_id`, `amount`, `status`, `provider_ref?`. Изолирован, не влияет на core.
-
-## 4. Row-Level Security (набросок политик)
-
-- `LIFE_OBJECT`: видим, если `owner_user_id = current_user` **ИЛИ** есть `SHARE_GRANT`/членство в
-  `household_id` с достаточным `access_level`. Дети/гости — только явно расшаренное.
-- `AUDIT_ENTRY`: доступ только owner/adult дома; запись — системная, не редактируется.
-- `DECISION`: приватно владельцу, если явно не расшарено.
-- Политики применяются в БД (RLS), а не только в API — защита от broken access control.
-
-## 5. Замечания по эволюции
-
-- Все типы объектов расширяются через `OBJECT_TYPE` + схему `data` — новый тип не меняет структуру таблиц.
-- Новый регион = новый `CONTENT_PACK`, без DDL-изменений ядра.
+- **Схема IndexedDB**: `DB_VERSION` в `db.ts`; в `upgrade` создаётся только отсутствующее, поэтому
+  следующая версия дописывает свои изменения, не ломая существующие данные.
+- **С прежнего локального режима**: `migrate-localstorage.ts` один раз переносит старые ключи
+  `los-*` из localStorage в IndexedDB, проверяя каждую запись схемой; битые записи пропускаются,
+  затем ключи удаляются. Тема (`los-theme`) остаётся в localStorage.

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseEntitySchema, initialHlc } from './sync';
+import { baseEntitySchema } from './sync';
 import { newId } from './ids';
 
 export const decisionCriterionSchema = z.object({
@@ -83,7 +83,6 @@ export function createDecision(
     id: newId(),
     createdAt: ts,
     updatedAt: ts,
-    hlc: initialHlc(now),
     version: 0,
     deletedAt: null,
     ownerUserId,
@@ -109,7 +108,6 @@ export function applyDecisionUpdate(
     ...current,
     ...parsed,
     updatedAt: now.toISOString(),
-    hlc: initialHlc(now),
     version: current.version + 1,
   };
 }

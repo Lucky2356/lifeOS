@@ -1,115 +1,100 @@
-# Life OS — Архитектура
+# Архитектура
 
-> Статус: черновик Фазы 1. Стиль — модульный монолит (ADR 0002), TS-монорепо (ADR 0001).
+Life OS — приложение, которое работает только на устройстве. Сервера, аккаунтов и сетевого API нет
+(см. [ADR 0006](adr/0006-local-only.md)). Всё, что видит пользователь, вычисляется и хранится там же,
+где он это открыл.
 
-## 1. Высокоуровневая структура (монорепо)
+## Состав репозитория
 
 ```
-life-os/
-├─ apps/
-│  ├─ web/            # React + Vite PWA (первый клиент)
-│  └─ api/            # NestJS backend (модульный монолит)
-├─ packages/
-│  ├─ domain/         # общая доменная модель: сущности, типы, Zod-схемы, бизнес-правила (без I/O)
-│  ├─ contracts/      # API-контракты (типы запросов/ответов, OpenAPI-генерация)
-│  ├─ content-schema/ # схема content packs + валидатор
-│  └─ ui/             # общие UI-компоненты/дизайн-система (переиспользование web/desktop/mobile)
-├─ content-packs/
-│  └─ ru/             # первый пак (регион РФ, локали ru/en)
-├─ infra/
-│  └─ docker/         # docker-compose: postgres, sync-engine, api
-└─ docs/
+apps/
+  app/          React 19 + Vite 7 — само приложение (UI + локальное хранилище)
+  desktop/      Tauri 2 — оболочка Windows (.exe/.msi) + автообновление
+  mobile/       Capacitor 6 — оболочка Android (.apk)
+packages/
+  domain/       предметные правила и Zod-схемы, общие для приложения и для CI
+content-packs/
+  ru/           контент-пак РФ: плейбуки Навигатора (бандлится в сборку)
+scripts/        валидация контент-пака, простановка версии
 ```
 
-Будущие клиенты (`apps/desktop` на Tauri, `apps/mobile` на Expo) переиспользуют `packages/domain`,
-`packages/contracts`, `packages/ui` — общая логика не дублируется.
+Одна кодовая база на две платформы: обе оболочки грузят один и тот же собранный бандл
+(`apps/app/dist`). Нативного кода почти нет — оболочки дают окно, автообновление и доступ к файловой
+системе для резервных копий.
 
-## 2. Модули бэкенда (границы — ADR 0002)
+## Слои
 
-```mermaid
-graph TB
-    subgraph Clients["Клиенты"]
-        WEB["Web PWA<br/>(локальный SQLite + sync)"]
-    end
+| Слой               | Где                              | Отвечает за                                                                                                  |
+| ------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Предметные правила | `packages/domain/src`            | схемы, вычисления, инварианты: `life-object`, `decision`, `reminders`, `content`, `household*`, `attachment` |
+| Хранилище          | `apps/app/src/lib/store`         | IndexedDB: чтение и запись сущностей, каскады, миграция схемы                                                |
+| Платформа          | `apps/app/src/lib/platform-*.ts` | различия Tauri / Capacitor / браузера: сохранение файла, уведомления                                         |
+| Интерфейс          | `apps/app/src/components`        | экраны пяти модулей                                                                                          |
 
-    subgraph Sync["Sync Layer"]
-        SE["Local-first движок<br/>(PowerSync/Electric)"]
-    end
+Правило зависимостей одно: интерфейс зовёт хранилище, хранилище зовёт домен. Домен не знает ни про
+IndexedDB, ни про React — поэтому он тестируется без окружения и переиспользуется в CI
+(`scripts/validate-content.mjs`).
 
-    subgraph API["NestJS — модульный монолит"]
-        IAM["IAM<br/>(auth, MFA, сессии)"]
-        LEDGER["Life Ledger<br/>(объекты жизни)"]
-        HOUSE["Household OS<br/>(дом, роли, шаринг, аудит)"]
-        DECISION["Decision Companion"]
-        CONTENT["Content Pack Engine"]
-        BUREAU["Bureaucracy Autopilot"]
-        CRISIS["Crisis Navigator"]
-        REMIND["Reminders<br/>(правила, без ИИ)"]
-        FILES["Files/Attachments<br/>(валидация, изоляция)"]
-        AUDIT["Audit Log"]
-        AI["AI Layer (опционально)<br/>port + провайдеры"]
-        BILLING["Billing (заглушка,<br/>вне core)"]
-    end
+## Хранилище
 
-    subgraph Data["Хранилище"]
-        PG[("PostgreSQL<br/>RLS")]
-        OBJ[("Object storage<br/>шифрованные файлы")]
-        KMS[["KMS / secret manager"]]
-    end
+Одна база IndexedDB `life-os`. Хранилища: `objects`, `decisions`, `households`, `members`, `tasks`,
+`progress`, `attachments` (метаданные), `files` (байты вложений), `settings`. Подробности —
+[DATA_MODEL.md](DATA_MODEL.md).
 
-    WEB <--> SE
-    SE <--> IAM
-    SE <--> LEDGER
-    LEDGER --> REMIND
-    LEDGER --> FILES
-    HOUSE --> LEDGER
-    HOUSE --> AUDIT
-    DECISION -. порт .-> LEDGER
-    CRISIS --> CONTENT
-    CRISIS -. порт .-> LEDGER
-    BUREAU --> CONTENT
-    BUREAU -. порт .-> LEDGER
-    AI -. подписка на точки расширения .-> LEDGER
-    AI -. .-> DECISION
-    AI -. .-> CRISIS
-    LEDGER --> PG
-    HOUSE --> PG
-    DECISION --> PG
-    CONTENT --> PG
-    FILES --> OBJ
-    FILES --> KMS
-    IAM --> KMS
+Почему не localStorage, с которого начинали: лимит около 5 МБ и только строки, а вложения — это
+файлы. Почему `ArrayBuffer`, а не `Blob`: структурное клонирование ArrayBuffer ведёт себя одинаково
+во всех WebView, тип файла и так лежит в метаданных.
+
+База привязана к origin оболочки — `https://localhost` в Capacitor и каталог WebView2 по
+`identifier` в Tauri. **`appId`, `androidScheme` и `identifier` менять нельзя**: сменится origin и
+данные пользователя станут недоступны.
+
+## Модули
+
+- **Life Ledger** (`objects`) — документы, вещи, подписки, страховки; сроки и напоминания.
+- **Household OS** (`households`, `members`, `tasks`) — домашние дела и люди, которых они касаются.
+  Локально: без приглашений, ролевого доступа и журнала аудита — разделять данные не с кем.
+- **Decision Companion** (`decisions`) — взвешенная матрица критериев и вариантов, `scoreOptions`.
+- **Crisis Navigator / Bureaucracy Autopilot** (`progress`) — плейбуки из контент-пака и прогресс по
+  шагам. Пак вшит в сборку ([ADR 0004](adr/0004-content-packs.md)).
+
+## Напоминания
+
+Пороги считает домен (`computeReminders` + `defaultReminderRules`). Наступившие показываются сразу и
+запоминаются в `settings`, чтобы не повторяться; будущие планируются заранее.
+
+Платформы отличаются принципиально: на Android уведомления планирует система
+(`@capacitor/local-notifications`), они приходят при закрытом приложении и переживают перезагрузку.
+Точный будильник на Android 12+ требует отдельного права, которого мы не просим, — система может
+сдвинуть напоминание на несколько минут, и для срока действия документа это несущественно.
+
+На десктопе планировщика для закрытого приложения нет: напоминания появляются при запуске и пока
+окно открыто.
+
+## Резервные копии
+
+Единственный способ вынести данные с устройства — экспорт в один JSON (записи + вложения в base64),
+`apps/app/src/lib/backup.ts`. Импорт валидирует файл доменными схемами и заменяет содержимое базы
+целиком. Куда положить файл, решает платформа (`platform-files.ts`): на десктопе — папка «Загрузки»,
+на Android — системное «Поделиться», в браузере — обычная загрузка.
+
+## Сеть
+
+Приложение делает ровно два вида запросов, и оба — про обновление самого приложения:
+
+- десктоп: встроенный updater Tauri читает `latest.json` из GitHub Releases и обновляется сам;
+- Android: `native-update.ts` читает `mobile-update.json` и предлагает установить свежий APK.
+
+Данные пользователя в сеть не уходят никогда.
+
+## Качество
+
+Единый набор гейтов, он же в CI (`.github/workflows/ci.yml`):
+
+```bash
+pnpm build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm validate:content
 ```
 
-**Правила зависимостей:**
-
-- Core-модули (Ledger, Household, Decision) **не зависят** от AI и Billing.
-- Кросс-модульные вызовы — только через публичные порты (интерфейсы), не через прямой импорт.
-- Household «надстраивается» над Ledger через порт Ledger (не дублирует сущности объектов).
-- Crisis/Bureaucracy зависят от Content Engine + читают данные пользователя через порт Ledger.
-- AI подписывается на «точки расширения» core, инверсия зависимости (ADR 0005).
-
-## 3. Синхронизация (ADR 0003)
-
-- Клиент читает/пишет в локальную SQLite → работает офлайн.
-- Sync-движок реплицирует с PostgreSQL, near-realtime при онлайне.
-- Разрешение конфликтов: HLC-LWW для полей, add-wins для множеств, явное разрешение для критичных полей.
-- Все записи несут sync-метаданные: `id` (UUIDv7), `updated_at`, `hlc`, `deleted_at`, `version`.
-
-## 4. Content Packs (ADR 0004)
-
-- Декларативные данные по строгой схеме (`packages/content-schema`), валидируются в CI.
-- Плейбуки/гиды ссылаются на абстрактные типы документов; движок сопоставляет с объектами Ledger.
-- Версионирование semver, независимое обновление без релиза приложения.
-
-## 5. AI-слой (ADR 0005)
-
-- Отдельный опциональный модуль, порт `AiProvider`, провайдеры Noop/Claude.
-- Только по явному действию пользователя; глобальный + помодульные тумблеры; UI-маркировка предложений.
-
-## 6. Нефункциональные сквозные заботы
-
-- **Безопасность** — см. [SECURITY.md](SECURITY.md) (сквозная, threat model до кодирования core).
-- **i18n/a11y** — часть `packages/ui` и content-движка с первого дня.
-- **Наблюдаемость** — структурированные логи без PII, health-checks, аудит-лог доступа к данным дома.
-- **Версионирование API** — с первого дня (`/api/v1`), OpenAPI из `packages/contracts`.
+Тесты: `packages/domain` — правила без окружения; `apps/app` — хранилище и резервные копии на
+настоящем API IndexedDB (`fake-indexeddb`), а не на моках, плюс компонентные тесты через Testing
+Library.

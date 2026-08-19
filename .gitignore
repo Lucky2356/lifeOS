@@ -9,6 +9,5 @@ build/
 coverage/
 .DS_Store
 
-# Локальные вложения (dev)
-apps/api/attachments-data/
-attachments-data/
+# Приватный ключ подписи обновлений десктопа (только локально и в секретах CI)
+apps/desktop/lifeos-updater.key

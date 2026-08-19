@@ -1,61 +1,50 @@
 import { describe, it, expect } from 'vitest';
-import { can, isMembershipActive, createMembership } from './household';
+import { createHousehold, createMembership, defaultRoleForRelationship } from './household';
 
-describe('can (RBAC матрица)', () => {
-  it('владелец может всё', () => {
-    expect(can('owner', 'manage_household')).toBe(true);
-    expect(can('owner', 'manage_members')).toBe(true);
-    expect(can('owner', 'view_audit')).toBe(true);
+const HOUSEHOLD = '00000000-0000-0000-0000-000000000001';
+const USER = '00000000-0000-0000-0000-000000000002';
+
+describe('defaultRoleForRelationship', () => {
+  it('дети и внуки получают роль ребёнка', () => {
+    expect(defaultRoleForRelationship('child')).toBe('child');
+    expect(defaultRoleForRelationship('grandchild')).toBe('child');
   });
 
-  it('взрослый создаёт объекты/задачи и видит аудит, но не управляет участниками', () => {
-    expect(can('adult', 'create_object')).toBe(true);
-    expect(can('adult', 'create_task')).toBe(true);
-    expect(can('adult', 'view_audit')).toBe(true);
-    expect(can('adult', 'manage_members')).toBe(false);
-    expect(can('adult', 'manage_household')).toBe(false);
-  });
-
-  it('ребёнок ограничен (только отметка задач), не видит аудит и не создаёт объекты', () => {
-    expect(can('child', 'complete_task')).toBe(true);
-    expect(can('child', 'create_object')).toBe(false);
-    expect(can('child', 'view_audit')).toBe(false);
-    expect(can('child', 'manage_members')).toBe(false);
-  });
-
-  it('гость по умолчанию не имеет прав уровня контура', () => {
-    expect(can('guest', 'create_object')).toBe(false);
-    expect(can('guest', 'view_audit')).toBe(false);
-    expect(can('guest', 'complete_task')).toBe(false);
+  it('остальные — взрослого', () => {
+    expect(defaultRoleForRelationship('partner')).toBe('adult');
+    expect(defaultRoleForRelationship('parent')).toBe('adult');
+    expect(defaultRoleForRelationship('other')).toBe('adult');
   });
 });
 
-describe('isMembershipActive', () => {
-  const base = { householdId: '0'.repeat(8) };
+describe('createHousehold', () => {
+  it('проставляет метаданные и автора', () => {
+    const h = createHousehold('Наш дом', USER, new Date('2026-08-19T10:00:00.000Z'));
+    expect(h.name).toBe('Наш дом');
+    expect(h.createdBy).toBe(USER);
+    expect(h.version).toBe(0);
+    expect(h.deletedAt).toBeNull();
+    expect(h.createdAt).toBe('2026-08-19T10:00:00.000Z');
+  });
+});
 
-  it('гость с истёкшим сроком неактивен', () => {
-    const m = createMembership(
-      {
-        householdId: '00000000-0000-0000-0000-000000000001',
-        userId: '00000000-0000-0000-0000-000000000002',
-        displayName: 'Гость',
-        role: 'guest',
-        expiresAt: '2026-07-01T00:00:00.000Z',
-      },
-      new Date('2026-06-01T00:00:00.000Z'),
-    );
-    expect(isMembershipActive(m, new Date('2026-07-05T00:00:00.000Z'))).toBe(false);
-    expect(isMembershipActive(m, new Date('2026-06-15T00:00:00.000Z'))).toBe(true);
-    void base;
+describe('createMembership', () => {
+  it('по умолчанию родственный статус — «другое»', () => {
+    const m = createMembership({ householdId: HOUSEHOLD, userId: USER, displayName: 'Мария', role: 'adult' });
+    expect(m.relationship).toBe('other');
+    expect(m.householdId).toBe(HOUSEHOLD);
+    expect(m.displayName).toBe('Мария');
   });
 
-  it('участник без срока активен', () => {
+  it('сохраняет переданный статус', () => {
     const m = createMembership({
-      householdId: '00000000-0000-0000-0000-000000000001',
-      userId: '00000000-0000-0000-0000-000000000002',
-      displayName: 'Мария',
-      role: 'adult',
+      householdId: HOUSEHOLD,
+      userId: USER,
+      displayName: 'Дима',
+      role: 'child',
+      relationship: 'child',
     });
-    expect(isMembershipActive(m)).toBe(true);
+    expect(m.relationship).toBe('child');
+    expect(m.role).toBe('child');
   });
 });

@@ -7,6 +7,7 @@ import {
   type PlaybookProgress,
 } from '@life-os/domain';
 import { navigatorStore as contentApi } from '../lib/store';
+import { counted } from '../lib/format';
 import type { Theme } from '../lib/theme';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
@@ -64,7 +65,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sage)' }} />
           </div>
           <span style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
-            {doneCount} из {selected.steps.length} шагов
+            {doneCount} из {counted(selected.steps.length, 'шага', 'шагов', 'шагов')}
           </span>
         </div>
 
@@ -133,7 +134,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               </span>
             </div>
             <div className="card-title">{pickText(pb.title, 'ru')}</div>
-            <div className="card-meta">{pb.steps.length} шагов</div>
+            <div className="card-meta">{counted(pb.steps.length, 'шаг', 'шага', 'шагов')}</div>
           </button>
         ))}
       </div>
@@ -148,7 +149,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               </span>
             </div>
             <div className="card-title">{pickText(pb.title, 'ru')}</div>
-            <div className="card-meta">{pb.steps.length} шагов</div>
+            <div className="card-meta">{counted(pb.steps.length, 'шаг', 'шага', 'шагов')}</div>
           </button>
         ))}
       </div>

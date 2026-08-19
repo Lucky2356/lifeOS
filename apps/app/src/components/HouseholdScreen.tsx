@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   relationshipLabels,
   relationships,
-  roleLabels,
   type Household,
   type HouseholdTask,
   type Membership,
@@ -10,6 +9,7 @@ import {
   type Role,
 } from '@life-os/domain';
 import { householdStore } from '../lib/store';
+import { counted } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog } from './Dialog';
 
@@ -19,14 +19,6 @@ const roleTint: Record<Role, string> = {
   child: 'tint-amber',
   guest: 'tint-muted',
 };
-
-function peopleWord(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return 'человек';
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'человека';
-  return 'человек';
-}
 
 /**
  * «Дом» в локальном виде: люди, которых касаются домашние дела, и общий список задач.
@@ -114,7 +106,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             {loading
               ? 'Загрузка…'
               : household
-                ? `${members.length} ${peopleWord(members.length)} · ${openCount} открытых задач`
+                ? `${counted(members.length, 'человек', 'человека', 'человек')} · ${counted(openCount, 'открытая задача', 'открытые задачи', 'открытых задач')}`
                 : 'Домашние дела и люди'}
           </div>
         </div>
@@ -208,9 +200,9 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   <span className={`avatar ${roleTint[m.role]}`}>{m.displayName.slice(0, 1)}</span>
                   <div style={{ flex: 1 }}>
                     <div className="card-title">{m.displayName}</div>
-                    <div className="card-meta">
-                      {relationshipLabels[m.relationship].ru} · {roleLabels[m.role].ru}
-                    </div>
+                    {/* Роль без сервера ничего не разрешает и не запрещает — показываем только,
+                        кто это человек для владельца. */}
+                    <div className="card-meta">{relationshipLabels[m.relationship].ru}</div>
                   </div>
                   {m.relationship !== 'self' && (
                     <button

@@ -1,6 +1,6 @@
 {
   "name": "@life-os/mobile",
-  "version": "0.9.4",
+  "version": "1.0.0",
   "private": true,
   "description": "Life OS — нативная Android-оболочка (Capacitor) над общим PWA",
   "scripts": {

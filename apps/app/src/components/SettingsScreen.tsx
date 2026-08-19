@@ -16,7 +16,7 @@ import {
   type NotifyPermission,
 } from '../lib/platform-notify';
 import { clearAllData } from '../lib/store';
-import { formatDateTime } from '../lib/format';
+import { counted, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog } from './Dialog';
 
@@ -99,11 +99,11 @@ export function SettingsScreen({
 
   const summaryText = (s: BackupSummary) =>
     [
-      `${s.objects} объектов реестра`,
-      `${s.attachments} файлов`,
-      `${s.decisions} решений`,
-      `${s.tasks} задач`,
-      `${s.members} людей`,
+      counted(s.objects, 'объект', 'объекта', 'объектов') + ' реестра',
+      counted(s.attachments, 'файл', 'файла', 'файлов'),
+      counted(s.decisions, 'решение', 'решения', 'решений'),
+      counted(s.tasks, 'задача', 'задачи', 'задач'),
+      counted(s.members, 'человек', 'человека', 'человек'),
     ].join(', ');
 
   return (

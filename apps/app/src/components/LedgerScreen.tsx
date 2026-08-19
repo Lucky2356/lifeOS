@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { objectTypeLabels, type LifeObject, type ObjectType } from '@life-os/domain';
 import { ledgerStore } from '../lib/store';
+import { counted } from '../lib/format';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { matchesQuery } from '../lib/ledger-search';
 import { AddObjectModal } from './AddObjectModal';
@@ -51,7 +52,9 @@ export function LedgerScreen({
         <div>
           <div className="serif page-title">Реестр</div>
           <div className="page-sub">
-            {objects === null ? 'Загрузка…' : `${objects.length} объектов вашей жизни`}
+            {objects === null
+              ? 'Загрузка…'
+              : `${counted(objects.length, 'объект', 'объекта', 'объектов')} вашей жизни`}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

@@ -3,6 +3,7 @@ import { getSetting, setSetting } from './store/db';
 import { ledgerStore } from './store/objects';
 import {
   notificationPermission,
+  requestNotificationPermission as requestPermission,
   rescheduleReminders,
   showNow,
   type ScheduledReminder,
@@ -36,8 +37,7 @@ export { notificationsSupported, notificationPermission, supportsScheduling } fr
 
 /** Запросить разрешение и сразу подтянуть напоминания, если его дали. */
 export async function requestNotificationPermission() {
-  const { requestNotificationPermission: request } = await import('./platform-notify');
-  const permission = await request();
+  const permission = await requestPermission();
   if (permission === 'granted') await syncReminderNotifications();
   return permission;
 }

@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
+      "name": "app",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@life-os/web", "dev"],
+      "runtimeArgs": ["--filter", "@life-os/app", "dev"],
       "port": 5173
     }
   ]

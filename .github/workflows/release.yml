@@ -6,43 +6,24 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
+# Приложение полностью локальное (ADR 0006): серверных артефактов и образов больше нет,
+# выпускаются только установщики — Windows (.exe/.msi) и Android (.apk).
 jobs:
-  release:
-    name: Build, package, publish
+  create-release:
+    name: Create GitHub Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build web (versioned)
-        env:
-          APP_VERSION: ${{ github.ref_name }}
-        run: |
-          pnpm --filter @life-os/domain build
-          pnpm --filter @life-os/web build
-
-      - name: Package web artifact
-        run: |
-          cd apps/web/dist
-          zip -r "../../../life-os-web-${{ github.ref_name }}.zip" .
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Life OS ${{ github.ref_name }}
           generate_release_notes: true
-          files: life-os-web-${{ github.ref_name }}.zip
 
   desktop:
     name: Desktop installer (Windows .exe/.msi)
-    needs: release
+    needs: create-release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,8 +41,6 @@ jobs:
       - run: pnpm --filter @life-os/domain build
       - name: Build desktop bundles (NSIS + MSI, signed for updater)
         env:
-          # Адрес продакшен-сервера по умолчанию (пользователь может сменить в поле «Адрес сервера»).
-          VITE_API_BASE: ${{ vars.API_BASE_URL || 'http://45.143.203.142:3011/api/v1' }}
           APP_VERSION: ${{ github.ref_name }}
           # Подпись апдейтер-артефактов. Приватный ключ — единственный секрет; пароль ключа пустой.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -101,8 +80,8 @@ jobs:
           files: dist-desktop/*
 
   android:
-    name: Android app (.apk)
-    needs: release
+    name: Android app (.apk, release-signed)
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -115,25 +94,62 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - run: pnpm install --frozen-lockfile
-      - name: Build web for mobile
+
+      # Неподписанный или debug-подписанный APK не должен попасть в релиз: такую сборку нельзя
+      # обновлять поверх предыдущей и нельзя считать продакшеном. Лучше упасть здесь.
+      - name: Require signing key
         env:
-          # Адрес продакшен-сервера по умолчанию (пользователь может сменить в поле «Адрес сервера»).
-          VITE_API_BASE: ${{ vars.API_BASE_URL || 'http://45.143.203.142:3011/api/v1' }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::Нет секрета ANDROID_KEYSTORE_BASE64 — релизный APK подписать нечем."
+            echo "Создайте ключ (docs/RELEASES.md) и добавьте секреты ANDROID_KEYSTORE_BASE64,"
+            echo "ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD."
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+      - name: Build app bundle
+        env:
           APP_VERSION: ${{ github.ref_name }}
         run: |
           pnpm --filter @life-os/domain build
-          pnpm --filter @life-os/web build
+          pnpm --filter @life-os/app build
       - name: Sync Capacitor (dist → android)
         run: pnpm --filter @life-os/mobile exec cap sync android
-      - name: Build debug APK
+
+      - name: Decode keystore
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          # Ключ живёт только в рабочем каталоге раннера и уходит вместе с ним.
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Build release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd apps/mobile/android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Verify the APK is really signed
+        run: |
+          APK=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          if [ ! -f "$APK" ]; then
+            echo "::error::Нет $APK — сборка вернула неподписанный артефакт."
+            ls -la apps/mobile/android/app/build/outputs/apk/release/ || true
+            exit 1
+          fi
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$APK"
+
       - name: Rename APK + build update manifest (mobile-update.json)
         run: |
-          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "life-os-${{ github.ref_name }}.apk"
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk \
+            "life-os-${{ github.ref_name }}.apk"
           # mobile-update.json — приложение читает его на старте и предлагает установить свежий APK.
           cat > mobile-update.json <<JSON
           {
@@ -142,42 +158,10 @@ jobs:
             "notes": "Life OS ${{ github.ref_name }}"
           }
           JSON
+
       - name: Attach APK + manifest to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             life-os-${{ github.ref_name }}.apk
             mobile-update.json
-
-  images:
-    name: Build and push container images (GHCR)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Compute lowercase image base (GHCR requires lowercase)
-        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
-      - name: Build and push API image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/api/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE }}-api:${{ github.ref_name }}
-            ${{ env.IMAGE }}-api:latest
-      - name: Build and push web image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: apps/web/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE }}-web:${{ github.ref_name }}
-            ${{ env.IMAGE }}-web:latest

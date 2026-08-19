@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Android-оболочка Life OS. Общий UI (apps/web/dist) грузится как webDir; вся логика и все данные —
+ * Android-оболочка Life OS. Общий UI (apps/app/dist) грузится как webDir; вся логика и все данные —
  * на устройстве (ADR 0006), сервера нет.
  *
  * appId и androidScheme определяют origin, к которому привязана IndexedDB с данными пользователя.
@@ -10,7 +10,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.lifeos.app',
   appName: 'Life OS',
-  webDir: '../web/dist',
+  webDir: '../app/dist',
   server: {
     androidScheme: 'https',
   },

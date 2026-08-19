@@ -78,8 +78,13 @@ export async function showNow(title: string, body: string, key: string): Promise
  * Перепланировать будущие напоминания. Прежний план снимается целиком: сроки могли измениться,
  * а объекты — исчезнуть, и оставлять старые уведомления нельзя.
  *
- * Android может пересоздавать план после перезагрузки устройства не полностью, поэтому
- * планирование повторяется при каждом запуске приложения.
+ * План переживает перезагрузку устройства (плагин восстанавливает его по BOOT_COMPLETED), но мы всё
+ * равно перепланируем при каждом запуске: так учитываются правки сроков, сделанные на другом экране.
+ *
+ * `allowWhileIdle` просит точный будильник. На Android 12+ право на точные будильники по умолчанию
+ * не выдаётся, и плагин сам откатывается на неточное расписание — напоминание придёт, но система
+ * может сдвинуть его на несколько минут. Это осознанный компромисс: просить у пользователя право
+ * «будильника» ради напоминания о сроке паспорта несоразмерно.
  */
 export async function rescheduleReminders(items: ScheduledReminder[]): Promise<void> {
   if (!isCapacitor()) return;
@@ -93,21 +98,12 @@ export async function rescheduleReminders(items: ScheduledReminder[]): Promise<v
   const soonest = [...items].sort((a, b) => a.at.getTime() - b.at.getTime()).slice(0, maxScheduled);
   if (soonest.length === 0) return;
 
-  const plan = (allowWhileIdle: boolean) =>
-    LocalNotifications.schedule({
-      notifications: soonest.map((r) => ({
-        id: notificationId(r.key),
-        title: r.title,
-        body: r.body,
-        schedule: { at: r.at, allowWhileIdle },
-      })),
-    });
-
-  try {
-    // Точный будильник надёжнее, но на Android 12+ право на него пользователь может отозвать.
-    await plan(true);
-  } catch {
-    // Тогда планируем неточно: напоминание придёт с задержкой, но придёт.
-    await plan(false);
-  }
+  await LocalNotifications.schedule({
+    notifications: soonest.map((r) => ({
+      id: notificationId(r.key),
+      title: r.title,
+      body: r.body,
+      schedule: { at: r.at, allowWhileIdle: true },
+    })),
+  });
 }

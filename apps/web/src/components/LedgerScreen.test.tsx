@@ -1,26 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createLifeObject, objectTypeLabels } from '@life-os/domain';
+import { objectTypeLabels } from '@life-os/domain';
+import { ledgerStore } from '../lib/store';
 import { LedgerScreen } from './LedgerScreen';
-
-const owner = '00000000-0000-0000-0000-0000000000a1';
 
 function renderLedger() {
   return render(<LedgerScreen theme="light" onToggleTheme={() => {}} onSelect={() => {}} />);
 }
 
 describe('LedgerScreen — поиск и фильтр по типу', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    // локальный режим: list() отдаёт объекты из кэша без сети
-    localStorage.setItem('los-local', '1');
-    localStorage.setItem('los-user', owner);
-    const objs = [
-      createLifeObject({ type: 'document', title: 'Загранпаспорт' }, owner),
-      createLifeObject({ type: 'insurance', title: 'ОСАГО' }, owner),
-    ];
-    localStorage.setItem('los-objects-cache', JSON.stringify(objs));
+  beforeEach(async () => {
+    await ledgerStore.create({ type: 'document', title: 'Загранпаспорт' });
+    await ledgerStore.create({ type: 'insurance', title: 'ОСАГО' });
   });
 
   it('ввод в поиск сужает список по названию', async () => {

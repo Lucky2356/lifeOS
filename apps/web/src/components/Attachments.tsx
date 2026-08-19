@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Attachment } from '@life-os/domain';
-import { attachmentsApi } from '../lib/attachments-api';
-import { authStore } from '../lib/auth-store';
+import { AttachmentFailure, attachmentsStore } from '../lib/store';
 import { ConfirmDialog } from './Dialog';
 
 function fmtSize(n: number): string {
@@ -10,23 +9,28 @@ function fmtSize(n: number): string {
 function iconFor(mime: string): string {
   return mime.startsWith('image/') ? 'ti-photo' : mime === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-file';
 }
+function messageFor(err: unknown): string {
+  if (err instanceof AttachmentFailure) {
+    if (err.code === 'too-large') return 'Файл больше 25 МБ';
+    if (err.code === 'unsupported') return 'Можно приложить PDF или изображение';
+  }
+  return 'Не удалось добавить файл';
+}
 
-/** Вложения файлов к объекту реестра (документы). Требует аккаунт — файлы хранятся на сервере. */
+/** Вложения к объекту реестра. Файлы хранятся на этом устройстве, рядом с самим объектом. */
 export function Attachments({ objectId }: { objectId: string }) {
   const [items, setItems] = useState<Attachment[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const isLocal = authStore.isLocal;
 
   const load = useCallback(() => {
-    if (isLocal) return;
-    attachmentsApi
+    void attachmentsStore
       .list(objectId)
       .then(setItems)
       .catch(() => {});
-  }, [objectId, isLocal]);
+  }, [objectId]);
   useEffect(() => load(), [load]);
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -35,17 +39,10 @@ export function Attachments({ objectId }: { objectId: string }) {
     setBusy(true);
     setError(null);
     try {
-      await attachmentsApi.upload(objectId, file);
+      await attachmentsStore.add(objectId, file);
       load();
     } catch (err) {
-      const code = err instanceof Error ? err.message : '';
-      setError(
-        code === '400'
-          ? 'Можно загружать PDF или изображения'
-          : code === '413'
-            ? 'Файл больше 10 МБ'
-            : 'Не удалось загрузить файл',
-      );
+      setError(messageFor(err));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -54,7 +51,7 @@ export function Attachments({ objectId }: { objectId: string }) {
 
   async function open(id: string) {
     try {
-      const url = await attachmentsApi.blobUrl(id);
+      const url = await attachmentsStore.blobUrl(id);
       window.open(url, '_blank', 'noopener');
       // Освобождаем blob после того, как новая вкладка успела его загрузить (иначе утечка памяти).
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -65,23 +62,8 @@ export function Attachments({ objectId }: { objectId: string }) {
 
   async function remove(id: string) {
     setConfirmId(null);
-    await attachmentsApi.remove(id);
+    await attachmentsStore.remove(id);
     load();
-  }
-
-  if (isLocal) {
-    return (
-      <>
-        <div className="section-label">Документы</div>
-        <div className="list-card" style={{ marginBottom: 22 }}>
-          <div className="list-row">
-            <span className="page-sub">
-              Вложения файлов (сканы, PDF) доступны с аккаунтом — хранятся на сервере в зашифрованном виде.
-            </span>
-          </div>
-        </div>
-      </>
-    );
   }
 
   return (
@@ -89,7 +71,7 @@ export function Attachments({ objectId }: { objectId: string }) {
       <div className="section-label">
         Документы
         <button className="reveal-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
-          <i className="ti ti-upload" aria-hidden="true" /> {busy ? 'загрузка…' : 'добавить файл'}
+          <i className="ti ti-upload" aria-hidden="true" /> {busy ? 'добавление…' : 'добавить файл'}
         </button>
       </div>
       <input

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { sensitivitySchema } from './life-object';
 
-/** Метаданные вложения к объекту реестра. Сам файл хранится зашифрованным на сервере. */
+/** Метаданные вложения к объекту реестра. Сам файл лежит рядом, в IndexedDB (ADR 0006). */
 export const attachmentSchema = z.object({
   id: z.string().uuid(),
   objectId: z.string().uuid(),
@@ -10,13 +10,11 @@ export const attachmentSchema = z.object({
   mime: z.string().max(150),
   size: z.number().int().nonnegative(),
   sensitivity: sensitivitySchema,
-  // Идентификатор ключа шифрования файла (для ротации). null — легаси (зашифрован до введения keyId).
-  encryptionKeyId: z.string().nullable().default(null),
   createdAt: z.string().datetime(),
 });
 export type Attachment = z.infer<typeof attachmentSchema>;
 
-/** Разрешённые типы файлов и лимит размера — единый источник правды для клиента и сервера. */
+/** Разрешённые типы файлов и лимит размера вложения. */
 export const allowedAttachmentMimes = [
   'application/pdf',
   'image/jpeg',
@@ -24,7 +22,7 @@ export const allowedAttachmentMimes = [
   'image/webp',
   'image/heic',
 ] as const;
-export const maxAttachmentBytes = 10 * 1024 * 1024; // 10 МБ
+export const maxAttachmentBytes = 25 * 1024 * 1024; // 25 МБ
 
 export type AllowedAttachmentMime = (typeof allowedAttachmentMimes)[number];
 
@@ -38,8 +36,8 @@ const ascii = (b: Uint8Array, offset: number, s: string): boolean =>
   );
 
 /**
- * Определяет тип файла по «магическим байтам» содержимого — не доверяя MIME от клиента.
- * Возвращает распознанный разрешённый MIME или null. Единый источник правды для клиента и сервера.
+ * Определяет тип файла по «магическим байтам» содержимого — не доверяя расширению и MIME,
+ * которые сообщает система. Возвращает распознанный разрешённый MIME или null.
  */
 export function sniffAttachmentMime(bytes: Uint8Array): AllowedAttachmentMime | null {
   if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46])) return 'application/pdf'; // %PDF

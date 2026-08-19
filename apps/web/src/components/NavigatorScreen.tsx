@@ -6,7 +6,7 @@ import {
   type Playbook,
   type PlaybookProgress,
 } from '@life-os/domain';
-import { offlineNavigator as contentApi } from '../lib/offline-navigator';
+import { navigatorStore as contentApi } from '../lib/store';
 import type { Theme } from '../lib/theme';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
@@ -22,15 +22,13 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [selected, setSelected] = useState<Playbook | null>(null);
   const [progress, setProgress] = useState<PlaybookProgress | null>(null);
 
-  const load = useCallback(() => {
-    void contentApi.playbooks().then(setPlaybooks);
-  }, []);
+  // Контент-пак вшит в сборку — плейбуки доступны сразу, без загрузки.
+  const load = useCallback(() => setPlaybooks(contentApi.playbooks()), []);
   useEffect(() => load(), [load]);
 
   async function open(pb: Playbook) {
-    const [full, prog] = await Promise.all([contentApi.playbook(pb.key), contentApi.start(pb.key)]);
-    setSelected(full);
-    setProgress(prog);
+    setSelected(contentApi.playbook(pb.key));
+    setProgress(await contentApi.start(pb.key));
   }
 
   async function toggle(stepKey: string) {

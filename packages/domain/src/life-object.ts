@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseEntitySchema, initialHlc } from './sync';
+import { baseEntitySchema } from './sync';
 import { newId } from './ids';
 import { objectTypeSchema } from './object-types';
 
@@ -62,7 +62,6 @@ export function createLifeObject(
     id: newId(),
     createdAt: ts,
     updatedAt: ts,
-    hlc: initialHlc(now),
     version: 0,
     deletedAt: null,
     ownerUserId,
@@ -77,7 +76,7 @@ export function createLifeObject(
   };
 }
 
-/** Применить изменения к объекту: бампит version/updatedAt/hlc (для sync). */
+/** Применить изменения к объекту: бампит version и updatedAt. */
 export function applyLifeObjectUpdate(
   current: LifeObject,
   patch: UpdateLifeObjectInput,
@@ -89,7 +88,6 @@ export function applyLifeObjectUpdate(
     ...current,
     ...parsed,
     updatedAt: ts,
-    hlc: initialHlc(now),
     version: current.version + 1,
   };
 }

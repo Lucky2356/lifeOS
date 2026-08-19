@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { scoreOptions, type Decision, type DecisionCriterion, type DecisionOption } from '@life-os/domain';
-import { offlineDecisions as decisionApi } from '../lib/offline-decisions';
+import { decisionsStore as decisionApi } from '../lib/store';
 import type { Theme } from '../lib/theme';
 import { PromptDialog } from './Dialog';
 

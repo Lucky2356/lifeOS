@@ -1,1 +1,0 @@
-ALTER TABLE "memberships" ADD COLUMN "relationship" text DEFAULT 'other' NOT NULL;

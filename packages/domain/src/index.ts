@@ -6,8 +6,5 @@ export * from './life-object';
 export * from './attachment';
 export * from './household';
 export * from './household-task';
-export * from './audit';
 export * from './decision';
 export * from './content';
-export * from './ai';
-export * from './iam';

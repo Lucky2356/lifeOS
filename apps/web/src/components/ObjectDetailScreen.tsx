@@ -6,20 +6,12 @@ import {
   type LifeObject,
   type LifeObjectStatus,
 } from '@life-os/domain';
-import { offlineLedger } from '../lib/offline-ledger';
+import { ledgerStore } from '../lib/store';
 import { ConfirmDialog } from './Dialog';
 import { Attachments } from './Attachments';
-import { aiApi } from '../lib/ai-api';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
-
-type AiState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'done'; text: string; provider: string }
-  | { status: 'disabled' }
-  | { status: 'error' };
 
 const sensitivityLabels = { normal: 'Обычная', sensitive: 'Чувствительная', high: 'Повышенная' };
 const statusLabels: Record<LifeObjectStatus, string> = { active: 'Активен', archived: 'В архиве' };
@@ -37,7 +29,6 @@ export function ObjectDetailScreen({
 }) {
   const [obj, setObj] = useState<LifeObject | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [ai, setAi] = useState<AiState>({ status: 'idle' });
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reveal, setReveal] = useState(false);
@@ -49,7 +40,7 @@ export function ObjectDetailScreen({
 
   const load = useCallback(() => {
     setError(null);
-    offlineLedger
+    ledgerStore
       .get(id)
       .then((o) => {
         if (!o) {
@@ -69,7 +60,7 @@ export function ObjectDetailScreen({
   async function save() {
     setBusy(true);
     try {
-      await offlineLedger.update(id, {
+      await ledgerStore.update(id, {
         title: title.trim(),
         status,
         validUntil: validUntil ? new Date(validUntil).toISOString() : null,
@@ -87,23 +78,11 @@ export function ObjectDetailScreen({
     setConfirmDelete(false);
     setBusy(true);
     try {
-      await offlineLedger.remove(id);
+      await ledgerStore.remove(id);
       onBack();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось удалить');
       setBusy(false);
-    }
-  }
-
-  async function askAi() {
-    if (!obj) return;
-    setAi({ status: 'loading' });
-    const ctx = `Объект «${obj.title}» (${obj.type}), срок: ${obj.validUntil ?? 'нет'}.`;
-    const res = await aiApi.suggest('ledger', 'next_step', ctx);
-    if (!res.ok) {
-      setAi({ status: res.reason === 'disabled' ? 'disabled' : 'error' });
-    } else {
-      setAi({ status: 'done', text: res.suggestion.text, provider: res.suggestion.provider });
     }
   }
 
@@ -275,40 +254,6 @@ export function ObjectDetailScreen({
           </span>
         </div>
       )}
-
-      <div style={{ margin: '22px 0' }}>
-        {ai.status === 'idle' && (
-          <button className="btn" onClick={askAi}>
-            <i className="ti ti-sparkles" aria-hidden="true" /> Спросить ИИ о следующем шаге
-          </button>
-        )}
-        {ai.status === 'loading' && <div className="note">ИИ думает…</div>}
-        {ai.status === 'disabled' && (
-          <div className="hint">
-            <i className="ti ti-info-circle" aria-hidden="true" />
-            <span>
-              ИИ выключен — включите его в настройках, если нужно. Напоминания и все действия работают и без
-              него.
-            </span>
-          </div>
-        )}
-        {ai.status === 'error' && <div className="note">Не удалось получить ответ ИИ.</div>}
-        {ai.status === 'done' && (
-          <div className="ai-block">
-            <div className="ai-block-head">
-              <span className="ai-badge">
-                <i className="ti ti-sparkles" aria-hidden="true" />
-              </span>
-              <span className="ai-label">Предложил ИИ</span>
-              <span className="ai-hint">можно сделать вручную</span>
-              <button className="ai-dismiss" onClick={() => setAi({ status: 'idle' })}>
-                Скрыть
-              </button>
-            </div>
-            <div className="ai-text">{ai.text}</div>
-          </div>
-        )}
-      </div>
 
       <div className="section-label">История</div>
       <div className="timeline">

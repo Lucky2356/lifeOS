@@ -8,6 +8,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Запись резервной копии в «Загрузки» (единственная файловая операция приложения).
+        .plugin(tauri_plugin_fs::init())
         .run(tauri::generate_context!())
         .expect("Ошибка запуска Life OS Desktop");
 }

@@ -1,26 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  defaultRoleForRelationship,
   relationshipLabels,
   relationships,
   roleLabels,
-  type AuditEntry,
   type Household,
   type HouseholdTask,
   type Membership,
   type Relationship,
   type Role,
 } from '@life-os/domain';
-import { offlineHousehold as householdApi } from '../lib/offline-household';
-import { authStore } from '../lib/auth-store';
-import { formatDateTime } from '../lib/format';
+import { householdStore } from '../lib/store';
 import type { Theme } from '../lib/theme';
-
-const auditLabels: Record<string, string> = {
-  add_member: 'добавил участника',
-  create_task: 'создал задачу',
-  toggle_task: 'отметил задачу',
-};
+import { ConfirmDialog } from './Dialog';
 
 const roleTint: Record<Role, string> = {
   owner: 'tint-sage',
@@ -29,47 +20,44 @@ const roleTint: Record<Role, string> = {
   guest: 'tint-muted',
 };
 
-export function HouseholdScreen({
-  theme,
-  onToggleTheme,
-  onCreateAccount,
-}: {
-  theme: Theme;
-  onToggleTheme: () => void;
-  onCreateAccount: () => void;
-}) {
+function peopleWord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'человек';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'человека';
+  return 'человек';
+}
+
+/**
+ * «Дом» в локальном виде: люди, которых касаются домашние дела, и общий список задач.
+ * Совместного доступа нет — данные не покидают устройство, делиться ими не с кем.
+ */
+export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
-  const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myName, setMyName] = useState('');
   const [newTask, setNewTask] = useState('');
-  // Панель добавления участника.
-  const [addMode, setAddMode] = useState<'closed' | 'invite' | 'manual'>('closed');
-  const [mEmail, setMEmail] = useState('');
+  const [assignee, setAssignee] = useState('');
+  const [adding, setAdding] = useState(false);
   const [mName, setMName] = useState('');
   const [mRel, setMRel] = useState<Relationship>('partner');
-  const [mError, setMError] = useState<string | null>(null);
-  const [mBusy, setMBusy] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<Membership | null>(null);
 
-  const loadDetail = useCallback((id: string) => {
-    void Promise.all([householdApi.members(id), householdApi.tasks(id), householdApi.audit(id)]).then(
-      ([m, t, a]) => {
-        setMembers(m);
-        setTasks(t);
-        setAudit(a);
-      },
-    );
+  const loadDetail = useCallback(async (id: string) => {
+    const [m, t] = await Promise.all([householdStore.members(id), householdStore.tasks(id)]);
+    setMembers(m);
+    setTasks(t);
   }, []);
 
   const load = useCallback(() => {
     setLoading(true);
-    householdApi
-      .listMine()
-      .then((hs) => {
-        const first = hs[0] ?? null;
-        setHousehold(first);
-        if (first) loadDetail(first.id);
+    void householdStore
+      .current()
+      .then(async (h) => {
+        setHousehold(h);
+        if (h) await loadDetail(h.id);
       })
       .finally(() => setLoading(false));
   }, [loadDetail]);
@@ -77,63 +65,45 @@ export function HouseholdScreen({
   useEffect(() => load(), [load]);
 
   async function createHouse() {
-    const h = await householdApi.create('Наш дом', 'Алекс');
+    const h = await householdStore.create('Наш дом', myName.trim() || 'Я');
     setHousehold(h);
-    loadDetail(h.id);
+    await loadDetail(h.id);
   }
 
   async function addTask() {
     if (!household || newTask.trim().length === 0) return;
-    await householdApi.createTask(household.id, { title: newTask.trim() });
+    await householdStore.createTask(household.id, {
+      title: newTask.trim(),
+      assigneeMembershipId: assignee || null,
+    });
     setNewTask('');
-    loadDetail(household.id);
+    await loadDetail(household.id);
   }
 
   async function toggle(taskId: string) {
     if (!household) return;
-    await householdApi.toggleTask(household.id, taskId);
-    loadDetail(household.id);
-  }
-
-  function resetAdd() {
-    setAddMode('closed');
-    setMEmail('');
-    setMName('');
-    setMRel('partner');
-    setMError(null);
+    await householdStore.toggleTask(taskId);
+    await loadDetail(household.id);
   }
 
   async function submitMember() {
-    if (!household) return;
-    setMBusy(true);
-    setMError(null);
-    try {
-      if (addMode === 'invite') {
-        if (!mEmail.trim()) throw new Error('Введите e-mail');
-        await householdApi.invite(household.id, { email: mEmail.trim(), relationship: mRel });
-      } else {
-        if (!mName.trim()) throw new Error('Введите имя');
-        await householdApi.addMember(household.id, {
-          userId: crypto.randomUUID(),
-          displayName: mName.trim(),
-          relationship: mRel,
-          role: defaultRoleForRelationship(mRel),
-        });
-      }
-      resetAdd();
-      loadDetail(household.id);
-    } catch (e) {
-      setMError(
-        e instanceof Error && e.message.includes('404')
-          ? 'Пользователь с такой почтой ещё не зарегистрирован'
-          : e instanceof Error && e.message.includes('409')
-            ? 'Этот человек уже в вашем доме'
-            : 'Не удалось добавить участника',
-      );
-    } finally {
-      setMBusy(false);
-    }
+    if (!household || mName.trim().length === 0) return;
+    await householdStore.addMember(household.id, { displayName: mName.trim(), relationship: mRel });
+    setMName('');
+    setMRel('partner');
+    setAdding(false);
+    await loadDetail(household.id);
   }
+
+  async function confirmRemove() {
+    if (!household || !pendingRemove) return;
+    await householdStore.removeMember(pendingRemove.id);
+    setPendingRemove(null);
+    await loadDetail(household.id);
+  }
+
+  const nameOf = (id: string | null) => members.find((m) => m.id === id)?.displayName ?? null;
+  const openCount = tasks.filter((t) => t.status === 'open').length;
 
   return (
     <main className="main">
@@ -141,7 +111,11 @@ export function HouseholdScreen({
         <div>
           <div className="serif page-title">Дом</div>
           <div className="page-sub">
-            {loading ? 'Загрузка…' : household ? `${members.length} участников` : 'Общий контур семьи'}
+            {loading
+              ? 'Загрузка…'
+              : household
+                ? `${members.length} ${peopleWord(members.length)} · ${openCount} открытых задач`
+                : 'Домашние дела и люди'}
           </div>
         </div>
         <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
@@ -149,92 +123,60 @@ export function HouseholdScreen({
         </button>
       </div>
 
-      {authStore.isLocal && (
+      {!loading && !household && (
         <div className="state">
-          <i
-            className="ti ti-users"
-            aria-hidden="true"
-            style={{ fontSize: 26, color: 'var(--ink-3)', display: 'block', marginBottom: 8 }}
-          />
-          «Дом» — это общий контур для семьи с ролями и совместными задачами. Для совместного доступа нужен
-          аккаунт и синхронизация между устройствами.
-          <div style={{ marginTop: 12 }}>
-            <button className="btn btn-primary" onClick={onCreateAccount}>
-              Создать аккаунт
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!authStore.isLocal && !loading && !household && (
-        <div className="state">
-          Создайте общий контур для семьи — с ролями, задачами и журналом доступа.
-          <div style={{ marginTop: 12 }}>
-            <button className="btn btn-primary" onClick={createHouse}>
+          Соберите здесь домашние дела и людей, которых они касаются.
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+            <input
+              className="inline-input"
+              style={{ maxWidth: 220 }}
+              value={myName}
+              onChange={(e) => setMyName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void createHouse()}
+              placeholder="Как вас зовут"
+              aria-label="Как вас зовут"
+            />
+            <button className="btn btn-primary" onClick={() => void createHouse()}>
               Создать дом
             </button>
           </div>
         </div>
       )}
 
-      {!authStore.isLocal && household && (
+      {household && (
         <>
           <div className="section-label">
-            Участники
-            {addMode === 'closed' && (
-              <button className="reveal-btn" onClick={() => setAddMode('invite')}>
+            Люди
+            {!adding && (
+              <button className="reveal-btn" onClick={() => setAdding(true)}>
                 <i className="ti ti-user-plus" aria-hidden="true" /> добавить
               </button>
             )}
           </div>
 
-          {addMode !== 'closed' && (
+          {adding && (
             <div className="list-card" style={{ marginBottom: 14, padding: 14 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <button
-                  className={`btn ${addMode === 'invite' ? 'btn-primary' : ''}`}
-                  onClick={() => setAddMode('invite')}
-                >
-                  Пригласить по почте
-                </button>
-                <button
-                  className={`btn ${addMode === 'manual' ? 'btn-primary' : ''}`}
-                  onClick={() => setAddMode('manual')}
-                >
-                  Без аккаунта
-                </button>
-              </div>
-
               <div style={{ display: 'grid', gap: 10 }}>
-                {addMode === 'invite' ? (
-                  <>
-                    <label className="page-sub">
-                      E-mail человека (он должен быть зарегистрирован в Life OS)
-                    </label>
-                    <input
-                      className="inline-input"
-                      type="email"
-                      value={mEmail}
-                      onChange={(e) => setMEmail(e.target.value)}
-                      placeholder="name@example.com"
-                      autoFocus
-                    />
-                  </>
-                ) : (
-                  <>
-                    <label className="page-sub">Имя (участник без своего аккаунта, напр. ребёнок)</label>
-                    <input
-                      className="inline-input"
-                      value={mName}
-                      onChange={(e) => setMName(e.target.value)}
-                      placeholder="Как зовут"
-                      autoFocus
-                    />
-                  </>
-                )}
-
-                <label className="page-sub">Кто это для вас</label>
-                <select value={mRel} onChange={(e) => setMRel(e.target.value as Relationship)}>
+                <label className="page-sub" htmlFor="member-name">
+                  Имя
+                </label>
+                <input
+                  id="member-name"
+                  className="inline-input"
+                  value={mName}
+                  onChange={(e) => setMName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && void submitMember()}
+                  placeholder="Как зовут"
+                  autoFocus
+                />
+                <label className="page-sub" htmlFor="member-rel">
+                  Кто это для вас
+                </label>
+                <select
+                  id="member-rel"
+                  value={mRel}
+                  onChange={(e) => setMRel(e.target.value as Relationship)}
+                >
                   {relationships
                     .filter((r) => r !== 'self')
                     .map((r) => (
@@ -243,14 +185,15 @@ export function HouseholdScreen({
                       </option>
                     ))}
                 </select>
-
-                {mError && <div style={{ color: 'var(--brick-ink)', fontSize: 13 }}>{mError}</div>}
-
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-primary" onClick={submitMember} disabled={mBusy}>
-                    {mBusy ? 'Добавляем…' : addMode === 'invite' ? 'Пригласить' : 'Добавить'}
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => void submitMember()}
+                    disabled={mName.trim().length === 0}
+                  >
+                    Добавить
                   </button>
-                  <button className="btn btn-ghost" onClick={resetAdd}>
+                  <button className="btn btn-ghost" onClick={() => setAdding(false)}>
                     Отмена
                   </button>
                 </div>
@@ -263,12 +206,21 @@ export function HouseholdScreen({
               <div className="card" key={m.id} style={{ cursor: 'default' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
                   <span className={`avatar ${roleTint[m.role]}`}>{m.displayName.slice(0, 1)}</span>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div className="card-title">{m.displayName}</div>
                     <div className="card-meta">
-                      {relationshipLabels[m.relationship ?? 'other'].ru} · {roleLabels[m.role].ru}
+                      {relationshipLabels[m.relationship].ru} · {roleLabels[m.role].ru}
                     </div>
                   </div>
+                  {m.relationship !== 'self' && (
+                    <button
+                      className="reveal-btn"
+                      onClick={() => setPendingRemove(m)}
+                      aria-label={`Убрать ${m.displayName}`}
+                    >
+                      <i className="ti ti-trash" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -285,57 +237,61 @@ export function HouseholdScreen({
               <div className="list-row" key={t.id}>
                 <button
                   className={`check ${t.status === 'done' ? 'check-done' : ''}`}
-                  onClick={() => toggle(t.id)}
+                  onClick={() => void toggle(t.id)}
                   aria-label={t.status === 'done' ? 'Снять отметку' : 'Отметить выполненной'}
                 >
                   {t.status === 'done' && <i className="ti ti-check" aria-hidden="true" />}
                 </button>
                 <span
                   style={{
+                    flex: 1,
                     textDecoration: t.status === 'done' ? 'line-through' : 'none',
                     color: t.status === 'done' ? 'var(--ink-3)' : 'var(--ink)',
                   }}
                 >
                   {t.title}
                 </span>
+                {nameOf(t.assigneeMembershipId) && (
+                  <span className="list-row-meta">{nameOf(t.assigneeMembershipId)}</span>
+                )}
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
             <input
               className="inline-input"
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
+              onKeyDown={(e) => e.key === 'Enter' && void addTask()}
               placeholder="Новая общая задача"
             />
-            <button className="btn btn-primary" onClick={addTask} disabled={newTask.trim().length === 0}>
+            <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Исполнитель">
+              <option value="">Без исполнителя</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-primary"
+              onClick={() => void addTask()}
+              disabled={newTask.trim().length === 0}
+            >
               Добавить
             </button>
           </div>
-
-          <div className="section-label">
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="ti ti-eye" aria-hidden="true" /> Журнал доступа
-            </span>
-          </div>
-          <div className="list-card">
-            {audit.length === 0 && (
-              <div className="list-row" style={{ color: 'var(--ink-3)' }}>
-                Событий пока нет
-              </div>
-            )}
-            {audit.slice(0, 8).map((e) => (
-              <div className="list-row" key={e.id}>
-                <span>
-                  {members.find((m) => m.userId === e.actorUserId)?.displayName ?? 'Участник'}{' '}
-                  {auditLabels[e.action] ?? e.action}
-                </span>
-                <span className="list-row-meta">{formatDateTime(e.at)}</span>
-              </div>
-            ))}
-          </div>
         </>
+      )}
+
+      {pendingRemove && (
+        <ConfirmDialog
+          title={`Убрать ${pendingRemove.displayName} из дома?`}
+          confirmLabel="Убрать"
+          danger
+          onConfirm={() => void confirmRemove()}
+          onCancel={() => setPendingRemove(null)}
+        />
       )}
     </main>
   );

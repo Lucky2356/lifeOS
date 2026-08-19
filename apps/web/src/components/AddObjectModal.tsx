@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { objectTypeLabels, objectTypes, type CreateLifeObjectInput } from '@life-os/domain';
-import { offlineLedger } from '../lib/offline-ledger';
+import { ledgerStore } from '../lib/store';
 import { useEscapeToClose } from '../lib/use-modal';
 
 export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -22,7 +22,7 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
         title: title.trim(),
         validUntil: validUntil ? new Date(validUntil).toISOString() : null,
       };
-      await offlineLedger.create(input);
+      await ledgerStore.create(input);
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить');

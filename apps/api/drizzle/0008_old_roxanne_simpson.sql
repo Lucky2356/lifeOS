@@ -1,1 +1,0 @@
-ALTER TABLE "attachments" ADD COLUMN "encryption_key_id" text;

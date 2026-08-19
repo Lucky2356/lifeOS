@@ -7,12 +7,8 @@ import { HouseholdScreen } from './components/HouseholdScreen';
 import { DecisionsScreen } from './components/DecisionsScreen';
 import { NavigatorScreen } from './components/NavigatorScreen';
 import { SettingsScreen } from './components/SettingsScreen';
-import { LoginScreen } from './components/LoginScreen';
-import { ResetPasswordScreen } from './components/ResetPasswordScreen';
-import { SyncIndicator } from './components/SyncIndicator';
 import { useTheme } from './lib/theme';
-import { authStore } from './lib/auth-store';
-import { setUnauthHandler } from './lib/http';
+import { migrateLegacyLocalStorage } from './lib/store';
 import { initNativeUpdate, openApkDownload, type AndroidUpdate } from './lib/native-update';
 import { startReminderWatcher } from './lib/notifications';
 
@@ -20,28 +16,23 @@ type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'set
 
 export function App() {
   const { theme, toggle } = useTheme();
-  const [authed, setAuthed] = useState(authStore.isAuthenticated);
   const [route, setRoute] = useState<Route>('today');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [androidUpdate, setAndroidUpdate] = useState<AndroidUpdate | null>(null);
-  // Ссылка сброса пароля из письма: ?reset=<token>
-  const [resetToken, setResetToken] = useState<string | null>(() =>
-    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('reset') : null,
-  );
-
-  function clearResetToken() {
-    setResetToken(null);
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-  }
+  // Данные читаются только после переноса из прежнего localStorage — иначе экраны увидят пустоту.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setUnauthHandler(() => setAuthed(false));
+    void migrateLegacyLocalStorage()
+      .catch(() => {
+        /* перенос не критичен: приложение работает и с пустой базой */
+      })
+      .finally(() => {
+        setReady(true);
+        void startReminderWatcher();
+      });
     // Desktop (Tauri) обновляется тихо; Android — баннер с предложением установить свежий APK.
     initNativeUpdate(setAndroidUpdate);
-    // Локальные уведомления о приближающихся сроках (PWA/локальный режим).
-    startReminderWatcher();
   }, []);
 
   function navigate(key: string) {
@@ -54,29 +45,18 @@ export function App() {
     setSelectedId(id);
   }
 
-  function logout() {
-    authStore.clear();
-    setAuthed(false);
-    setRoute('today');
-  }
-
-  // Выход из локального режима к экрану входа/регистрации (данные на устройстве сохраняются в кэше).
-  function exitToLogin() {
-    authStore.clear();
-    setAuthed(false);
-  }
-
-  if (resetToken) {
-    return <ResetPasswordScreen token={resetToken} onDone={clearResetToken} />;
-  }
-
-  if (!authed) {
-    return <LoginScreen onAuthenticated={() => setAuthed(true)} />;
+  if (!ready) {
+    return (
+      <div className="app">
+        <main className="main">
+          <div className="state">Загрузка…</div>
+        </main>
+      </div>
+    );
   }
 
   return (
     <div className="app">
-      <SyncIndicator />
       {androidUpdate && (
         <div className="update-banner" role="status">
           <span>Доступна новая версия {androidUpdate.version}. Обновите приложение — данные сохранятся.</span>
@@ -103,18 +83,13 @@ export function App() {
       ) : route === 'ledger' ? (
         <LedgerScreen theme={theme} onToggleTheme={toggle} onSelect={setSelectedId} />
       ) : route === 'household' ? (
-        <HouseholdScreen theme={theme} onToggleTheme={toggle} onCreateAccount={exitToLogin} />
+        <HouseholdScreen theme={theme} onToggleTheme={toggle} />
       ) : route === 'decisions' ? (
         <DecisionsScreen theme={theme} onToggleTheme={toggle} />
       ) : route === 'navigator' ? (
         <NavigatorScreen theme={theme} onToggleTheme={toggle} />
       ) : route === 'settings' ? (
-        <SettingsScreen
-          theme={theme}
-          onToggleTheme={toggle}
-          onBack={() => setRoute('today')}
-          onLogout={logout}
-        />
+        <SettingsScreen theme={theme} onToggleTheme={toggle} onBack={() => setRoute('today')} />
       ) : (
         <TodayScreen theme={theme} onToggleTheme={toggle} onOpenObject={openObject} />
       )}

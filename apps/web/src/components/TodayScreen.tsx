@@ -6,8 +6,7 @@ import {
   type HouseholdTask,
   type LifeObject,
 } from '@life-os/domain';
-import { offlineLedger } from '../lib/offline-ledger';
-import { offlineHousehold as householdApi } from '../lib/offline-household';
+import { householdStore, ledgerStore } from '../lib/store';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import type { Theme } from '../lib/theme';
 
@@ -26,7 +25,7 @@ export function TodayScreen({
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
 
   useEffect(() => {
-    void offlineLedger.list().then((objects) => {
+    void ledgerStore.list().then((objects) => {
       const flagged = objects
         .filter((o) => {
           const s = lifecycleFor(o.validUntil);
@@ -40,10 +39,9 @@ export function TodayScreen({
         });
       setAttention(flagged);
     });
-    void householdApi.listMine().then((hs) => {
-      const first = hs[0];
-      if (first)
-        void householdApi.tasks(first.id).then((t) => setTasks(t.filter((x) => x.status === 'open')));
+    void householdStore.current().then((house) => {
+      if (house)
+        void householdStore.tasks(house.id).then((t) => setTasks(t.filter((x) => x.status === 'open')));
     });
   }, []);
 

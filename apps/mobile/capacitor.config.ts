@@ -1,9 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Android-оболочка Life OS. Тот же PWA (apps/web/dist) грузится как webDir; вся логика — в веб-слое.
- * API-адрес задаётся при сборке через VITE_API_BASE (по умолчанию для эмулятора — 10.0.2.2 = хост).
- * cleartext разрешён, чтобы обращаться к локальному http-бэкенду при самостоятельном хостинге.
+ * Android-оболочка Life OS. Общий UI (apps/web/dist) грузится как webDir; вся логика и все данные —
+ * на устройстве (ADR 0006), сервера нет.
+ *
+ * appId и androidScheme определяют origin, к которому привязана IndexedDB с данными пользователя.
+ * Менять их нельзя — данные станут недоступны.
  */
 const config: CapacitorConfig = {
   appId: 'com.lifeos.app',
@@ -11,7 +13,6 @@ const config: CapacitorConfig = {
   webDir: '../web/dist',
   server: {
     androidScheme: 'https',
-    cleartext: true,
   },
 };
 

@@ -1,90 +1,96 @@
-import { computeReminders, daysUntil, defaultReminderRules, type LifeObject } from '@life-os/domain';
+import { computeReminders, daysUntil, defaultReminderRules } from '@life-os/domain';
+import { getSetting, setSetting } from './store/db';
+import { ledgerStore } from './store/objects';
+import {
+  notificationPermission,
+  rescheduleReminders,
+  showNow,
+  type ScheduledReminder,
+} from './platform-notify';
 
 /**
- * Клиентские уведомления о приближающихся сроках (Notification API). Работают для установленного PWA
- * и в локальном режиме — там сервера/email нет, и это единственный канал напоминаний. Считаем по тем
- * же доменным правилам (computeReminders), что и сервер; дедуп показов — в localStorage.
+ * Напоминания о приближающихся сроках — единственный канал оповещения (ADR 0006): ни писем,
+ * ни сервера нет. Правила считает домен (computeReminders), доставку берёт на себя платформа.
+ *
+ * Наступившие пороги показываются сразу и запоминаются, чтобы не повторяться; будущие
+ * планируются системой (на Android приходят и при закрытом приложении).
  */
 
-const CACHE = 'los-objects-cache';
-const SHOWN = 'los-notified';
+const SHOWN_KEY = 'notified-keys';
+/** Ключей копится немного, но не бесконечно — храним хвост последних показов. */
+const SHOWN_LIMIT = 500;
 
-function readObjects(): LifeObject[] {
-  try {
-    return JSON.parse(localStorage.getItem(CACHE) ?? '[]') as LifeObject[];
-  } catch {
-    return [];
-  }
-}
-function shownKeys(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(SHOWN) ?? '[]') as string[]);
-  } catch {
-    return new Set();
-  }
-}
-function markShown(keys: string[]) {
-  const s = shownKeys();
-  keys.forEach((k) => s.add(k));
-  localStorage.setItem(SHOWN, JSON.stringify([...s]));
+async function shownKeys(): Promise<string[]> {
+  return (await getSetting<string[]>(SHOWN_KEY)) ?? [];
 }
 
-export function notificationsSupported(): boolean {
-  return typeof window !== 'undefined' && 'Notification' in window;
-}
-export function notificationPermission(): NotificationPermission {
-  return notificationsSupported() ? Notification.permission : 'denied';
-}
-export async function requestNotificationPermission(): Promise<NotificationPermission> {
-  if (!notificationsSupported()) return 'denied';
-  const p = await Notification.requestPermission();
-  if (p === 'granted') void syncReminderNotifications();
-  return p;
+function phrase(days: number): string {
+  return days < 0
+    ? `просрочено на ${-days} дн.`
+    : days === 0
+      ? 'истекает сегодня'
+      : `истекает через ${days} дн.`;
 }
 
-async function show(title: string, body: string) {
-  try {
-    const reg = await navigator.serviceWorker?.getRegistration();
-    if (reg) {
-      await reg.showNotification(title, { body });
-      return;
-    }
-  } catch {
-    /* fallback ниже */
-  }
-  new Notification(title, { body });
+export { notificationsSupported, notificationPermission, supportsScheduling } from './platform-notify';
+
+/** Запросить разрешение и сразу подтянуть напоминания, если его дали. */
+export async function requestNotificationPermission() {
+  const { requestNotificationPermission: request } = await import('./platform-notify');
+  const permission = await request();
+  if (permission === 'granted') await syncReminderNotifications();
+  return permission;
 }
 
-function phrase(d: number): string {
-  return d < 0 ? `просрочено на ${-d} дн.` : d === 0 ? 'истекает сегодня' : `истекает через ${d} дн.`;
-}
-
-/** Показать уведомления по сработавшим и ещё не показанным порогам. Возвращает число показанных. */
+/**
+ * Показать наступившие напоминания и перепланировать будущие.
+ * Возвращает число показанных сейчас уведомлений.
+ */
 export async function syncReminderNotifications(now: Date = new Date()): Promise<number> {
-  if (notificationPermission() !== 'granted') return 0;
-  const shown = shownKeys();
-  const newKeys: string[] = [];
-  for (const o of readObjects()) {
-    if (!o.validUntil) continue;
-    for (const r of computeReminders(o.validUntil, defaultReminderRules)) {
-      if (new Date(r.fireAt).getTime() > now.getTime()) continue;
-      // Дедлайн в ключе — как на сервере: при переносе срока пороги пере-взводятся.
-      const key = `${o.id}:${r.offsetDays}:${o.validUntil}`;
+  if ((await notificationPermission()) !== 'granted') return 0;
+
+  const objects = await ledgerStore.list();
+  const shown = new Set(await shownKeys());
+  const fresh: string[] = [];
+  const future: ScheduledReminder[] = [];
+
+  for (const obj of objects) {
+    if (!obj.validUntil) continue;
+    for (const reminder of computeReminders(obj.validUntil, defaultReminderRules)) {
+      // Дедлайн в ключе: при переносе срока пороги пере-взводятся, и напоминание придёт снова.
+      const key = `${obj.id}:${reminder.offsetDays}:${obj.validUntil}`;
+      const fireAt = new Date(reminder.fireAt);
+      const title = `Life OS: ${obj.title}`;
+
+      if (fireAt.getTime() > now.getTime()) {
+        future.push({ key, at: fireAt, title, body: phrase(reminder.offsetDays) });
+        continue;
+      }
       if (shown.has(key)) continue;
-      void show(`Life OS: ${o.title}`, phrase(daysUntil(o.validUntil, now) ?? 0));
-      newKeys.push(key);
+      await showNow(title, phrase(daysUntil(obj.validUntil, now) ?? 0), key);
+      fresh.push(key);
     }
   }
-  if (newKeys.length) markShown(newKeys);
-  return newKeys.length;
+
+  if (fresh.length > 0) {
+    await setSetting(SHOWN_KEY, [...shown, ...fresh].slice(-SHOWN_LIMIT));
+  }
+  await rescheduleReminders(future);
+  return fresh.length;
 }
 
 let watcherStarted = false;
-/** Запустить наблюдатель: на старте, при фокусе окна и периодически (пока приложение открыто). */
-export function startReminderWatcher(): void {
-  if (typeof window === 'undefined' || watcherStarted) return; // защита от повторной подписки/таймеров
+
+/**
+ * Запустить наблюдатель: на старте, при возврате к приложению и раз в 6 часов.
+ * На Android этого хватает, потому что будущие напоминания планирует система; на десктопе
+ * приложение должно быть запущено — планировщика при закрытом окне там нет.
+ */
+export async function startReminderWatcher(): Promise<void> {
+  if (typeof window === 'undefined' || watcherStarted) return;
   watcherStarted = true;
-  void syncReminderNotifications();
-  window.addEventListener('focus', () => void syncReminderNotifications());
-  setInterval(() => void syncReminderNotifications(), 6 * 3_600_000);
+  const tick = () => void syncReminderNotifications();
+  await syncReminderNotifications();
+  window.addEventListener('focus', tick);
+  setInterval(tick, 6 * 3_600_000);
 }

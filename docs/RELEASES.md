@@ -45,15 +45,37 @@ node scripts/set-version.mjs 1.0.0
 Без этого ключа релизный APK собрать нечем, и workflow специально падает с понятной ошибкой —
 неподписанная или debug-подписанная сборка не должна попадать в релиз.
 
-1. Создайте ключ (хранить его нужно **надёжно и навсегда**: потеряете — не сможете выпускать
-   обновления поверх уже установленного приложения):
+1. Создайте ключ. Пароль keytool спросит сам — не передавайте его флагом, иначе он осядет в
+   истории оболочки. Хранить ключ нужно **надёжно и навсегда**: потеряете — не сможете выпускать
+   обновления поверх уже установленного приложения.
+
+   Windows (PowerShell). `keytool` входит в состав JDK и обычно не прописан в PATH; проще всего
+   взять его из JDK, который ставится вместе с Android Studio:
+
+   ```powershell
+   & "$env:ProgramFiles\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v -keystore life-os-release.jks -alias life-os -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+   Linux/macOS (если JDK в PATH):
+
    ```bash
    keytool -genkeypair -v -keystore life-os-release.jks -alias life-os -keyalg RSA -keysize 4096 -validity 10000
    ```
-2. Переведите файл в base64:
+
+2. Переведите файл в base64.
+
+   Windows (PowerShell) — у `base64` из GNU coreutils нет аналога в PowerShell:
+
+   ```powershell
+   [IO.File]::WriteAllText("life-os-release.jks.b64", [Convert]::ToBase64String([IO.File]::ReadAllBytes("life-os-release.jks")))
+   ```
+
+   Linux/macOS:
+
    ```bash
    base64 -w0 life-os-release.jks > life-os-release.jks.b64
    ```
+
 3. Добавьте четыре секрета в настройках репозитория (Settings → Secrets and variables → Actions):
 
    | Секрет                      | Значение                             |
@@ -62,6 +84,15 @@ node scripts/set-version.mjs 1.0.0
    | `ANDROID_KEYSTORE_PASSWORD` | пароль хранилища из шага 1           |
    | `ANDROID_KEY_ALIAS`         | `life-os`                            |
    | `ANDROID_KEY_PASSWORD`      | пароль ключа из шага 1               |
+
+   Через `gh` файл с ключом не придётся открывать вручную, а пароли будут запрошены скрытым вводом:
+
+   ```powershell
+   Get-Content life-os-release.jks.b64 | gh secret set ANDROID_KEYSTORE_BASE64
+   gh secret set ANDROID_KEYSTORE_PASSWORD
+   gh secret set ANDROID_KEY_ALIAS --body "life-os"
+   gh secret set ANDROID_KEY_PASSWORD
+   ```
 
 4. Файл `.jks` и его base64 не коммитьте. Храните копию ключа отдельно от репозитория.
 

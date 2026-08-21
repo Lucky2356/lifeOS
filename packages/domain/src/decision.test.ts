@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { createDecision, scoreOptions } from './decision';
+import {
+  applyDecisionUpdate,
+  createDecision,
+  decideDecision,
+  recordOutcome,
+  reopenDecision,
+  scoreOptions,
+} from './decision';
+
+const OWNER = '00000000-0000-0000-0000-000000000001';
 
 describe('scoreOptions', () => {
   const criteria = [
@@ -33,5 +42,47 @@ describe('createDecision', () => {
     expect(d.criteria).toHaveLength(0);
     expect(d.options).toHaveLength(0);
     expect(d.chosenOptionId).toBeNull();
+  });
+});
+
+describe('жизненный цикл решения', () => {
+  const withOptions = () => {
+    const d = createDecision({ title: 'Менять ли работу' }, OWNER);
+    return applyDecisionUpdate(d, {
+      options: [
+        { id: 'a', label: 'Остаться', scores: {} },
+        { id: 'b', label: 'Уйти', scores: {} },
+      ],
+    });
+  };
+
+  it('фиксирует выбор, статус и дату', () => {
+    const decided = decideDecision(withOptions(), 'b', new Date('2026-08-21T10:00:00.000Z'));
+    expect(decided.status).toBe('decided');
+    expect(decided.chosenOptionId).toBe('b');
+    expect(decided.decidedAt).toBe('2026-08-21T10:00:00.000Z');
+  });
+
+  it('не даёт выбрать вариант, которого нет', () => {
+    expect(() => decideDecision(withOptions(), 'нет-такого')).toThrow();
+  });
+
+  it('исход записывается только для принятого решения', () => {
+    const draft = withOptions();
+    expect(() => recordOutcome(draft, 'вышло так себе')).toThrow();
+
+    const decided = decideDecision(draft, 'a');
+    expect(recordOutcome(decided, 'вышло хорошо').actualOutcome).toBe('вышло хорошо');
+  });
+
+  it('возврат в черновик снимает выбор и стирает исход', () => {
+    const decided = decideDecision(withOptions(), 'a');
+    const withOutcome = recordOutcome(decided, 'вышло хорошо');
+    const reopened = reopenDecision(withOutcome);
+
+    expect(reopened.status).toBe('draft');
+    expect(reopened.chosenOptionId).toBeNull();
+    expect(reopened.decidedAt).toBeNull();
+    expect(reopened.actualOutcome).toBeNull();
   });
 });

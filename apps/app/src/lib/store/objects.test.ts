@@ -36,6 +36,35 @@ describe('ledgerStore', () => {
     ).rejects.toThrow();
   });
 
+  it('хранит поля документа, чувствительность и «действует с»', async () => {
+    const created = await ledgerStore.create({
+      type: 'document',
+      title: 'Загранпаспорт',
+      sensitivity: 'sensitive',
+      validFrom: '2026-01-15T00:00:00.000Z',
+      data: { number: '75 1234567', issuedBy: 'МВД России' },
+    });
+
+    const stored = await ledgerStore.get(created.id);
+    expect(stored?.data).toEqual({ number: '75 1234567', issuedBy: 'МВД России' });
+    expect(stored?.sensitivity).toBe('sensitive');
+    expect(stored?.validFrom).toBe('2026-01-15T00:00:00.000Z');
+  });
+
+  it('правка полей заменяет их целиком — опустошённое поле исчезает', async () => {
+    const created = await ledgerStore.create({
+      type: 'vehicle',
+      title: 'Машина',
+      data: { plate: 'А123ВС', vin: 'XTA210990' },
+    });
+
+    await ledgerStore.update(created.id, { data: { plate: 'А123ВС' }, sensitivity: 'high' });
+
+    const stored = await ledgerStore.get(created.id);
+    expect(stored?.data).toEqual({ plate: 'А123ВС' });
+    expect(stored?.sensitivity).toBe('high');
+  });
+
   it('удаление объекта уносит его вложения и файлы', async () => {
     const obj = await ledgerStore.create({ type: 'document', title: 'Договор' });
     const other = await ledgerStore.create({ type: 'document', title: 'Другой' });

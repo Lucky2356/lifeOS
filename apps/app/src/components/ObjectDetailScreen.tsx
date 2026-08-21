@@ -1,20 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  fieldLabel,
   lifecycleFor,
+  objectFields,
   objectTypeLabels,
   upcomingReminders,
   type LifeObject,
   type LifeObjectStatus,
+  type Sensitivity,
 } from '@life-os/domain';
 import { ledgerStore } from '../lib/store';
 import { ConfirmDialog } from './Dialog';
 import { Attachments } from './Attachments';
+import { SensitivityField, TypeFields, sensitivityLabels } from './ObjectFields';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
 
-const sensitivityLabels = { normal: 'Обычная', sensitive: 'Чувствительная', high: 'Повышенная' };
 const statusLabels: Record<LifeObjectStatus, string> = { active: 'Активен', archived: 'В архиве' };
+
+/** Значения полей хранятся как есть; для формы приводим их к строкам. */
+function toFormData(data: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v == null ? '' : String(v)]));
+}
 
 export function ObjectDetailScreen({
   id,
@@ -36,7 +44,10 @@ export function ObjectDetailScreen({
 
   const [title, setTitle] = useState('');
   const [validUntil, setValidUntil] = useState('');
+  const [validFrom, setValidFrom] = useState('');
   const [status, setStatus] = useState<LifeObjectStatus>('active');
+  const [sensitivity, setSensitivity] = useState<Sensitivity>('normal');
+  const [data, setData] = useState<Record<string, string>>({});
 
   const load = useCallback(() => {
     setError(null);
@@ -50,7 +61,10 @@ export function ObjectDetailScreen({
         setObj(o);
         setTitle(o.title);
         setValidUntil(o.validUntil ? o.validUntil.slice(0, 10) : '');
+        setValidFrom(o.validFrom ? o.validFrom.slice(0, 10) : '');
         setStatus(o.status);
+        setSensitivity(o.sensitivity);
+        setData(toFormData(o.data));
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Ошибка загрузки'));
   }, [id]);
@@ -63,7 +77,11 @@ export function ObjectDetailScreen({
       await ledgerStore.update(id, {
         title: title.trim(),
         status,
+        sensitivity,
         validUntil: validUntil ? new Date(validUntil).toISOString() : null,
+        validFrom: validFrom ? new Date(validFrom).toISOString() : null,
+        // Опустошённое поле убираем из данных, а не сохраняем пустой строкой.
+        data: Object.fromEntries(Object.entries(data).filter(([, v]) => v.trim().length > 0)),
       });
       setEditing(false);
       load();
@@ -194,33 +212,63 @@ export function ObjectDetailScreen({
           )}
         </div>
         <div className="kv">
-          <span className="kv-label">Чувствительность</span>
-          <span className="kv-value">{sensitivityLabels[obj.sensitivity]}</span>
-        </div>
-        <div className="kv">
           <span className="kv-label">Действует с</span>
-          <span className="kv-value">{formatDate(obj.validFrom)}</span>
+          {editing ? (
+            <input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
+          ) : (
+            <span className="kv-value">{formatDate(obj.validFrom)}</span>
+          )}
         </div>
+        {!editing && (
+          <div className="kv">
+            <span className="kv-label">Чувствительность</span>
+            <span className="kv-value">{sensitivityLabels[obj.sensitivity]}</span>
+          </div>
+        )}
       </div>
 
-      {dataEntries.length > 0 && (
+      {editing ? (
         <>
-          <div className="section-label">
-            Поля
-            {obj.sensitivity !== 'normal' && (
-              <button className="reveal-btn" onClick={() => setReveal((r) => !r)}>
-                <i className={`ti ${masked ? 'ti-lock' : 'ti-lock-open'}`} aria-hidden="true" />
-                {masked ? 'Показать' : 'Скрыть'}
-              </button>
-            )}
+          <div className="section-label">Поля</div>
+          <div style={{ maxWidth: 420, marginBottom: 22 }}>
+            <TypeFields
+              type={obj.type}
+              data={data}
+              onChange={(key, value) => setData((d) => ({ ...d, [key]: value }))}
+            />
+            <SensitivityField value={sensitivity} onChange={setSensitivity} />
           </div>
-          <div className="kv-grid">
-            {dataEntries.map(([k, v]) => (
-              <div className="kv" key={k}>
-                <span className="kv-label">{k}</span>
-                <span className="kv-value">{masked ? '•• •••• ••' : String(v)}</span>
-              </div>
-            ))}
+        </>
+      ) : (
+        dataEntries.length > 0 && (
+          <>
+            <div className="section-label">
+              Поля
+              {obj.sensitivity !== 'normal' && (
+                <button className="reveal-btn" onClick={() => setReveal((r) => !r)}>
+                  <i className={`ti ${masked ? 'ti-lock' : 'ti-lock-open'}`} aria-hidden="true" />
+                  {masked ? 'Показать' : 'Скрыть'}
+                </button>
+              )}
+            </div>
+            <div className="kv-grid">
+              {dataEntries.map(([k, v]) => (
+                <div className="kv" key={k}>
+                  <span className="kv-label">{fieldLabel(obj.type, k)}</span>
+                  <span className="kv-value">{masked ? '•• •••• ••' : String(v)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )
+      )}
+
+      {!editing && dataEntries.length === 0 && objectFields[obj.type].length > 0 && (
+        <>
+          <div className="section-label">Поля</div>
+          <div className="note" style={{ marginBottom: 22 }}>
+            Нажмите «Изменить», чтобы записать {objectFields[obj.type][0]?.label.ru.toLowerCase()} и другие
+            данные этого объекта.
           </div>
         </>
       )}

@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "notes": "Life OS v1.0.0",
+  "pub_date": "2026-08-21T12:09:11Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUbCtUdnU0LzVkU05mY1N6bEs5aTZLOXNxWW5xQk9sWTV5UjVXR3dtdmp1dElObmtuTEZ3andDTzA1dnpmcTlSQSs0MEFodWtBd3JwVmZIN2FSRUNqT1c3cUxGNDdWU1FVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg3MzE0MTUwCWZpbGU6TGlmZSBPU18xLjAuMF94NjQtc2V0dXAuZXhlCi9sK2lSbEVGZGxpa3hCNWU3ZVVaaHpSV0RkSmRMV2hlNjVHU1RvYjNEdmdaOVh1TUNiS0dkam5vTVF4b3Q4ZFNNbW12V1VmaDI1dXZjeVhkNWJWYkFnPT0K",
+      "url": "https://github.com/Lucky2356/lifeOS/releases/download/v1.0.0/Life.OS_1.0.0_x64-setup.exe"
+    }
+  }
+}

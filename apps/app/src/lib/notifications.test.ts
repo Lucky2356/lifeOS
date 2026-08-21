@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { syncReminderNotifications } from './notifications';
 import { ledgerStore } from './store/objects';
+import { householdStore } from './store/household';
 
 const shown: string[] = [];
 
@@ -61,5 +62,42 @@ describe('syncReminderNotifications', () => {
     expect(await syncReminderNotifications()).toBe(0);
     expect(shown).toEqual([]);
     FakeNotification.permission = 'granted';
+  });
+});
+
+describe('напоминания о домашних задачах', () => {
+  beforeEach(() => {
+    shown.length = 0;
+    vi.stubGlobal('Notification', FakeNotification);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function houseWithTask(dueAt: string | null) {
+    const house = await householdStore.create('Наш дом', 'Алекс');
+    return householdStore.createTask(house.id, { title: 'Сдать показания счётчика', dueAt });
+  }
+
+  it('напоминает в день срока и только один раз', async () => {
+    await houseWithTask(inDays(0));
+    expect(await syncReminderNotifications()).toBe(1);
+    expect(shown.some((t) => t.includes('Сдать показания счётчика'))).toBe(true);
+    expect(await syncReminderNotifications()).toBe(0);
+  });
+
+  it('о просроченной задаче напоминает', async () => {
+    await houseWithTask(inDays(-3));
+    expect(await syncReminderNotifications()).toBe(1);
+  });
+
+  it('заранее не беспокоит', async () => {
+    await houseWithTask(inDays(5));
+    expect(await syncReminderNotifications()).toBe(0);
+  });
+
+  it('задача без срока и выполненная задача не напоминают', async () => {
+    await houseWithTask(null);
+    const done = await houseWithTask(inDays(0));
+    await householdStore.toggleTask(done.id);
+    expect(await syncReminderNotifications()).toBe(0);
   });
 });

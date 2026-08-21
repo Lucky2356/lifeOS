@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { scoreOptions, type Decision, type DecisionCriterion, type DecisionOption } from '@life-os/domain';
+import {
+  decideDecision,
+  recordOutcome,
+  reopenDecision,
+  scoreOptions,
+  type Decision,
+  type DecisionCriterion,
+  type DecisionOption,
+} from '@life-os/domain';
 import { decisionsStore as decisionApi } from '../lib/store';
+import { formatDate } from '../lib/format';
 import type { Theme } from '../lib/theme';
-import { PromptDialog } from './Dialog';
+import { ConfirmDialog, PromptDialog } from './Dialog';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   return (
@@ -19,6 +28,9 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [options, setOptions] = useState<DecisionOption[]>([]);
   const [dirty, setDirty] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [expected, setExpected] = useState('');
+  const [outcome, setOutcome] = useState('');
+  const [confirmReopen, setConfirmReopen] = useState(false);
 
   const load = useCallback(() => {
     void decisionApi.list().then(setDecisions);
@@ -29,6 +41,8 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     setSelected(d);
     setCriteria(d.criteria);
     setOptions(d.options);
+    setExpected(d.expectedOutcome);
+    setOutcome(d.actualOutcome ?? '');
     setDirty(false);
   }
 
@@ -41,10 +55,48 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
   async function save() {
     if (!selected) return;
-    const updated = await decisionApi.update(selected.id, { criteria, options });
+    const updated = await decisionApi.update(selected.id, {
+      criteria,
+      options,
+      expectedOutcome: expected,
+    });
     setSelected(updated);
     setDirty(false);
     load();
+  }
+
+  /** Записать изменение, посчитанное доменом (фиксация решения, исход, возврат в черновик). */
+  async function apply(next: Decision) {
+    const updated = await decisionApi.update(next.id, {
+      status: next.status,
+      chosenOptionId: next.chosenOptionId,
+      decidedAt: next.decidedAt,
+      actualOutcome: next.actualOutcome,
+    });
+    setSelected(updated);
+    setOutcome(updated.actualOutcome ?? '');
+    load();
+  }
+
+  async function decide(optionId: string) {
+    if (!selected) return;
+    // Несохранённые правки матрицы фиксируем вместе с решением, иначе они потеряются.
+    const base = dirty
+      ? await decisionApi.update(selected.id, { criteria, options, expectedOutcome: expected })
+      : selected;
+    setDirty(false);
+    await apply(decideDecision(base, optionId));
+  }
+
+  async function saveOutcome() {
+    if (!selected) return;
+    await apply(recordOutcome(selected, outcome.trim()));
+  }
+
+  async function reopen() {
+    if (!selected) return;
+    setConfirmReopen(false);
+    await apply(reopenDecision(selected));
   }
 
   function addCriterion() {
@@ -63,6 +115,8 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   }
 
   const ranked = scoreOptions({ criteria, options });
+  const decided = selected?.status === 'decided';
+  const chosenLabel = options.find((o) => o.id === selected?.chosenOptionId)?.label ?? 'вариант удалён';
 
   if (selected) {
     return (
@@ -73,8 +127,18 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           </button>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
         </div>
-        <div className="serif page-title" style={{ marginBottom: 18 }}>
-          {selected.title}
+        <div className="page-head" style={{ marginBottom: 18 }}>
+          <div>
+            <div className="serif page-title">{selected.title}</div>
+            {decided && (
+              <div className="page-sub">
+                Решено {formatDate(selected.decidedAt)} · {chosenLabel}
+              </div>
+            )}
+          </div>
+          <span className={`pill ${decided ? 'pill-ok' : 'pill-none'}`}>
+            {decided ? 'решено' : 'черновик'}
+          </span>
         </div>
 
         <div className="section-label">
@@ -177,17 +241,88 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   {i === 0 && (
                     <i className="ti ti-star" aria-hidden="true" style={{ color: 'var(--sage)' }} />
                   )}
-                  <span style={{ fontWeight: i === 0 ? 500 : 400 }}>{r.label}</span>
+                  <span style={{ flex: 1, fontWeight: i === 0 ? 500 : 400 }}>{r.label}</span>
                   <span className="list-row-meta">{r.total} баллов</span>
+                  {selected.chosenOptionId === r.optionId ? (
+                    <span className="pill pill-ok">выбрано</span>
+                  ) : (
+                    !decided && (
+                      <button className="reveal-btn" onClick={() => void decide(r.optionId)}>
+                        выбрать
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
             </div>
           </>
         )}
 
+        <div className="section-label">Журнал исхода</div>
+        <div className="list-card" style={{ marginBottom: 20, padding: 14, display: 'grid', gap: 12 }}>
+          <div className="field" style={{ margin: 0 }}>
+            <label htmlFor="expected">Чего вы ждёте от этого решения</label>
+            <textarea
+              id="expected"
+              rows={2}
+              value={expected}
+              onChange={(e) => {
+                setExpected(e.target.value);
+                setDirty(true);
+              }}
+              placeholder="Через полгода я рассчитываю, что…"
+            />
+            <div className="page-sub" style={{ fontSize: 12, marginTop: 5 }}>
+              Записанное ожидание — то, с чем потом сравнивают результат.
+            </div>
+          </div>
+
+          {decided ? (
+            <div className="field" style={{ margin: 0 }}>
+              <label htmlFor="outcome">Что вышло на самом деле</label>
+              <textarea
+                id="outcome"
+                rows={2}
+                value={outcome}
+                onChange={(e) => setOutcome(e.target.value)}
+                placeholder="Оглядываясь назад…"
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <button
+                  className="btn"
+                  onClick={() => void saveOutcome()}
+                  disabled={outcome.trim() === (selected.actualOutcome ?? '')}
+                >
+                  Записать исход
+                </button>
+                <button className="btn btn-ghost" onClick={() => setConfirmReopen(true)}>
+                  Пересмотреть решение
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="page-sub">
+              {ranked.length === 0
+                ? 'Добавьте варианты, чтобы принять решение.'
+                : 'Выберите вариант во «Взвешенном итоге» — решение зафиксируется с датой.'}
+            </div>
+          )}
+        </div>
+
         <button className="btn btn-primary" onClick={save} disabled={!dirty}>
           {dirty ? 'Сохранить' : 'Сохранено'}
         </button>
+
+        {confirmReopen && (
+          <ConfirmDialog
+            title="Вернуть решение в черновик?"
+            message="Выбранный вариант, дата решения и записанный исход будут стёрты."
+            confirmLabel="Пересмотреть"
+            danger
+            onConfirm={() => void reopen()}
+            onCancel={() => setConfirmReopen(false)}
+          />
+        )}
       </main>
     );
   }

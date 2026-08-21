@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  lifecycleFor,
   relationshipLabels,
   relationships,
   type Household,
@@ -9,7 +10,7 @@ import {
   type Role,
 } from '@life-os/domain';
 import { householdStore } from '../lib/store';
-import { counted } from '../lib/format';
+import { counted, formatDate } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog } from './Dialog';
 
@@ -32,6 +33,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [myName, setMyName] = useState('');
   const [newTask, setNewTask] = useState('');
   const [assignee, setAssignee] = useState('');
+  const [dueAt, setDueAt] = useState('');
   const [adding, setAdding] = useState(false);
   const [mName, setMName] = useState('');
   const [mRel, setMRel] = useState<Relationship>('partner');
@@ -67,8 +69,10 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     await householdStore.createTask(household.id, {
       title: newTask.trim(),
       assigneeMembershipId: assignee || null,
+      dueAt: dueAt ? new Date(dueAt).toISOString() : null,
     });
     setNewTask('');
+    setDueAt('');
     await loadDetail(household.id);
   }
 
@@ -243,6 +247,16 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                 >
                   {t.title}
                 </span>
+                {t.dueAt && t.status === 'open' && (
+                  <span
+                    className="list-row-meta"
+                    style={{
+                      color: lifecycleFor(t.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
+                    }}
+                  >
+                    {formatDate(t.dueAt)}
+                  </span>
+                )}
                 {nameOf(t.assigneeMembershipId) && (
                   <span className="list-row-meta">{nameOf(t.assigneeMembershipId)}</span>
                 )}
@@ -256,6 +270,12 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void addTask()}
               placeholder="Новая общая задача"
+            />
+            <input
+              type="date"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
+              aria-label="Срок задачи"
             />
             <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Исполнитель">
               <option value="">Без исполнителя</option>

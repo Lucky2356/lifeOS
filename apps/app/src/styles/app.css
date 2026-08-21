@@ -66,6 +66,11 @@ input[type='radio'] {
 select {
   cursor: pointer;
 }
+textarea {
+  /* Текст исходов пишут построчно; горизонтальное растягивание ломало бы вёрстку карточки. */
+  resize: vertical;
+  line-height: 1.6;
+}
 input:focus,
 select:focus,
 textarea:focus {
@@ -313,6 +318,9 @@ textarea:focus {
   padding: 22px;
   width: 100%;
   max-width: 420px;
+  /* Форм с полями типа объекта бывает длиннее экрана — прокручиваем саму модалку. */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
 }
 .field {
   margin-bottom: 14px;
@@ -324,7 +332,8 @@ textarea:focus {
   margin-bottom: 5px;
 }
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   font-family: inherit;
   font-size: 14px;

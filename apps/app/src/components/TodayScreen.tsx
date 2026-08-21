@@ -7,6 +7,7 @@ import {
   type LifeObject,
 } from '@life-os/domain';
 import { householdStore, ledgerStore } from '../lib/store';
+import { counted, formatDate } from '../lib/format';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import type { Theme } from '../lib/theme';
 
@@ -41,11 +42,22 @@ export function TodayScreen({
     });
     void householdStore.current().then((house) => {
       if (house)
-        void householdStore.tasks(house.id).then((t) => setTasks(t.filter((x) => x.status === 'open')));
+        void householdStore.tasks(house.id).then((all) =>
+          setTasks(
+            all
+              .filter((x) => x.status === 'open')
+              // Со сроком — вперёд и по возрастанию срока: просроченное должно попадаться на глаза.
+              .sort((a, b) => (a.dueAt ?? '￿').localeCompare(b.dueAt ?? '￿')),
+          ),
+        );
     });
   }, []);
 
-  const count = attention?.length ?? 0;
+  // Просроченная задача по дому — такое же «дело», как истекающий документ: с появлением сроков
+  // у задач заголовок обязан их учитывать, иначе он врёт.
+  const urgentTasks = tasks.filter((t) => (daysUntil(t.dueAt) ?? 1) <= 0).length;
+  const flaggedObjects = attention?.length ?? 0;
+  const count = flaggedObjects + urgentTasks;
 
   return (
     <main className="main">
@@ -62,7 +74,7 @@ export function TodayScreen({
               ? 'Загрузка…'
               : count === 0
                 ? 'Всё под контролем. Ничего срочного.'
-                : `${count} ${count === 1 ? 'дело просит' : 'дел просят'} внимания. Остальное под контролем.`}
+                : `${counted(count, 'дело', 'дела', 'дел')} ${count === 1 ? 'просит' : 'просят'} внимания. Остальное под контролем.`}
           </div>
         </div>
         <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
@@ -70,7 +82,7 @@ export function TodayScreen({
         </button>
       </div>
 
-      {count > 0 && (
+      {flaggedObjects > 0 && (
         <>
           <div className="section-label">Требует внимания</div>
           <div className="list-card" style={{ marginBottom: 22 }}>
@@ -112,7 +124,17 @@ export function TodayScreen({
             {tasks.map((t) => (
               <div className="list-row" key={t.id}>
                 <span className="check" aria-hidden="true" />
-                <span>{t.title}</span>
+                <span style={{ flex: 1 }}>{t.title}</span>
+                {t.dueAt && (
+                  <span
+                    className="list-row-meta"
+                    style={{
+                      color: lifecycleFor(t.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
+                    }}
+                  >
+                    {formatDate(t.dueAt)}
+                  </span>
+                )}
               </div>
             ))}
           </div>

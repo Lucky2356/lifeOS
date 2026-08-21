@@ -1,6 +1,7 @@
 import { computeReminders, daysUntil, defaultReminderRules } from '@life-os/domain';
 import { getSetting, setSetting } from './store/db';
 import { ledgerStore } from './store/objects';
+import { householdStore } from './store/household';
 import {
   notificationPermission,
   requestNotificationPermission as requestPermission,
@@ -23,6 +24,13 @@ const SHOWN_LIMIT = 500;
 
 async function shownKeys(): Promise<string[]> {
   return (await getSetting<string[]>(SHOWN_KEY)) ?? [];
+}
+
+/** Бытовая задача не нуждается в предупреждении за 90 дней — напоминаем в сам день срока. */
+const taskReminderRules = [{ offsetDays: 0 }];
+
+function taskPhrase(days: number): string {
+  return days < 0 ? `просрочена на ${-days} дн.` : days === 0 ? 'срок сегодня' : `срок через ${days} дн.`;
 }
 
 function phrase(days: number): string {
@@ -70,6 +78,26 @@ export async function syncReminderNotifications(now: Date = new Date()): Promise
       await showNow(title, phrase(daysUntil(obj.validUntil, now) ?? 0), key);
       fresh.push(key);
     }
+  }
+
+  // Домашние задачи со сроком — тот же механизм, но одно напоминание в день срока.
+  const household = await householdStore.current();
+  const tasks = household ? await householdStore.tasks(household.id) : [];
+  for (const task of tasks) {
+    if (task.status !== 'open' || !task.dueAt) continue;
+    const [reminder] = computeReminders(task.dueAt, taskReminderRules);
+    if (!reminder) continue;
+    const key = `task:${task.id}:${task.dueAt}`;
+    const fireAt = new Date(reminder.fireAt);
+    const title = `Life OS: ${task.title}`;
+    if (fireAt.getTime() > now.getTime()) {
+      // К моменту срабатывания это будет ровно день срока.
+      future.push({ key, at: fireAt, title, body: 'задача по дому · срок сегодня' });
+      continue;
+    }
+    if (shown.has(key)) continue;
+    await showNow(title, `задача по дому · ${taskPhrase(daysUntil(task.dueAt, now) ?? 0)}`, key);
+    fresh.push(key);
   }
 
   if (fresh.length > 0) {

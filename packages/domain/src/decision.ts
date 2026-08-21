@@ -112,6 +112,38 @@ export function applyDecisionUpdate(
   };
 }
 
+/**
+ * Зафиксировать решение: выбранный вариант, статус и дату. Ради этого модуль и существует —
+ * без фиксации выбора матрица остаётся упражнением, а журнала исходов не возникает.
+ */
+export function decideDecision(current: Decision, chosenOptionId: string, now: Date = new Date()): Decision {
+  if (!current.options.some((o) => o.id === chosenOptionId)) {
+    throw new Error('Выбранного варианта нет в решении');
+  }
+  return applyDecisionUpdate(
+    current,
+    { status: 'decided', chosenOptionId, decidedAt: now.toISOString() },
+    now,
+  );
+}
+
+/** Вернуть решение в черновик: выбор снимается, записанный исход стирается. */
+export function reopenDecision(current: Decision, now: Date = new Date()): Decision {
+  return applyDecisionUpdate(
+    current,
+    { status: 'draft', chosenOptionId: null, decidedAt: null, actualOutcome: null },
+    now,
+  );
+}
+
+/** Записать, что вышло на самом деле. Имеет смысл только для принятого решения. */
+export function recordOutcome(current: Decision, outcome: string, now: Date = new Date()): Decision {
+  if (current.status !== 'decided') {
+    throw new Error('Исход записывается только для принятого решения');
+  }
+  return applyDecisionUpdate(current, { actualOutcome: outcome }, now);
+}
+
 /** Свежий id для критерия/варианта на клиенте. */
 export function newDecisionChildId(): string {
   return newId();

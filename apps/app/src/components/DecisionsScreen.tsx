@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   decideDecision,
+  newDecisionChildId,
   recordOutcome,
   reopenDecision,
   scoreOptions,
@@ -130,11 +131,11 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   }
 
   function addCriterion() {
-    setCriteria((c) => [...c, { id: crypto.randomUUID(), label: 'Новый критерий', weight: 3 }]);
+    setCriteria((c) => [...c, { id: newDecisionChildId(), label: 'Новый критерий', weight: 3 }]);
     setDirty(true);
   }
   function addOption() {
-    setOptions((o) => [...o, { id: crypto.randomUUID(), label: 'Новый вариант', scores: {} }]);
+    setOptions((o) => [...o, { id: newDecisionChildId(), label: 'Новый вариант', scores: {} }]);
     setDirty(true);
   }
   function setScore(optId: string, critId: string, value: number) {

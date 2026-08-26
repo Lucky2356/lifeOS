@@ -3,7 +3,9 @@ import {
   applyBackup,
   backupFilename,
   backupToBlob,
+  lastBackupAt,
   readBackupFile,
+  rememberBackup,
   summarize,
   type BackupSummary,
 } from '../lib/backup';
@@ -19,6 +21,7 @@ import { clearAllData } from '../lib/store';
 import { counted, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog } from './Dialog';
+import { Icon } from './Icon';
 
 type Pending = { summary: BackupSummary; apply: () => Promise<void> };
 
@@ -37,10 +40,12 @@ export function SettingsScreen({
   const [error, setError] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<Pending | null>(null);
   const [confirmWipe, setConfirmWipe] = useState(false);
+  const [lastBackup, setLastBackup] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void notificationPermission().then(setNotifPerm);
+    void lastBackupAt().then(setLastBackup);
   }, []);
 
   async function exportBackup() {
@@ -49,6 +54,9 @@ export function SettingsScreen({
     setMessage(null);
     try {
       const target = await saveFile(backupFilename(), await backupToBlob());
+      // Отмечаем только после реально сохранённого файла — иначе напоминание врало бы.
+      await rememberBackup();
+      setLastBackup(new Date().toISOString());
       setMessage(saveTargetLabel(target));
     } catch {
       setError('Не удалось сохранить копию');
@@ -110,10 +118,10 @@ export function SettingsScreen({
     <main className="main">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
         <button className="btn btn-ghost" onClick={onBack}>
-          <i className="ti ti-arrow-left" aria-hidden="true" /> Назад
+          <Icon name="arrow-left" /> Назад
         </button>
         <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
-          <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
 
@@ -128,7 +136,7 @@ export function SettingsScreen({
           <div className="section-label">Напоминания</div>
           <div className="list-card">
             <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
-              <i className="ti ti-bell-ringing" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+              <Icon name="bell-ringing" style={{ color: 'var(--sage)' }} />
               <span style={{ flex: 1 }}>
                 Уведомления о приближающихся сроках
                 {supportsScheduling() ? (
@@ -159,17 +167,22 @@ export function SettingsScreen({
       </div>
       <div className="list-card">
         <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
-          <i className="ti ti-download" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+          <Icon name="download" style={{ color: 'var(--sage)' }} />
           <span style={{ flex: 1 }}>
             Сохранить копию всех данных
-            <span className="page-sub"> · один файл, вместе с приложенными документами</span>
+            <span className="page-sub">
+              {' · '}
+              {lastBackup
+                ? `последняя копия ${formatDateTime(lastBackup)}`
+                : 'копия ещё ни разу не сохранялась'}
+            </span>
           </span>
           <button className="btn btn-primary" onClick={() => void exportBackup()} disabled={busy !== null}>
             {busy === 'export' ? 'Сохранение…' : 'Сохранить'}
           </button>
         </div>
         <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
-          <i className="ti ti-upload" aria-hidden="true" style={{ color: 'var(--ink-2)' }} />
+          <Icon name="upload" style={{ color: 'var(--ink-2)' }} />
           <span style={{ flex: 1 }}>
             Восстановить из файла
             <span className="page-sub"> · текущие данные будут заменены</span>
@@ -203,7 +216,7 @@ export function SettingsScreen({
       </div>
       <div className="list-card">
         <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
-          <i className="ti ti-trash" aria-hidden="true" style={{ color: 'var(--brick-ink)' }} />
+          <Icon name="trash" style={{ color: 'var(--brick-ink)' }} />
           <span style={{ flex: 1 }}>
             Удалить все данные
             <span className="page-sub"> · без возможности восстановления, кроме резервной копии</span>

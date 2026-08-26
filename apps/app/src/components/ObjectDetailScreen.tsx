@@ -16,6 +16,7 @@ import { SensitivityField, TypeFields, sensitivityLabels } from './ObjectFields'
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
+import { Icon } from './Icon';
 
 const statusLabels: Record<LifeObjectStatus, string> = { active: 'Активен', archived: 'В архиве' };
 
@@ -108,7 +109,7 @@ export function ObjectDetailScreen({
     return (
       <main className="main">
         <button className="btn btn-ghost" onClick={onBack}>
-          <i className="ti ti-arrow-left" aria-hidden="true" /> Назад
+          <Icon name="arrow-left" /> Назад
         </button>
         <div className="state">Не удалось открыть объект.</div>
       </main>
@@ -133,16 +134,16 @@ export function ObjectDetailScreen({
     <main className="main">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
         <button className="btn btn-ghost" onClick={onBack}>
-          <i className="ti ti-arrow-left" aria-hidden="true" /> Реестр
+          <Icon name="arrow-left" /> Реестр
         </button>
         <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
-          <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
 
       <div className="detail-head">
         <span className="icon-chip icon-chip-lg">
-          <i className={`ti ${typeIcons[obj.type]}`} aria-hidden="true" />
+          <Icon name={typeIcons[obj.type]} />
         </span>
         <div style={{ flex: 1 }}>
           {editing ? (
@@ -182,10 +183,10 @@ export function ObjectDetailScreen({
         ) : (
           <>
             <button className="btn" onClick={() => setEditing(true)}>
-              <i className="ti ti-edit" aria-hidden="true" /> Изменить
+              <Icon name="edit" /> Изменить
             </button>
             <button className="btn btn-danger" onClick={() => setConfirmDelete(true)} disabled={busy}>
-              <i className="ti ti-trash" aria-hidden="true" /> Удалить
+              <Icon name="trash" /> Удалить
             </button>
           </>
         )}
@@ -246,7 +247,7 @@ export function ObjectDetailScreen({
               Поля
               {obj.sensitivity !== 'normal' && (
                 <button className="reveal-btn" onClick={() => setReveal((r) => !r)}>
-                  <i className={`ti ${masked ? 'ti-lock' : 'ti-lock-open'}`} aria-hidden="true" />
+                  <Icon name={masked ? 'lock' : 'lock-open'} />
                   {masked ? 'Показать' : 'Скрыть'}
                 </button>
               )}
@@ -284,7 +285,7 @@ export function ObjectDetailScreen({
         <div className="list-card">
           {reminders.map((r) => (
             <div className="list-row" key={r.offsetDays}>
-              <i className="ti ti-bell" aria-hidden="true" style={{ color: 'var(--sage)' }} />
+              <Icon name="bell" style={{ color: 'var(--sage)' }} />
               <span>За {r.offsetDays} дн. до срока</span>
               <span className="list-row-meta">{formatDate(r.fireAt)}</span>
             </div>
@@ -294,7 +295,7 @@ export function ObjectDetailScreen({
 
       {(state === 'due_soon' || state === 'overdue') && (
         <div className="hint">
-          <i className="ti ti-info-circle" aria-hidden="true" />
+          <Icon name="info-circle" />
           <span>
             {state === 'overdue'
               ? 'Срок уже прошёл — стоит заняться в ближайшее время.'

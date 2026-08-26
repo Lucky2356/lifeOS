@@ -47,3 +47,36 @@ describe('householdStore', () => {
     expect(await householdStore.members(house.id)).toHaveLength(1);
   });
 });
+
+describe('правка и удаление задач', () => {
+  it('меняет название, срок и исполнителя', async () => {
+    const house = await householdStore.create('Наш дом', 'Алекс');
+    const kid = await householdStore.addMember(house.id, { displayName: 'Дима', relationship: 'child' });
+    const task = await householdStore.createTask(house.id, { title: 'Мусор' });
+
+    const updated = await householdStore.updateTask(task.id, {
+      title: 'Вынести мусор',
+      dueAt: '2026-09-01T00:00:00.000Z',
+      assigneeMembershipId: kid.id,
+    });
+
+    expect(updated.title).toBe('Вынести мусор');
+    expect(updated.dueAt).toBe('2026-09-01T00:00:00.000Z');
+    expect(updated.assigneeMembershipId).toBe(kid.id);
+    expect(updated.version).toBe(task.version + 1);
+    expect((await householdStore.tasks(house.id))[0]?.title).toBe('Вынести мусор');
+  });
+
+  it('правка несуществующей задачи — ошибка', async () => {
+    await expect(
+      householdStore.updateTask('00000000-0000-0000-0000-0000000000ff', { title: 'нет' }),
+    ).rejects.toThrow();
+  });
+
+  it('удаляет задачу', async () => {
+    const house = await householdStore.create('Наш дом', 'Алекс');
+    const task = await householdStore.createTask(house.id, { title: 'Мусор' });
+    await householdStore.removeTask(task.id);
+    expect(await householdStore.tasks(house.id)).toEqual([]);
+  });
+});

@@ -8,8 +8,10 @@ import {
 } from '@life-os/domain';
 import { householdStore, ledgerStore } from '../lib/store';
 import { counted, formatDate } from '../lib/format';
+import { backupIsStale, lastBackupAt } from '../lib/backup';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import type { Theme } from '../lib/theme';
+import { Icon } from './Icon';
 
 const order = { overdue: 0, due_soon: 1, ok: 2, none: 3 } as const;
 
@@ -17,40 +19,62 @@ export function TodayScreen({
   theme,
   onToggleTheme,
   onOpenObject,
+  onOpenSettings,
 }: {
   theme: Theme;
   onToggleTheme: () => void;
   onOpenObject: (id: string) => void;
+  onOpenSettings: () => void;
 }) {
   const [attention, setAttention] = useState<LifeObject[] | null>(null);
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
+  const [backupStale, setBackupStale] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    void ledgerStore.list().then((objects) => {
-      const flagged = objects
-        .filter((o) => {
-          const s = lifecycleFor(o.validUntil);
-          return s === 'overdue' || s === 'due_soon';
-        })
-        .sort((a, b) => {
-          const sa = order[lifecycleFor(a.validUntil)];
-          const sb = order[lifecycleFor(b.validUntil)];
-          if (sa !== sb) return sa - sb;
-          return (daysUntil(a.validUntil) ?? 0) - (daysUntil(b.validUntil) ?? 0);
-        });
-      setAttention(flagged);
-    });
-    void householdStore.current().then((house) => {
-      if (house)
-        void householdStore.tasks(house.id).then((all) =>
-          setTasks(
-            all
-              .filter((x) => x.status === 'open')
-              // Со сроком — вперёд и по возрастанию срока: просроченное должно попадаться на глаза.
-              .sort((a, b) => (a.dueAt ?? '￿').localeCompare(b.dueAt ?? '￿')),
-          ),
+    // Отказ хранилища не должен оставлять экран в вечной «Загрузке» — показываем это честно.
+    const fail = () => setFailed(true);
+
+    void ledgerStore
+      .list()
+      .then((objects) => {
+        const flagged = objects
+          .filter((o) => {
+            // Архивное не требует внимания: срок у сданного паспорта уже неважен.
+            if (o.status === 'archived') return false;
+            const s = lifecycleFor(o.validUntil);
+            return s === 'overdue' || s === 'due_soon';
+          })
+          .sort((a, b) => {
+            const sa = order[lifecycleFor(a.validUntil)];
+            const sb = order[lifecycleFor(b.validUntil)];
+            if (sa !== sb) return sa - sb;
+            return (daysUntil(a.validUntil) ?? 0) - (daysUntil(b.validUntil) ?? 0);
+          });
+        setAttention(flagged);
+      })
+      .catch(fail);
+
+    // Данные лежат только здесь: если копии давно не было, об этом стоит сказать спокойно.
+    void lastBackupAt()
+      .then((at) => setBackupStale(backupIsStale(at)))
+      .catch(() => {
+        /* напоминание о копии не настолько важно, чтобы ломать из-за него экран */
+      });
+
+    void householdStore
+      .current()
+      .then(async (house) => {
+        if (!house) return;
+        const all = await householdStore.tasks(house.id);
+        setTasks(
+          all
+            .filter((x) => x.status === 'open')
+            // Со сроком — вперёд и по возрастанию срока: просроченное должно попадаться на глаза.
+            .sort((a, b) => (a.dueAt ?? '￿').localeCompare(b.dueAt ?? '￿')),
         );
-    });
+      })
+      .catch(fail);
   }, []);
 
   // Просроченная задача по дому — такое же «дело», как истекающий документ: с появлением сроков
@@ -58,6 +82,22 @@ export function TodayScreen({
   const urgentTasks = tasks.filter((t) => (daysUntil(t.dueAt) ?? 1) <= 0).length;
   const flaggedObjects = attention?.length ?? 0;
   const count = flaggedObjects + urgentTasks;
+
+  if (failed) {
+    return (
+      <main className="main">
+        <div className="serif page-title" style={{ marginBottom: 8 }}>
+          Не удалось прочитать данные
+        </div>
+        <div className="page-sub" style={{ maxWidth: 520, marginBottom: 18 }}>
+          Хранилище на этом устройстве недоступно. Попробуйте перезапустить приложение.
+        </div>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>
+          Перезапустить
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="main">
@@ -78,9 +118,22 @@ export function TodayScreen({
           </div>
         </div>
         <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
-          <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
+
+      {backupStale && (
+        <div className="hint" style={{ marginBottom: 20 }} role="status">
+          <Icon name="download" />
+          <span style={{ flex: 1 }}>
+            Данные хранятся только на этом устройстве, и резервной копии давно не было. Копия занимает минуту
+            и спасает при потере или сбросе телефона.
+          </span>
+          <button className="btn" onClick={onOpenSettings}>
+            Сохранить копию
+          </button>
+        </div>
+      )}
 
       {flaggedObjects > 0 && (
         <>
@@ -103,7 +156,7 @@ export function TodayScreen({
                   }}
                 >
                   <span className="icon-chip" style={{ width: 32, height: 32, fontSize: 16 }}>
-                    <i className={`ti ${typeIcons[o.type]}`} aria-hidden="true" />
+                    <Icon name={typeIcons[o.type]} />
                   </span>
                   <span style={{ flex: 1 }}>
                     <span style={{ fontWeight: 500 }}>{o.title}</span>

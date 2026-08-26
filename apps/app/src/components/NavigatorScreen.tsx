@@ -9,11 +9,12 @@ import {
 import { navigatorStore as contentApi } from '../lib/store';
 import { counted } from '../lib/format';
 import type { Theme } from '../lib/theme';
+import { Icon } from './Icon';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   return (
     <button className="btn" onClick={onToggle} aria-label="Переключить тему">
-      <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+      <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
     </button>
   );
 }
@@ -48,7 +49,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       <main className="main">
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
           <button className="btn btn-ghost" onClick={() => setSelected(null)}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Навигатор
+            <Icon name="arrow-left" /> Навигатор
           </button>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
         </div>
@@ -78,7 +79,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                 onClick={() => toggle(step.key)}
                 aria-label={done ? 'Снять отметку' : 'Отметить готовым'}
               >
-                {done && <i className="ti ti-check" aria-hidden="true" />}
+                {done && <Icon name="check" />}
               </button>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -100,7 +101,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {step.requiredDocumentTypes.map((t) => (
                       <span key={t} className="pill pill-none">
-                        <i className="ti ti-file" aria-hidden="true" style={{ marginRight: 4 }} />
+                        <Icon name="file" style={{ marginRight: 4 }} />
                         {objectTypeLabels[t].ru}
                       </span>
                     ))}
@@ -130,7 +131,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           <button key={pb.key} className="card" onClick={() => open(pb)}>
             <div className="card-top">
               <span className="icon-chip">
-                <i className="ti ti-compass" aria-hidden="true" />
+                <Icon name="compass" />
               </span>
             </div>
             <div className="card-title">{pickText(pb.title, 'ru')}</div>
@@ -145,7 +146,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           <button key={pb.key} className="card" onClick={() => open(pb)}>
             <div className="card-top">
               <span className="icon-chip">
-                <i className="ti ti-file-text" aria-hidden="true" />
+                <Icon name="file-text" />
               </span>
             </div>
             <div className="card-title">{pickText(pb.title, 'ru')}</div>

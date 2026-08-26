@@ -1,16 +1,17 @@
+import { Icon } from './Icon';
 const items = [
-  { key: 'today', icon: 'ti-sun', label: 'Сегодня' },
-  { key: 'ledger', icon: 'ti-folders', label: 'Реестр' },
-  { key: 'household', icon: 'ti-home', label: 'Дом' },
-  { key: 'decisions', icon: 'ti-scale', label: 'Решения' },
-  { key: 'navigator', icon: 'ti-compass', label: 'Навигатор' },
+  { key: 'today', icon: 'sun', label: 'Сегодня' },
+  { key: 'ledger', icon: 'folders', label: 'Реестр' },
+  { key: 'household', icon: 'home', label: 'Дом' },
+  { key: 'decisions', icon: 'scale', label: 'Решения' },
+  { key: 'navigator', icon: 'compass', label: 'Навигатор' },
 ];
 
 export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (key: string) => void }) {
   return (
     <nav className="rail" aria-label="Основная навигация">
       <div className="rail-logo" aria-hidden="true">
-        <i className="ti ti-inner-shadow-top-left" />
+        <Icon name="inner-shadow-top-left" />
       </div>
       {items.map((it) => (
         <button
@@ -21,7 +22,7 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (k
           aria-current={it.key === active ? 'page' : undefined}
           onClick={() => onNavigate(it.key)}
         >
-          <i className={`ti ${it.icon}`} aria-hidden="true" />
+          <Icon name={it.icon} />
         </button>
       ))}
       <div className="rail-spacer" />
@@ -32,7 +33,7 @@ export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (k
         aria-current={active === 'settings' ? 'page' : undefined}
         onClick={() => onNavigate('settings')}
       >
-        А
+        <Icon name="settings" />
       </button>
     </nav>
   );

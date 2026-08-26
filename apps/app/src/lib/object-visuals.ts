@@ -1,15 +1,15 @@
 import { daysUntil, lifecycleFor, type LifeObject, type ObjectType } from '@life-os/domain';
 
-/** Иконка (Tabler) для каждого типа объекта. */
+/** Имя иконки для каждого типа объекта (см. components/Icon.tsx). */
 export const typeIcons: Record<ObjectType, string> = {
-  document: 'ti-id',
-  warranty_item: 'ti-shield-check',
-  subscription: 'ti-repeat',
-  insurance: 'ti-file-invoice',
-  property: 'ti-building',
-  vehicle: 'ti-car',
-  health_record: 'ti-heartbeat',
-  financial_obligation: 'ti-building-bank',
+  document: 'id',
+  warranty_item: 'shield-check',
+  subscription: 'repeat',
+  insurance: 'file-invoice',
+  property: 'building',
+  vehicle: 'car',
+  health_record: 'heartbeat',
+  financial_obligation: 'building-bank',
 };
 
 export interface Pill {
@@ -19,6 +19,9 @@ export interface Pill {
 
 /** Спокойная подача статуса по дедлайну (см. docs/DESIGN.md). */
 export function lifecyclePill(o: LifeObject, now: Date = new Date()): Pill {
+  // Архивное не кричит о сроках: объект убран сознательно, «просрочено» здесь было бы ложной тревогой.
+  if (o.status === 'archived') return { cls: 'pill-none', label: 'в архиве' };
+
   const state = lifecycleFor(o.validUntil, now);
   const days = daysUntil(o.validUntil, now);
   switch (state) {

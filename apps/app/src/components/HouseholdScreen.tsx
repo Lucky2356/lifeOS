@@ -13,6 +13,7 @@ import { householdStore } from '../lib/store';
 import { counted, formatDate } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog } from './Dialog';
+import { Icon } from './Icon';
 
 const roleTint: Record<Role, string> = {
   owner: 'tint-sage',
@@ -38,6 +39,9 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [mName, setMName] = useState('');
   const [mRel, setMRel] = useState<Relationship>('partner');
   const [pendingRemove, setPendingRemove] = useState<Membership | null>(null);
+  const [pendingTaskRemove, setPendingTaskRemove] = useState<HouseholdTask | null>(null);
+  const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ title: '', dueAt: '', assignee: '' });
 
   const loadDetail = useCallback(async (id: string) => {
     const [m, t] = await Promise.all([householdStore.members(id), householdStore.tasks(id)]);
@@ -91,6 +95,33 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     await loadDetail(household.id);
   }
 
+  function startEdit(task: HouseholdTask) {
+    setEditingTask(task.id);
+    setDraft({
+      title: task.title,
+      dueAt: task.dueAt ? task.dueAt.slice(0, 10) : '',
+      assignee: task.assigneeMembershipId ?? '',
+    });
+  }
+
+  async function saveTask() {
+    if (!household || !editingTask || draft.title.trim().length === 0) return;
+    await householdStore.updateTask(editingTask, {
+      title: draft.title.trim(),
+      dueAt: draft.dueAt ? new Date(draft.dueAt).toISOString() : null,
+      assigneeMembershipId: draft.assignee || null,
+    });
+    setEditingTask(null);
+    await loadDetail(household.id);
+  }
+
+  async function confirmTaskRemove() {
+    if (!household || !pendingTaskRemove) return;
+    await householdStore.removeTask(pendingTaskRemove.id);
+    setPendingTaskRemove(null);
+    await loadDetail(household.id);
+  }
+
   async function confirmRemove() {
     if (!household || !pendingRemove) return;
     await householdStore.removeMember(pendingRemove.id);
@@ -115,7 +146,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           </div>
         </div>
         <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
-          <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
 
@@ -145,7 +176,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             Люди
             {!adding && (
               <button className="reveal-btn" onClick={() => setAdding(true)}>
-                <i className="ti ti-user-plus" aria-hidden="true" /> добавить
+                <Icon name="user-plus" /> добавить
               </button>
             )}
           </div>
@@ -214,7 +245,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                       onClick={() => setPendingRemove(m)}
                       aria-label={`Убрать ${m.displayName}`}
                     >
-                      <i className="ti ti-trash" aria-hidden="true" />
+                      <Icon name="trash" />
                     </button>
                   )}
                 </div>
@@ -229,39 +260,97 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                 Пока нет задач
               </div>
             )}
-            {tasks.map((t) => (
-              <div className="list-row" key={t.id}>
-                <button
-                  className={`check ${t.status === 'done' ? 'check-done' : ''}`}
-                  onClick={() => void toggle(t.id)}
-                  aria-label={t.status === 'done' ? 'Снять отметку' : 'Отметить выполненной'}
-                >
-                  {t.status === 'done' && <i className="ti ti-check" aria-hidden="true" />}
-                </button>
-                <span
-                  style={{
-                    flex: 1,
-                    textDecoration: t.status === 'done' ? 'line-through' : 'none',
-                    color: t.status === 'done' ? 'var(--ink-3)' : 'var(--ink)',
-                  }}
-                >
-                  {t.title}
-                </span>
-                {t.dueAt && t.status === 'open' && (
+            {tasks.map((t) =>
+              editingTask === t.id ? (
+                <div className="list-row" key={t.id} style={{ flexWrap: 'wrap', gap: 8 }}>
+                  <input
+                    className="inline-input"
+                    value={draft.title}
+                    onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void saveTask();
+                      if (e.key === 'Escape') setEditingTask(null);
+                    }}
+                    aria-label="Название задачи"
+                    autoFocus
+                  />
+                  <input
+                    type="date"
+                    value={draft.dueAt}
+                    onChange={(e) => setDraft((d) => ({ ...d, dueAt: e.target.value }))}
+                    aria-label="Срок задачи"
+                  />
+                  <select
+                    value={draft.assignee}
+                    onChange={(e) => setDraft((d) => ({ ...d, assignee: e.target.value }))}
+                    aria-label="Исполнитель"
+                  >
+                    <option value="">Без исполнителя</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.displayName}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => void saveTask()}
+                    disabled={draft.title.trim().length === 0}
+                  >
+                    Сохранить
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => setEditingTask(null)}>
+                    Отмена
+                  </button>
+                </div>
+              ) : (
+                <div className="list-row" key={t.id}>
+                  <button
+                    className={`check ${t.status === 'done' ? 'check-done' : ''}`}
+                    onClick={() => void toggle(t.id)}
+                    aria-label={t.status === 'done' ? 'Снять отметку' : 'Отметить выполненной'}
+                  >
+                    {t.status === 'done' && <Icon name="check" />}
+                  </button>
                   <span
-                    className="list-row-meta"
                     style={{
-                      color: lifecycleFor(t.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
+                      flex: 1,
+                      textDecoration: t.status === 'done' ? 'line-through' : 'none',
+                      color: t.status === 'done' ? 'var(--ink-3)' : 'var(--ink)',
                     }}
                   >
-                    {formatDate(t.dueAt)}
+                    {t.title}
                   </span>
-                )}
-                {nameOf(t.assigneeMembershipId) && (
-                  <span className="list-row-meta">{nameOf(t.assigneeMembershipId)}</span>
-                )}
-              </div>
-            ))}
+                  {t.dueAt && t.status === 'open' && (
+                    <span
+                      className="list-row-meta"
+                      style={{
+                        color: lifecycleFor(t.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
+                      }}
+                    >
+                      {formatDate(t.dueAt)}
+                    </span>
+                  )}
+                  {nameOf(t.assigneeMembershipId) && (
+                    <span className="list-row-meta">{nameOf(t.assigneeMembershipId)}</span>
+                  )}
+                  <button
+                    className="reveal-btn"
+                    onClick={() => startEdit(t)}
+                    aria-label={`Изменить задачу «${t.title}»`}
+                  >
+                    <Icon name="edit" />
+                  </button>
+                  <button
+                    className="reveal-btn"
+                    onClick={() => setPendingTaskRemove(t)}
+                    aria-label={`Удалить задачу «${t.title}»`}
+                  >
+                    <Icon name="trash" />
+                  </button>
+                </div>
+              ),
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 22, flexWrap: 'wrap' }}>
             <input
@@ -294,6 +383,16 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             </button>
           </div>
         </>
+      )}
+
+      {pendingTaskRemove && (
+        <ConfirmDialog
+          title={`Удалить задачу «${pendingTaskRemove.title}»?`}
+          confirmLabel="Удалить"
+          danger
+          onConfirm={() => void confirmTaskRemove()}
+          onCancel={() => setPendingTaskRemove(null)}
+        />
       )}
 
       {pendingRemove && (

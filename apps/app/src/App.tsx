@@ -79,7 +79,12 @@ export function App() {
           onToggleTheme={toggle}
         />
       ) : route === 'today' ? (
-        <TodayScreen theme={theme} onToggleTheme={toggle} onOpenObject={openObject} />
+        <TodayScreen
+          theme={theme}
+          onToggleTheme={toggle}
+          onOpenObject={openObject}
+          onOpenSettings={() => setRoute('settings')}
+        />
       ) : route === 'ledger' ? (
         <LedgerScreen theme={theme} onToggleTheme={toggle} onSelect={setSelectedId} />
       ) : route === 'household' ? (
@@ -91,7 +96,12 @@ export function App() {
       ) : route === 'settings' ? (
         <SettingsScreen theme={theme} onToggleTheme={toggle} onBack={() => setRoute('today')} />
       ) : (
-        <TodayScreen theme={theme} onToggleTheme={toggle} onOpenObject={openObject} />
+        <TodayScreen
+          theme={theme}
+          onToggleTheme={toggle}
+          onOpenObject={openObject}
+          onOpenSettings={() => setRoute('settings')}
+        />
       )}
     </div>
   );

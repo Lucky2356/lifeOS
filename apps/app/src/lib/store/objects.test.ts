@@ -81,3 +81,18 @@ describe('ledgerStore', () => {
     expect(await database.get('files', keep.id)).toBeDefined();
   });
 });
+
+describe('архив', () => {
+  it('объект переводится в архив и обратно', async () => {
+    const obj = await ledgerStore.create({ type: 'document', title: 'Старый паспорт' });
+    expect(obj.status).toBe('active');
+
+    const archived = await ledgerStore.update(obj.id, { status: 'archived' });
+    expect(archived.status).toBe('archived');
+
+    // Хранилище отдаёт всё: разделение на активные и архив — дело экрана.
+    expect((await ledgerStore.list()).map((o) => o.status)).toEqual(['archived']);
+
+    expect((await ledgerStore.update(obj.id, { status: 'active' })).status).toBe('active');
+  });
+});

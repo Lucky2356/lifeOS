@@ -12,11 +12,12 @@ import { decisionsStore as decisionApi } from '../lib/store';
 import { formatDate } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog, PromptDialog } from './Dialog';
+import { Icon } from './Icon';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   return (
     <button className="btn" onClick={onToggle} aria-label="Переключить тему">
-      <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+      <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
     </button>
   );
 }
@@ -31,6 +32,8 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [expected, setExpected] = useState('');
   const [outcome, setOutcome] = useState('');
   const [confirmReopen, setConfirmReopen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [context, setContext] = useState('');
 
   const load = useCallback(() => {
     void decisionApi.list().then(setDecisions);
@@ -42,6 +45,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     setCriteria(d.criteria);
     setOptions(d.options);
     setExpected(d.expectedOutcome);
+    setContext(d.context);
     setOutcome(d.actualOutcome ?? '');
     setDirty(false);
   }
@@ -58,6 +62,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     const updated = await decisionApi.update(selected.id, {
       criteria,
       options,
+      context,
       expectedOutcome: expected,
     });
     setSelected(updated);
@@ -82,7 +87,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     if (!selected) return;
     // Несохранённые правки матрицы фиксируем вместе с решением, иначе они потеряются.
     const base = dirty
-      ? await decisionApi.update(selected.id, { criteria, options, expectedOutcome: expected })
+      ? await decisionApi.update(selected.id, { criteria, options, context, expectedOutcome: expected })
       : selected;
     setDirty(false);
     await apply(decideDecision(base, optionId));
@@ -91,6 +96,31 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   async function saveOutcome() {
     if (!selected) return;
     await apply(recordOutcome(selected, outcome.trim()));
+  }
+
+  async function removeDecision() {
+    if (!selected) return;
+    setConfirmDelete(false);
+    await decisionApi.remove(selected.id);
+    setSelected(null);
+    load();
+  }
+
+  function removeCriterion(id: string) {
+    setCriteria((cs) => cs.filter((c) => c.id !== id));
+    // Оценки по удалённому критерию больше ни на что не влияют — убираем, чтобы не копить мусор.
+    setOptions((os) =>
+      os.map((o) => {
+        const { [id]: _dropped, ...rest } = o.scores;
+        return { ...o, scores: rest };
+      }),
+    );
+    setDirty(true);
+  }
+
+  function removeOption(id: string) {
+    setOptions((os) => os.filter((o) => o.id !== id));
+    setDirty(true);
   }
 
   async function reopen() {
@@ -123,7 +153,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       <main className="main">
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
           <button className="btn btn-ghost" onClick={() => setSelected(null)}>
-            <i className="ti ti-arrow-left" aria-hidden="true" /> Решения
+            <Icon name="arrow-left" /> Решения
           </button>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
         </div>
@@ -136,15 +166,38 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               </div>
             )}
           </div>
-          <span className={`pill ${decided ? 'pill-ok' : 'pill-none'}`}>
-            {decided ? 'решено' : 'черновик'}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className={`pill ${decided ? 'pill-ok' : 'pill-none'}`}>
+              {decided ? 'решено' : 'черновик'}
+            </span>
+            <button
+              className="btn btn-danger"
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Удалить решение"
+            >
+              <Icon name="trash" />
+            </button>
+          </div>
+        </div>
+
+        <div className="field" style={{ maxWidth: 620 }}>
+          <label htmlFor="decision-context">В чём вопрос</label>
+          <textarea
+            id="decision-context"
+            rows={2}
+            value={context}
+            onChange={(e) => {
+              setContext(e.target.value);
+              setDirty(true);
+            }}
+            placeholder="Что происходит и почему выбор вообще встал"
+          />
         </div>
 
         <div className="section-label">
           Критерии
           <button className="reveal-btn" onClick={addCriterion}>
-            <i className="ti ti-plus" aria-hidden="true" /> добавить
+            <Icon name="plus" /> добавить
           </button>
         </div>
         <div className="list-card" style={{ marginBottom: 20 }}>
@@ -179,6 +232,13 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   </option>
                 ))}
               </select>
+              <button
+                className="reveal-btn"
+                onClick={() => removeCriterion(c.id)}
+                aria-label={`Убрать критерий «${c.label}»`}
+              >
+                <Icon name="trash" />
+              </button>
             </div>
           ))}
         </div>
@@ -186,7 +246,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         <div className="section-label">
           Варианты
           <button className="reveal-btn" onClick={addOption}>
-            <i className="ti ti-plus" aria-hidden="true" /> добавить
+            <Icon name="plus" /> добавить
           </button>
         </div>
         <div className="list-card" style={{ marginBottom: 20 }}>
@@ -228,6 +288,13 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   />
                 </span>
               ))}
+              <button
+                className="reveal-btn"
+                onClick={() => removeOption(o.id)}
+                aria-label={`Убрать вариант «${o.label}»`}
+              >
+                <Icon name="trash" />
+              </button>
             </div>
           ))}
         </div>
@@ -238,9 +305,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             <div className="list-card" style={{ marginBottom: 20 }}>
               {ranked.map((r, i) => (
                 <div className="list-row" key={r.optionId}>
-                  {i === 0 && (
-                    <i className="ti ti-star" aria-hidden="true" style={{ color: 'var(--sage)' }} />
-                  )}
+                  {i === 0 && <Icon name="star" style={{ color: 'var(--sage)' }} />}
                   <span style={{ flex: 1, fontWeight: i === 0 ? 500 : 400 }}>{r.label}</span>
                   <span className="list-row-meta">{r.total} баллов</span>
                   {selected.chosenOptionId === r.optionId ? (
@@ -313,6 +378,17 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           {dirty ? 'Сохранить' : 'Сохранено'}
         </button>
 
+        {confirmDelete && (
+          <ConfirmDialog
+            title={`Удалить решение «${selected.title}»?`}
+            message="Критерии, варианты и записанный исход будут удалены безвозвратно."
+            confirmLabel="Удалить"
+            danger
+            onConfirm={() => void removeDecision()}
+            onCancel={() => setConfirmDelete(false)}
+          />
+        )}
+
         {confirmReopen && (
           <ConfirmDialog
             title="Вернуть решение в черновик?"
@@ -337,7 +413,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         <div style={{ display: 'flex', gap: 8 }}>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
           <button className="btn btn-primary" onClick={() => setCreating(true)}>
-            <i className="ti ti-plus" aria-hidden="true" /> Новое
+            <Icon name="plus" /> Новое
           </button>
         </div>
       </div>
@@ -349,7 +425,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             <button key={d.id} className="card" onClick={() => open(d)}>
               <div className="card-top">
                 <span className="icon-chip">
-                  <i className="ti ti-scale" aria-hidden="true" />
+                  <Icon name="scale" />
                 </span>
                 <span className={`pill ${d.status === 'decided' ? 'pill-ok' : 'pill-none'}`}>
                   {d.status === 'decided' ? 'решено' : 'черновик'}

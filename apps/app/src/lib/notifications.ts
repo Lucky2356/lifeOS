@@ -63,7 +63,8 @@ export async function syncReminderNotifications(now: Date = new Date()): Promise
   const future: ScheduledReminder[] = [];
 
   for (const obj of objects) {
-    if (!obj.validUntil) continue;
+    // Архивное молчит: объект убран из активных, напоминать по нему не о чем.
+    if (!obj.validUntil || obj.status === 'archived') continue;
     for (const reminder of computeReminders(obj.validUntil, defaultReminderRules)) {
       // Дедлайн в ключе: при переносе срока пороги пере-взводятся, и напоминание придёт снова.
       const key = `${obj.id}:${reminder.offsetDays}:${obj.validUntil}`;

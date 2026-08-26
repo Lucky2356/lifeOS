@@ -11,6 +11,9 @@ importers:
       '@eslint/js':
         specifier: ^9.18.0
         version: 9.39.4
+      '@tabler/icons':
+        specifier: 3.24.0
+        version: 3.24.0
       eslint:
         specifier: ^9.18.0
         version: 9.39.4
@@ -53,9 +56,6 @@ importers:
       '@life-os/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@tabler/icons-webfont':
-        specifier: 3.24.0
-        version: 3.24.0
       '@tauri-apps/plugin-fs':
         specifier: ^2.5.1
         version: 2.5.1
@@ -764,9 +764,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@tabler/icons-webfont@3.24.0':
-    resolution: {integrity: sha512-PqbkFapKx28sXYNmQOA4rrh3Q6wqsYRZ99ZkrHQIWMdy63G0d/O0XyiwQqFti266PhrEQACO9ytoeW6LFJHsGg==}
-
   '@tabler/icons@3.24.0':
     resolution: {integrity: sha512-qNis9e90QcdxAGV3wNIeX0Ba2R7ktm0cnqOToKHJfC2kj3fvJwEVLsw63K0/fm7NW8rSZjDSTQRmMnSg8g/wrg==}
 
@@ -1296,6 +1293,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -2643,10 +2641,6 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
-
-  '@tabler/icons-webfont@3.24.0':
-    dependencies:
-      '@tabler/icons': 3.24.0
 
   '@tabler/icons@3.24.0': {}
 

@@ -103,6 +103,24 @@ export const householdStore = {
     return toggled;
   },
 
+  /** Поправить название, срок или исполнителя уже созданной задачи. */
+  async updateTask(
+    taskId: string,
+    patch: { title?: string; dueAt?: string | null; assigneeMembershipId?: string | null },
+  ): Promise<HouseholdTask> {
+    const database = await db();
+    const current = await database.get('tasks', taskId);
+    if (!current) throw new Error('Задача не найдена');
+    const updated: HouseholdTask = {
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+      version: current.version + 1,
+    };
+    await database.put('tasks', updated);
+    return updated;
+  },
+
   async removeTask(taskId: string): Promise<void> {
     await (await db()).delete('tasks', taskId);
   },

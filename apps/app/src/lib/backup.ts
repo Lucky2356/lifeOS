@@ -8,7 +8,7 @@ import {
   membershipSchema,
   playbookProgressSchema,
 } from '@life-os/domain';
-import { db, dataStores } from './store/db';
+import { db, dataStores, getSetting, setSetting } from './store/db';
 
 /**
  * Резервная копия — единственный способ вынести данные с устройства (ADR 0006). Сервера нет,
@@ -127,6 +127,26 @@ export async function buildBackup(now: Date = new Date()): Promise<Backup> {
 export async function backupToBlob(now: Date = new Date()): Promise<Blob> {
   const backup = await buildBackup(now);
   return new Blob([JSON.stringify(backup)], { type: 'application/json' });
+}
+
+const LAST_BACKUP_KEY = 'last-backup-at';
+/** Через сколько дней без копии стоит напомнить. Данные лежат в одном месте — молчать нельзя. */
+export const backupStaleDays = 30;
+
+/** Отметить, что копия сделана. Вызывается только после реально сохранённого файла. */
+export async function rememberBackup(now: Date = new Date()): Promise<void> {
+  await setSetting(LAST_BACKUP_KEY, now.toISOString());
+}
+
+export async function lastBackupAt(): Promise<string | null> {
+  return (await getSetting<string>(LAST_BACKUP_KEY)) ?? null;
+}
+
+/** Пора ли напомнить о копии: копии не было вовсе или она старше `backupStaleDays`. */
+export function backupIsStale(lastAt: string | null, now: Date = new Date()): boolean {
+  if (!lastAt) return true;
+  const age = now.getTime() - new Date(lastAt).getTime();
+  return age > backupStaleDays * 86_400_000;
 }
 
 export class BackupInvalid extends Error {

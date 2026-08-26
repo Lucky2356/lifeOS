@@ -3,12 +3,13 @@ import type { Attachment } from '@life-os/domain';
 import { AttachmentFailure, attachmentsStore } from '../lib/store';
 import { openFile } from '../lib/platform-files';
 import { ConfirmDialog } from './Dialog';
+import { Icon } from './Icon';
 
 function fmtSize(n: number): string {
   return n < 1024 ? `${n} Б` : n < 1048576 ? `${Math.round(n / 1024)} КБ` : `${(n / 1048576).toFixed(1)} МБ`;
 }
 function iconFor(mime: string): string {
-  return mime.startsWith('image/') ? 'ti-photo' : mime === 'application/pdf' ? 'ti-file-type-pdf' : 'ti-file';
+  return mime.startsWith('image/') ? 'photo' : mime === 'application/pdf' ? 'file-type-pdf' : 'file';
 }
 function messageFor(err: unknown): string {
   if (err instanceof AttachmentFailure) {
@@ -70,7 +71,7 @@ export function Attachments({ objectId }: { objectId: string }) {
       <div className="section-label">
         Документы
         <button className="reveal-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
-          <i className="ti ti-upload" aria-hidden="true" /> {busy ? 'добавление…' : 'добавить файл'}
+          <Icon name="upload" /> {busy ? 'добавление…' : 'добавить файл'}
         </button>
       </div>
       <input
@@ -88,13 +89,13 @@ export function Attachments({ objectId }: { objectId: string }) {
         )}
         {items.map((a) => (
           <div className="list-row" key={a.id}>
-            <i className={`ti ${iconFor(a.mime)}`} aria-hidden="true" style={{ color: 'var(--sage)' }} />
+            <Icon name={iconFor(a.mime)} style={{ color: 'var(--sage)' }} />
             <button className="link-btn" style={{ flex: 1, textAlign: 'left' }} onClick={() => open(a.id)}>
               {a.filename}
             </button>
             <span className="list-row-meta">{fmtSize(a.size)}</span>
             <button className="reveal-btn" onClick={() => setConfirmId(a.id)} aria-label="Удалить файл">
-              <i className="ti ti-trash" aria-hidden="true" />
+              <Icon name="trash" />
             </button>
           </div>
         ))}

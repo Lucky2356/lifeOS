@@ -6,6 +6,7 @@ import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { matchesQuery } from '../lib/ledger-search';
 import { AddObjectModal } from './AddObjectModal';
 import type { Theme } from '../lib/theme';
+import { Icon } from './Icon';
 
 export function LedgerScreen({
   theme,
@@ -21,19 +22,27 @@ export function LedgerScreen({
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<ObjectType | 'all'>('all');
+  const [showArchive, setShowArchive] = useState(false);
 
-  // Типы, реально присутствующие в реестре — из них строим чипы-фильтры.
+  // Архив держим отдельно: в общем списке ему не место, но и терять его нельзя.
+  const inScope = useMemo(
+    () => (objects ?? []).filter((o) => (o.status === 'archived') === showArchive),
+    [objects, showArchive],
+  );
+  const archivedCount = useMemo(
+    () => (objects ?? []).filter((o) => o.status === 'archived').length,
+    [objects],
+  );
+
+  // Типы, реально присутствующие в текущем разделе — из них строим чипы-фильтры.
   const presentTypes = useMemo(() => {
-    const set = new Set<ObjectType>((objects ?? []).map((o) => o.type));
+    const set = new Set<ObjectType>(inScope.map((o) => o.type));
     return [...set].sort((a, b) => objectTypeLabels[a].ru.localeCompare(objectTypeLabels[b].ru));
-  }, [objects]);
+  }, [inScope]);
 
   const filtered = useMemo(
-    () =>
-      (objects ?? []).filter(
-        (o) => (typeFilter === 'all' || o.type === typeFilter) && matchesQuery(o, query),
-      ),
-    [objects, typeFilter, query],
+    () => inScope.filter((o) => (typeFilter === 'all' || o.type === typeFilter) && matchesQuery(o, query)),
+    [inScope, typeFilter, query],
   );
 
   const load = useCallback(() => {
@@ -54,7 +63,9 @@ export function LedgerScreen({
           <div className="page-sub">
             {objects === null
               ? 'Загрузка…'
-              : `${counted(objects.length, 'объект', 'объекта', 'объектов')} вашей жизни`}
+              : showArchive
+                ? `${counted(inScope.length, 'объект', 'объекта', 'объектов')} в архиве`
+                : `${counted(inScope.length, 'объект', 'объекта', 'объектов')} вашей жизни`}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -64,10 +75,10 @@ export function LedgerScreen({
             aria-label="Переключить тему"
             title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
           >
-            <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`} aria-hidden="true" />
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
           </button>
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
-            <i className="ti ti-plus" aria-hidden="true" />
+            <Icon name="plus" />
             Добавить
           </button>
         </div>
@@ -76,9 +87,8 @@ export function LedgerScreen({
       {objects && objects.length > 0 && (
         <>
           <div style={{ position: 'relative', marginBottom: 12 }}>
-            <i
-              className="ti ti-search"
-              aria-hidden="true"
+            <Icon
+              name="search"
               style={{
                 position: 'absolute',
                 left: 12,
@@ -111,13 +121,26 @@ export function LedgerScreen({
                 {objectTypeLabels[t].ru}
               </button>
             ))}
+            {(archivedCount > 0 || showArchive) && (
+              <button
+                className={`chip chip-archive ${showArchive ? 'active' : ''}`}
+                onClick={() => {
+                  // Наборы типов у активных и архива разные — сбрасываем, чтобы не выбрать пустоту.
+                  setTypeFilter('all');
+                  setShowArchive((v) => !v);
+                }}
+                aria-pressed={showArchive}
+              >
+                {showArchive ? 'К активным' : `Архив · ${archivedCount}`}
+              </button>
+            )}
           </div>
         </>
       )}
 
       {error && (
         <div className="state">
-          Не удалось загрузить реестр. Проверьте, что сервер запущен.
+          Не удалось прочитать данные на этом устройстве.
           <div style={{ marginTop: 12 }}>
             <button className="btn" onClick={load}>
               Повторить
@@ -138,7 +161,9 @@ export function LedgerScreen({
       )}
 
       {!error && objects && objects.length > 0 && filtered.length === 0 && (
-        <div className="state">Ничего не найдено. Измените запрос или фильтр.</div>
+        <div className="state">
+          {showArchive ? 'В архиве ничего не найдено.' : 'Ничего не найдено. Измените запрос или фильтр.'}
+        </div>
       )}
 
       {!error && objects && filtered.length > 0 && (
@@ -149,7 +174,7 @@ export function LedgerScreen({
               <button key={o.id} className="card" onClick={() => onSelect(o.id)}>
                 <div className="card-top">
                   <span className="icon-chip">
-                    <i className={`ti ${typeIcons[o.type]}`} aria-hidden="true" />
+                    <Icon name={typeIcons[o.type]} />
                   </span>
                   <span className={`pill ${pill.cls}`}>{pill.label}</span>
                 </div>

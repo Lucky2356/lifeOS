@@ -4,6 +4,8 @@ import {
   lifecycleFor,
   objectFields,
   objectTypeLabels,
+  reminderOffsetChoices,
+  reminderRulesFor,
   upcomingReminders,
   type LifeObject,
   type LifeObjectStatus,
@@ -49,6 +51,7 @@ export function ObjectDetailScreen({
   const [status, setStatus] = useState<LifeObjectStatus>('active');
   const [sensitivity, setSensitivity] = useState<Sensitivity>('normal');
   const [data, setData] = useState<Record<string, string>>({});
+  const [reminderDays, setReminderDays] = useState<number[] | null>(null);
 
   const load = useCallback(() => {
     setError(null);
@@ -66,6 +69,7 @@ export function ObjectDetailScreen({
         setStatus(o.status);
         setSensitivity(o.sensitivity);
         setData(toFormData(o.data));
+        setReminderDays(o.reminderDays ?? null);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Ошибка загрузки'));
   }, [id]);
@@ -83,6 +87,7 @@ export function ObjectDetailScreen({
         validFrom: validFrom ? new Date(validFrom).toISOString() : null,
         // Опустошённое поле убираем из данных, а не сохраняем пустой строкой.
         data: Object.fromEntries(Object.entries(data).filter(([, v]) => v.trim().length > 0)),
+        reminderDays,
       });
       setEditing(false);
       load();
@@ -126,7 +131,9 @@ export function ObjectDetailScreen({
 
   const pill = lifecyclePill(obj);
   const state = lifecycleFor(obj.validUntil);
-  const reminders = obj.validUntil ? upcomingReminders(obj.validUntil) : [];
+  const reminders = obj.validUntil
+    ? upcomingReminders(obj.validUntil, new Date(), reminderRulesFor(obj.reminderDays))
+    : [];
   const dataEntries = Object.entries(obj.data);
   const masked = obj.sensitivity !== 'normal' && !reveal;
 
@@ -184,6 +191,16 @@ export function ObjectDetailScreen({
           <>
             <button className="btn" onClick={() => setEditing(true)}>
               <Icon name="edit" /> Изменить
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                // На бумаге маскировка бессмысленна — раскрываем поля до печати.
+                setReveal(true);
+                setTimeout(() => window.print(), 50);
+              }}
+            >
+              <Icon name="file-text" /> Распечатать
             </button>
             <button className="btn btn-danger" onClick={() => setConfirmDelete(true)} disabled={busy}>
               <Icon name="trash" /> Удалить
@@ -277,6 +294,37 @@ export function ObjectDetailScreen({
       <Attachments objectId={id} />
 
       <div className="section-label">Напоминания</div>
+      {editing && (
+        <div className="list-card" style={{ marginBottom: 14, padding: 14 }}>
+          <div className="page-sub" style={{ marginBottom: 10 }}>
+            За сколько дней предупредить. Ничего не выбрано — используются общие пороги (90 / 30 / 7 / 1): для
+            подписки они избыточны, для паспорта наоборот.
+          </div>
+          <div className="filters" style={{ marginBottom: 0 }}>
+            {reminderOffsetChoices.map((days) => {
+              const active = reminderDays?.includes(days) ?? false;
+              return (
+                <button
+                  key={days}
+                  className={`chip ${active ? 'active' : ''}`}
+                  aria-pressed={active}
+                  onClick={() =>
+                    setReminderDays((current) => {
+                      const next = new Set(current ?? []);
+                      if (next.has(days)) next.delete(days);
+                      else next.add(days);
+                      // Пустой набор — это «как у всех», а не «молчать вовсе».
+                      return next.size === 0 ? null : [...next].sort((a, b) => b - a);
+                    })
+                  }
+                >
+                  {days} дн.
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {reminders.length === 0 ? (
         <div className="note">
           {obj.validUntil ? 'Ближайших напоминаний нет.' : 'Добавьте дедлайн, чтобы получать напоминания.'}

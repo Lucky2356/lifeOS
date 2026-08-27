@@ -1,4 +1,14 @@
-export { db, clearAllData, getSetting, setSetting, closeDb, dataStores } from './db';
+export {
+  db,
+  clearAllData,
+  getSetting,
+  setSetting,
+  closeDb,
+  dataStores,
+  requestPersistentStorage,
+  storageUsage,
+  type StorageUsage,
+} from './db';
 export { ownerUserId, resetOwnerCache } from './local-user';
 export { ledgerStore } from './objects';
 export { decisionsStore } from './decisions';

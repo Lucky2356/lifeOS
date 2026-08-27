@@ -20,16 +20,19 @@ export function TodayScreen({
   onToggleTheme,
   onOpenObject,
   onOpenSettings,
+  onOpenLedger,
 }: {
   theme: Theme;
   onToggleTheme: () => void;
   onOpenObject: (id: string) => void;
   onOpenSettings: () => void;
+  onOpenLedger: () => void;
 }) {
   const [attention, setAttention] = useState<LifeObject[] | null>(null);
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
   const [backupStale, setBackupStale] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [totalObjects, setTotalObjects] = useState(0);
 
   useEffect(() => {
     // Отказ хранилища не должен оставлять экран в вечной «Загрузке» — показываем это честно.
@@ -38,6 +41,7 @@ export function TodayScreen({
     void ledgerStore
       .list()
       .then((objects) => {
+        setTotalObjects(objects.length);
         const flagged = objects
           .filter((o) => {
             // Архивное не требует внимания: срок у сданного паспорта уже неважен.
@@ -80,6 +84,8 @@ export function TodayScreen({
   // Просроченная задача по дому — такое же «дело», как истекающий документ: с появлением сроков
   // у задач заголовок обязан их учитывать, иначе он врёт.
   const urgentTasks = tasks.filter((t) => (daysUntil(t.dueAt) ?? 1) <= 0).length;
+  // Ничего не внесено — «всё под контролем» здесь было бы неправдой и ничего не подсказывало бы.
+  const empty = attention !== null && totalObjects === 0 && tasks.length === 0;
   const flaggedObjects = attention?.length ?? 0;
   const count = flaggedObjects + urgentTasks;
 
@@ -112,9 +118,11 @@ export function TodayScreen({
           <div className="page-sub" style={{ marginTop: 4 }}>
             {attention === null
               ? 'Загрузка…'
-              : count === 0
-                ? 'Всё под контролем. Ничего срочного.'
-                : `${counted(count, 'дело', 'дела', 'дел')} ${count === 1 ? 'просит' : 'просят'} внимания. Остальное под контролем.`}
+              : empty
+                ? 'Здесь появится то, что требует внимания.'
+                : count === 0
+                  ? 'Всё под контролем. Ничего срочного.'
+                  : `${counted(count, 'дело', 'дела', 'дел')} ${count === 1 ? 'просит' : 'просят'} внимания. Остальное под контролем.`}
           </div>
         </div>
         <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
@@ -194,7 +202,31 @@ export function TodayScreen({
         </>
       )}
 
-      {attention !== null && count === 0 && tasks.length === 0 && (
+      {empty && (
+        <div className="state" style={{ textAlign: 'left', maxWidth: 640 }}>
+          <div style={{ fontWeight: 500, color: 'var(--ink)', marginBottom: 8 }}>С чего начать</div>
+          <div style={{ marginBottom: 14 }}>
+            Life OS держит в одном месте документы, вещи и обязательства — и напоминает о сроках заранее. Всё
+            хранится на этом устройстве и никуда не отправляется.
+          </div>
+          <ol style={{ margin: '0 0 16px', paddingLeft: 20, lineHeight: 1.9 }}>
+            <li>Добавьте первый документ со сроком — например, паспорт или страховку.</li>
+            <li>Приложите скан, чтобы он был под рукой, когда понадобится.</li>
+            <li>Разрешите уведомления в настройках, чтобы срок не застал врасплох.</li>
+            <li>Сохраните резервную копию: другой копии этих данных не существует.</li>
+          </ol>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={onOpenLedger}>
+              Добавить первый объект
+            </button>
+            <button className="btn" onClick={onOpenSettings}>
+              Открыть настройки
+            </button>
+          </div>
+        </div>
+      )}
+
+      {attention !== null && !empty && count === 0 && tasks.length === 0 && (
         <div className="state">Спокойный день — система держит ваши дела под контролем.</div>
       )}
     </main>

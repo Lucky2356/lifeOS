@@ -15,6 +15,7 @@ function messageFor(err: unknown): string {
   if (err instanceof AttachmentFailure) {
     if (err.code === 'too-large') return 'Файл больше 25 МБ';
     if (err.code === 'unsupported') return 'Можно приложить PDF или изображение';
+    if (err.code === 'no-space') return 'На устройстве закончилось место';
   }
   return 'Не удалось добавить файл';
 }
@@ -100,7 +101,15 @@ export function Attachments({ objectId }: { objectId: string }) {
           </div>
         ))}
       </div>
-      {error && <div style={{ color: 'var(--brick-ink)', fontSize: 13, marginBottom: 18 }}>{error}</div>}
+      {error && (
+        <div
+          style={{ color: 'var(--brick-ink)', fontSize: 13, marginBottom: 18 }}
+          role="alert"
+          aria-live="assertive"
+        >
+          {error}
+        </div>
+      )}
       {confirmId && (
         <ConfirmDialog
           title="Удалить файл?"

@@ -1,4 +1,4 @@
-import { computeReminders, daysUntil, defaultReminderRules } from '@life-os/domain';
+import { computeReminders, daysUntil, reminderRulesFor } from '@life-os/domain';
 import { getSetting, setSetting } from './store/db';
 import { ledgerStore } from './store/objects';
 import { householdStore } from './store/household';
@@ -65,7 +65,7 @@ export async function syncReminderNotifications(now: Date = new Date()): Promise
   for (const obj of objects) {
     // Архивное молчит: объект убран из активных, напоминать по нему не о чем.
     if (!obj.validUntil || obj.status === 'archived') continue;
-    for (const reminder of computeReminders(obj.validUntil, defaultReminderRules)) {
+    for (const reminder of computeReminders(obj.validUntil, reminderRulesFor(obj.reminderDays))) {
       // Дедлайн в ключе: при переносе срока пороги пере-взводятся, и напоминание придёт снова.
       const key = `${obj.id}:${reminder.offsetDays}:${obj.validUntil}`;
       const fireAt = new Date(reminder.fireAt);

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { computeReminders, daysUntil, lifecycleFor, upcomingReminders } from './reminders';
+import {
+  computeReminders,
+  daysUntil,
+  defaultReminderRules,
+  lifecycleFor,
+  reminderRulesFor,
+  upcomingReminders,
+} from './reminders';
 
 describe('computeReminders', () => {
   it('вычисляет даты срабатывания за N дней до дедлайна и сортирует их', () => {
@@ -63,5 +70,21 @@ describe('lifecycleFor', () => {
 
   it('ok — когда до дедлайна далеко', () => {
     expect(lifecycleFor('2026-12-01T00:00:00.000Z', now)).toBe('ok');
+  });
+});
+
+describe('свои пороги напоминаний', () => {
+  it('без своих порогов берутся общие', () => {
+    expect(reminderRulesFor(null)).toEqual(defaultReminderRules);
+    expect(reminderRulesFor([])).toEqual(defaultReminderRules);
+    expect(reminderRulesFor(undefined)).toEqual(defaultReminderRules);
+  });
+
+  it('свои пороги сортируются от дальнего к ближнему', () => {
+    expect(reminderRulesFor([7, 30, 1])).toEqual([{ offsetDays: 30 }, { offsetDays: 7 }, { offsetDays: 1 }]);
+  });
+
+  it('один порог — тоже допустимо', () => {
+    expect(reminderRulesFor([3])).toEqual([{ offsetDays: 3 }]);
   });
 });

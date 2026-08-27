@@ -37,6 +37,18 @@ export const defaultReminderRules: ReminderRule[] = [
   { offsetDays: 1 },
 ];
 
+/**
+ * Из чего пользователь выбирает свои пороги. Единая шкала важна: за 90 дней предупреждать о
+ * подписке бессмысленно, а за 1 день о паспорте — поздно.
+ */
+export const reminderOffsetChoices = [365, 180, 90, 30, 14, 7, 3, 1] as const;
+
+/** Пороги объекта: свои, если заданы, иначе — общие по умолчанию. */
+export function reminderRulesFor(reminderDays: number[] | null | undefined): ReminderRule[] {
+  if (!reminderDays || reminderDays.length === 0) return defaultReminderRules;
+  return [...reminderDays].sort((a, b) => b - a).map((offsetDays) => ({ offsetDays }));
+}
+
 /** Ещё не наступившие напоминания для дедлайна (fireAt в будущем относительно now). */
 export function upcomingReminders(
   deadlineISO: string,

@@ -10,6 +10,7 @@ import {
   type HouseholdTask,
   type Membership,
   type Relationship,
+  type Repeat,
 } from '@life-os/domain';
 import { db } from './db';
 import { ownerUserId } from './local-user';
@@ -106,7 +107,12 @@ export const householdStore = {
   /** Поправить название, срок или исполнителя уже созданной задачи. */
   async updateTask(
     taskId: string,
-    patch: { title?: string; dueAt?: string | null; assigneeMembershipId?: string | null },
+    patch: {
+      title?: string;
+      dueAt?: string | null;
+      assigneeMembershipId?: string | null;
+      repeat?: Repeat;
+    },
   ): Promise<HouseholdTask> {
     const database = await db();
     const current = await database.get('tasks', taskId);

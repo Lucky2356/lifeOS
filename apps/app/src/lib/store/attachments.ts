@@ -9,7 +9,7 @@ import { ownerUserId } from './local-user';
  */
 
 /** Коды ошибок для понятных сообщений в интерфейсе. */
-export type AttachmentError = 'too-large' | 'unsupported' | 'not-found';
+export type AttachmentError = 'too-large' | 'unsupported' | 'not-found' | 'no-space';
 
 export class AttachmentFailure extends Error {
   constructor(public readonly code: AttachmentError) {
@@ -51,12 +51,20 @@ export const attachmentsStore = {
     };
 
     const bytes = await file.arrayBuffer();
-    const tx = database.transaction(['attachments', 'files'], 'readwrite');
-    await Promise.all([
-      tx.objectStore('attachments').put(attachment),
-      tx.objectStore('files').put(bytes, attachment.id),
-      tx.done,
-    ]);
+    try {
+      const tx = database.transaction(['attachments', 'files'], 'readwrite');
+      await Promise.all([
+        tx.objectStore('attachments').put(attachment),
+        tx.objectStore('files').put(bytes, attachment.id),
+        tx.done,
+      ]);
+    } catch (err) {
+      // Кончилось место на устройстве — это не «что-то пошло не так», и сказать надо прямо.
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        throw new AttachmentFailure('no-space');
+      }
+      throw err;
+    }
     return attachment;
   },
 

@@ -20,6 +20,8 @@ export const lifeObjectSchema = baseEntitySchema.extend({
   sensitivity: sensitivitySchema,
   validFrom: z.string().datetime().nullable(),
   validUntil: z.string().datetime().nullable(),
+  /** Свои пороги напоминаний в днях до срока. null — общие по умолчанию (90/30/7/1). */
+  reminderDays: z.array(z.number().int().positive()).nullable().default(null),
 });
 
 export type LifeObject = z.infer<typeof lifeObjectSchema>;
@@ -33,6 +35,7 @@ export const createLifeObjectInputSchema = z.object({
   householdId: z.string().uuid().nullable().default(null),
   validFrom: z.string().datetime().nullable().default(null),
   validUntil: z.string().datetime().nullable().default(null),
+  reminderDays: z.array(z.number().int().positive()).nullable().default(null),
 });
 
 export type CreateLifeObjectInput = z.input<typeof createLifeObjectInputSchema>;
@@ -45,6 +48,7 @@ export const updateLifeObjectInputSchema = z
     validFrom: z.string().datetime().nullable(),
     validUntil: z.string().datetime().nullable(),
     status: lifeObjectStatusSchema,
+    reminderDays: z.array(z.number().int().positive()).nullable(),
   })
   .partial();
 
@@ -73,6 +77,7 @@ export function createLifeObject(
     sensitivity: parsed.sensitivity,
     validFrom: parsed.validFrom,
     validUntil: parsed.validUntil,
+    reminderDays: parsed.reminderDays,
   };
 }
 

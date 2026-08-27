@@ -6,7 +6,7 @@ import {
   type Playbook,
   type PlaybookProgress,
 } from '@life-os/domain';
-import { navigatorStore as contentApi } from '../lib/store';
+import { ledgerStore, navigatorStore as contentApi } from '../lib/store';
 import { counted } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { Icon } from './Icon';
@@ -23,15 +23,34 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [selected, setSelected] = useState<Playbook | null>(null);
   const [progress, setProgress] = useState<PlaybookProgress | null>(null);
+  /** Какие типы документов уже есть в реестре — шаг должен говорить «есть», а не просто «нужно». */
+  const [ownedTypes, setOwnedTypes] = useState<Set<string>>(new Set());
 
   // Контент-пак вшит в сборку — плейбуки доступны сразу, без загрузки.
   const load = useCallback(() => setPlaybooks(contentApi.playbooks()), []);
   useEffect(() => load(), [load]);
 
+  useEffect(() => {
+    void ledgerStore
+      .list()
+      .then((objects) =>
+        setOwnedTypes(new Set(objects.filter((o) => o.status === 'active').map((o) => o.type))),
+      )
+      .catch(() => {
+        /* без реестра шаги просто не покажут отметку «есть у вас» */
+      });
+  }, []);
+
   async function open(pb: Playbook) {
     setSelected(contentApi.playbook(pb.key));
     setProgress(await contentApi.start(pb.key));
   }
+
+  /**
+   * Встроенный гид открывается как обычный плейбук. Если в паке такого ключа нет, пилюли не будет
+   * вовсе — ссылка в никуда хуже её отсутствия.
+   */
+  const guideFor = (key: string | null) => (key ? (playbooks.find((p) => p.key === key) ?? null) : null);
 
   async function toggle(stepKey: string) {
     if (!progress) return;
@@ -92,19 +111,40 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   >
                     {pickText(step.title, 'ru')}
                   </span>
-                  {step.embedsGuideKey && <span className="pill pill-ok">Гид</span>}
+                  {guideFor(step.embedsGuideKey) && (
+                    <button
+                      className="pill pill-ok"
+                      style={{ border: 'none', cursor: 'pointer', font: 'inherit' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const guide = guideFor(step.embedsGuideKey);
+                        if (guide) void open(guide);
+                      }}
+                    >
+                      Открыть гид
+                    </button>
+                  )}
                 </div>
                 <div className="page-sub" style={{ marginTop: 4 }}>
                   {pickText(step.description, 'ru')}
                 </div>
                 {step.requiredDocumentTypes.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                    {step.requiredDocumentTypes.map((t) => (
-                      <span key={t} className="pill pill-none">
-                        <Icon name="file" style={{ marginRight: 4 }} />
-                        {objectTypeLabels[t].ru}
-                      </span>
-                    ))}
+                    {step.requiredDocumentTypes.map((t) => {
+                      // Смысл Навигатора — не перечислить нужные бумаги, а сказать, чего у вас нет.
+                      const owned = ownedTypes.has(t);
+                      return (
+                        <span
+                          key={t}
+                          className={`pill ${owned ? 'pill-ok' : 'pill-due'}`}
+                          title={owned ? 'Есть в реестре' : 'В реестре не нашлось'}
+                        >
+                          <Icon name={owned ? 'check' : 'file'} style={{ marginRight: 4 }} />
+                          {objectTypeLabels[t].ru}
+                          {owned ? ' · есть' : ' · нужно оформить'}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -3,10 +3,13 @@ import {
   lifecycleFor,
   relationshipLabels,
   relationships,
+  repeatLabels,
+  repeats,
   type Household,
   type HouseholdTask,
   type Membership,
   type Relationship,
+  type Repeat,
   type Role,
 } from '@life-os/domain';
 import { householdStore } from '../lib/store';
@@ -35,13 +38,19 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [newTask, setNewTask] = useState('');
   const [assignee, setAssignee] = useState('');
   const [dueAt, setDueAt] = useState('');
+  const [repeat, setRepeat] = useState<Repeat>('none');
   const [adding, setAdding] = useState(false);
   const [mName, setMName] = useState('');
   const [mRel, setMRel] = useState<Relationship>('partner');
   const [pendingRemove, setPendingRemove] = useState<Membership | null>(null);
   const [pendingTaskRemove, setPendingTaskRemove] = useState<HouseholdTask | null>(null);
   const [editingTask, setEditingTask] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: '', dueAt: '', assignee: '' });
+  const [draft, setDraft] = useState<{ title: string; dueAt: string; assignee: string; repeat: Repeat }>({
+    title: '',
+    dueAt: '',
+    assignee: '',
+    repeat: 'none',
+  });
 
   const loadDetail = useCallback(async (id: string) => {
     const [m, t] = await Promise.all([householdStore.members(id), householdStore.tasks(id)]);
@@ -74,9 +83,11 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       title: newTask.trim(),
       assigneeMembershipId: assignee || null,
       dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+      repeat,
     });
     setNewTask('');
     setDueAt('');
+    setRepeat('none');
     await loadDetail(household.id);
   }
 
@@ -101,6 +112,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       title: task.title,
       dueAt: task.dueAt ? task.dueAt.slice(0, 10) : '',
       assignee: task.assigneeMembershipId ?? '',
+      repeat: task.repeat,
     });
   }
 
@@ -110,6 +122,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       title: draft.title.trim(),
       dueAt: draft.dueAt ? new Date(draft.dueAt).toISOString() : null,
       assigneeMembershipId: draft.assignee || null,
+      repeat: draft.repeat,
     });
     setEditingTask(null);
     await loadDetail(household.id);
@@ -281,6 +294,17 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                     aria-label="Срок задачи"
                   />
                   <select
+                    value={draft.repeat}
+                    onChange={(e) => setDraft((d) => ({ ...d, repeat: e.target.value as Repeat }))}
+                    aria-label="Повтор"
+                  >
+                    {repeats.map((r) => (
+                      <option key={r} value={r}>
+                        {repeatLabels[r].ru}
+                      </option>
+                    ))}
+                  </select>
+                  <select
                     value={draft.assignee}
                     onChange={(e) => setDraft((d) => ({ ...d, assignee: e.target.value }))}
                     aria-label="Исполнитель"
@@ -331,6 +355,11 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                       {formatDate(t.dueAt)}
                     </span>
                   )}
+                  {t.repeat !== 'none' && (
+                    <span className="list-row-meta" title={repeatLabels[t.repeat].ru}>
+                      <Icon name="repeat" />
+                    </span>
+                  )}
                   {nameOf(t.assigneeMembershipId) && (
                     <span className="list-row-meta">{nameOf(t.assigneeMembershipId)}</span>
                   )}
@@ -366,6 +395,13 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               onChange={(e) => setDueAt(e.target.value)}
               aria-label="Срок задачи"
             />
+            <select value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)} aria-label="Повтор">
+              {repeats.map((r) => (
+                <option key={r} value={r}>
+                  {repeatLabels[r].ru}
+                </option>
+              ))}
+            </select>
             <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Исполнитель">
               <option value="">Без исполнителя</option>
               {members.map((m) => (

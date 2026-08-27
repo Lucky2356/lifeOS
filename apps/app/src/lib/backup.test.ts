@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyBackup, backupToBlob, readBackupFile, summarize } from './backup';
+import { applyBackup, BackupEncrypted, backupToBlob, readBackupFile, summarize } from './backup';
 import { attachmentsStore } from './store/attachments';
 import { ledgerStore } from './store/objects';
 import { decisionsStore } from './store/decisions';
@@ -92,5 +92,35 @@ describe('резервная копия', () => {
     await applyBackup(await readBackupFile(exported));
 
     expect((await ledgerStore.list()).map((o) => o.title)).toEqual(['Старый']);
+  });
+});
+
+describe('копия с паролем', () => {
+  it('зашифрованная копия проходит полный круг', async () => {
+    await seed();
+    const exported = await asFile(await backupToBlob('пароль-от-копии'));
+
+    // Без пароля файл не открыть, но и данные не потеряны.
+    await expect(readBackupFile(exported)).rejects.toThrow(BackupEncrypted);
+    await expect(readBackupFile(exported, 'не тот')).rejects.toThrow();
+
+    await clearAllData();
+    await applyBackup(await readBackupFile(exported, 'пароль-от-копии'));
+
+    expect((await ledgerStore.list()).map((o) => o.title)).toEqual(['Загранпаспорт']);
+    expect(await attachmentsStore.list((await ledgerStore.list())[0]!.id)).toHaveLength(1);
+  });
+
+  it('в зашифрованном файле не видно содержимого', async () => {
+    await seed();
+    const text = await (await backupToBlob('пароль')).text();
+    expect(text).not.toContain('Загранпаспорт');
+    expect(text).toContain('LIFEOS-ENC1');
+  });
+
+  it('без пароля копия остаётся обычным читаемым JSON', async () => {
+    await seed();
+    const text = await (await backupToBlob()).text();
+    expect(text).toContain('Загранпаспорт');
   });
 });

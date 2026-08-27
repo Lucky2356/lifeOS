@@ -109,6 +109,42 @@ export async function clearAllData(): Promise<void> {
   await Promise.all([...dataStores.map((name) => tx.objectStore(name).clear()), tx.done]);
 }
 
+export interface StorageUsage {
+  /** Сколько занято приложением, в байтах. */
+  usage: number;
+  /** Сколько всего доступно, в байтах. */
+  quota: number;
+  /** Защищено ли хранилище от вытеснения системой. */
+  persistent: boolean;
+}
+
+/**
+ * Попросить систему не вытеснять данные. Для локального приложения это единственная копия, и
+ * best-effort хранилище браузер вправе очистить под нехватку места. В упакованных оболочках данные
+ * и так лежат в каталоге приложения, поэтому это дешёвая страховка, а не спасение от беды.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.storage?.persist) return false;
+  try {
+    if (await navigator.storage.persisted?.()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+/** Сколько места занято и сколько доступно. null — платформа не сообщает. */
+export async function storageUsage(): Promise<StorageUsage | null> {
+  if (typeof navigator === 'undefined' || !navigator.storage?.estimate) return null;
+  try {
+    const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+    const persistent = (await navigator.storage.persisted?.()) ?? false;
+    return { usage, quota, persistent };
+  } catch {
+    return null;
+  }
+}
+
 /** Закрыть соединение и сбросить кэш. Нужно тестам: иначе deleteDB зависает на открытом хэндле. */
 export async function closeDb(): Promise<void> {
   if (!dbPromise) return;

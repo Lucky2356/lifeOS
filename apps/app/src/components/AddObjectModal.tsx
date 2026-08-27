@@ -8,7 +8,7 @@ import {
   type Sensitivity,
 } from '@life-os/domain';
 import { ledgerStore } from '../lib/store';
-import { useEscapeToClose } from '../lib/use-modal';
+import { useEscapeToClose, useFocusTrap } from '../lib/use-modal';
 import { SensitivityField, TypeFields } from './ObjectFields';
 
 export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -21,6 +21,7 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
   const [error, setError] = useState<string | null>(null);
   const titleId = useId();
   useEscapeToClose(onClose);
+  const trapRef = useFocusTrap<HTMLFormElement>();
 
   /** У каждого типа свои поля, поэтому при смене типа заполненное сбрасывается вместе с ними. */
   function changeType(next: ObjectType) {
@@ -53,6 +54,7 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
   return (
     <div className="overlay" onClick={onClose}>
       <form
+        ref={trapRef}
         className="modal"
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
@@ -103,7 +105,15 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
 
         <SensitivityField value={sensitivity} onChange={setSensitivity} />
 
-        {error && <div style={{ color: 'var(--brick-ink)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
+        {error && (
+          <div
+            style={{ color: 'var(--brick-ink)', fontSize: 13, marginBottom: 10 }}
+            role="alert"
+            aria-live="assertive"
+          >
+            {error}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             Отмена

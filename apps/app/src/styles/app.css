@@ -714,3 +714,42 @@ textarea:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* Печать карточки объекта: на бумагу идут данные, а не интерфейс. Нужно, когда документ просят
+   в МФЦ или у страховой, а под рукой только телефон. */
+@media print {
+  .rail,
+  .update-banner,
+  .btn,
+  .reveal-btn,
+  .filters,
+  .hint {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .main {
+    padding: 0;
+  }
+  .list-card,
+  .kv-grid,
+  .card {
+    border-color: #ccc;
+    background: transparent;
+  }
+  /* Имена вложенных файлов печатаются как обычный текст: кнопкой на бумаге не воспользуешься. */
+  .link-btn {
+    color: #000;
+    text-decoration: none;
+  }
+  .page-sub,
+  .kv-label,
+  .list-row-meta {
+    color: #444;
+  }
+  .timeline {
+    display: none;
+  }
+}

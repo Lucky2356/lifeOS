@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   applyBackup,
   backupFilename,
+  BackupEncrypted,
   backupToBlob,
   lastBackupAt,
   readBackupFile,
@@ -9,6 +10,7 @@ import {
   summarize,
   type BackupSummary,
 } from '../lib/backup';
+import { WrongPassword } from '../lib/backup-crypto';
 import { saveFile, saveTargetLabel } from '../lib/platform-files';
 import {
   notificationPermission,
@@ -17,21 +19,31 @@ import {
   supportsScheduling,
 } from '../lib/notifications';
 import type { NotifyPermission } from '../lib/platform-notify';
-import { clearAllData } from '../lib/store';
+import { clearAllData, storageUsage, type StorageUsage } from '../lib/store';
 import { counted, formatDateTime } from '../lib/format';
-import type { Theme } from '../lib/theme';
-import { ConfirmDialog } from './Dialog';
+import { themeLabels, type Theme, type ThemePreference } from '../lib/theme';
+import { ConfirmDialog, PromptDialog } from './Dialog';
 import { Icon } from './Icon';
 
 type Pending = { summary: BackupSummary; apply: () => Promise<void> };
 
+function formatBytes(n: number): string {
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} КБ`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} МБ`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(1)} ГБ`;
+}
+
 export function SettingsScreen({
   theme,
   onToggleTheme,
+  preference,
+  onSetPreference,
   onBack,
 }: {
   theme: Theme;
   onToggleTheme: () => void;
+  preference: ThemePreference;
+  onSetPreference: (next: ThemePreference) => void;
   onBack: () => void;
 }) {
   const [notifPerm, setNotifPerm] = useState<NotifyPermission>('default');
@@ -41,19 +53,26 @@ export function SettingsScreen({
   const [pendingImport, setPendingImport] = useState<Pending | null>(null);
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [storage, setStorage] = useState<StorageUsage | null>(null);
+  const [askExportPassword, setAskExportPassword] = useState(false);
+  // Файл ждёт пароля: копия зашифрована, без него её не прочитать.
+  const [lockedFile, setLockedFile] = useState<File | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void notificationPermission().then(setNotifPerm);
     void lastBackupAt().then(setLastBackup);
+    void storageUsage().then(setStorage);
   }, []);
 
-  async function exportBackup() {
+  async function exportBackup(password: string) {
+    setAskExportPassword(false);
     setBusy('export');
     setError(null);
     setMessage(null);
     try {
-      const target = await saveFile(backupFilename(), await backupToBlob());
+      const target = await saveFile(backupFilename(), await backupToBlob(password || undefined));
       // Отмечаем только после реально сохранённого файла — иначе напоминание врало бы.
       await rememberBackup();
       setLastBackup(new Date().toISOString());
@@ -65,14 +84,11 @@ export function SettingsScreen({
     }
   }
 
-  async function pickBackup(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (fileRef.current) fileRef.current.value = '';
-    if (!file) return;
-    setError(null);
-    setMessage(null);
+  async function openBackup(file: File, password?: string) {
     try {
-      const backup = await readBackupFile(file);
+      const backup = await readBackupFile(file, password);
+      setLockedFile(null);
+      setPasswordError(null);
       setPendingImport({
         summary: summarize(backup),
         apply: async () => {
@@ -80,8 +96,28 @@ export function SettingsScreen({
         },
       });
     } catch (err) {
+      if (err instanceof BackupEncrypted) {
+        setLockedFile(file);
+        setPasswordError(null);
+        return;
+      }
+      if (err instanceof WrongPassword) {
+        setLockedFile(file);
+        setPasswordError(err.message);
+        return;
+      }
+      setLockedFile(null);
       setError(err instanceof Error ? err.message : 'Не удалось прочитать файл');
     }
+  }
+
+  async function pickBackup(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
+    if (!file) return;
+    setError(null);
+    setMessage(null);
+    await openBackup(file);
   }
 
   async function confirmImport() {
@@ -131,6 +167,30 @@ export function SettingsScreen({
         единственная их копия здесь. Сделайте резервную копию.
       </div>
 
+      <div className="section-label">Внешний вид</div>
+      <div className="list-card">
+        <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+          <Icon name={theme === 'dark' ? 'moon' : 'sun'} style={{ color: 'var(--sage)' }} />
+          <span style={{ flex: 1 }}>
+            Тема
+            <span className="page-sub">
+              {preference === 'system' ? ' · следует за настройками устройства' : ' · выбрана вручную'}
+            </span>
+          </span>
+          <select
+            value={preference}
+            onChange={(e) => onSetPreference(e.target.value as ThemePreference)}
+            aria-label="Тема оформления"
+          >
+            {(Object.keys(themeLabels) as ThemePreference[]).map((p) => (
+              <option key={p} value={p}>
+                {themeLabels[p]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {notificationsSupported() && (
         <>
           <div className="section-label">Напоминания</div>
@@ -175,9 +235,14 @@ export function SettingsScreen({
               {lastBackup
                 ? `последняя копия ${formatDateTime(lastBackup)}`
                 : 'копия ещё ни разу не сохранялась'}
+              {' · можно защитить паролем'}
             </span>
           </span>
-          <button className="btn btn-primary" onClick={() => void exportBackup()} disabled={busy !== null}>
+          <button
+            className="btn btn-primary"
+            onClick={() => setAskExportPassword(true)}
+            disabled={busy !== null}
+          >
             {busy === 'export' ? 'Сохранение…' : 'Сохранить'}
           </button>
         </div>
@@ -201,12 +266,16 @@ export function SettingsScreen({
       </div>
 
       {message && (
-        <div style={{ color: 'var(--sage)', fontSize: 13, marginTop: 10 }} role="status">
+        <div style={{ color: 'var(--sage)', fontSize: 13, marginTop: 10 }} role="status" aria-live="polite">
           {message}
         </div>
       )}
       {error && (
-        <div style={{ color: 'var(--brick-ink)', fontSize: 13, marginTop: 10 }} role="alert">
+        <div
+          style={{ color: 'var(--brick-ink)', fontSize: 13, marginTop: 10 }}
+          role="alert"
+          aria-live="assertive"
+        >
           {error}
         </div>
       )}
@@ -215,6 +284,24 @@ export function SettingsScreen({
         Данные
       </div>
       <div className="list-card">
+        {storage && (
+          <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+            <Icon name="folders" style={{ color: 'var(--ink-2)' }} />
+            <span style={{ flex: 1 }}>
+              Занято на устройстве
+              <span className="page-sub">
+                {' · '}
+                {storage.persistent
+                  ? 'система не вытеснит эти данные'
+                  : 'система может очистить их при нехватке места'}
+              </span>
+            </span>
+            <span className="list-row-meta">
+              {formatBytes(storage.usage)}
+              {storage.quota > 0 && ` из ${formatBytes(storage.quota)}`}
+            </span>
+          </div>
+        )}
         <div className="list-row" style={{ flexWrap: 'wrap', gap: 10 }}>
           <Icon name="trash" style={{ color: 'var(--brick-ink)' }} />
           <span style={{ flex: 1 }}>
@@ -238,6 +325,37 @@ export function SettingsScreen({
           Политика конфиденциальности
         </a>
       </div>
+
+      {askExportPassword && (
+        <PromptDialog
+          title="Защитить копию паролем?"
+          message="Копия содержит номера документов, медицинские записи и суммы. Без пароля она читается как обычный текст везде, куда вы её положите. Пароль восстановить нельзя — забудете, копия станет бесполезной."
+          label="Пароль"
+          placeholder="Придумайте пароль"
+          confirmLabel="Зашифровать и сохранить"
+          secret
+          allowEmpty
+          emptyLabel="Сохранить без пароля"
+          onSubmit={(value) => void exportBackup(value)}
+          onCancel={() => setAskExportPassword(false)}
+        />
+      )}
+
+      {lockedFile && (
+        <PromptDialog
+          title="Копия защищена паролем"
+          message="Введите пароль, которым она была зашифрована."
+          label="Пароль"
+          confirmLabel="Открыть"
+          secret
+          error={passwordError}
+          onSubmit={(value) => void openBackup(lockedFile, value)}
+          onCancel={() => {
+            setLockedFile(null);
+            setPasswordError(null);
+          }}
+        />
+      )}
 
       {pendingImport && (
         <ConfirmDialog

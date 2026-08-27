@@ -5,6 +5,7 @@ const items = [
   { key: 'household', icon: 'home', label: 'Дом' },
   { key: 'decisions', icon: 'scale', label: 'Решения' },
   { key: 'navigator', icon: 'compass', label: 'Навигатор' },
+  { key: 'search', icon: 'search', label: 'Поиск' },
 ];
 
 export function Sidebar({ active, onNavigate }: { active: string; onNavigate: (key: string) => void }) {

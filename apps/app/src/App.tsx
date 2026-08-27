@@ -7,15 +7,16 @@ import { HouseholdScreen } from './components/HouseholdScreen';
 import { DecisionsScreen } from './components/DecisionsScreen';
 import { NavigatorScreen } from './components/NavigatorScreen';
 import { SettingsScreen } from './components/SettingsScreen';
+import { SearchScreen } from './components/SearchScreen';
 import { useTheme } from './lib/theme';
-import { migrateLegacyLocalStorage } from './lib/store';
+import { migrateLegacyLocalStorage, requestPersistentStorage } from './lib/store';
 import { initNativeUpdate, openApkDownload, type AndroidUpdate } from './lib/native-update';
 import { startReminderWatcher } from './lib/notifications';
 
-type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'settings';
+type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'search' | 'settings';
 
 export function App() {
-  const { theme, toggle } = useTheme();
+  const { theme, preference, setPreference, toggle } = useTheme();
   const [route, setRoute] = useState<Route>('today');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [androidUpdate, setAndroidUpdate] = useState<AndroidUpdate | null>(null);
@@ -31,6 +32,8 @@ export function App() {
         setReady(true);
         void startReminderWatcher();
       });
+    // Данные на устройстве — единственная копия, поэтому просим систему их не вытеснять.
+    void requestPersistentStorage();
     // Desktop (Tauri) обновляется тихо; Android — баннер с предложением установить свежий APK.
     initNativeUpdate(setAndroidUpdate);
   }, []);
@@ -84,6 +87,7 @@ export function App() {
           onToggleTheme={toggle}
           onOpenObject={openObject}
           onOpenSettings={() => setRoute('settings')}
+          onOpenLedger={() => setRoute('ledger')}
         />
       ) : route === 'ledger' ? (
         <LedgerScreen theme={theme} onToggleTheme={toggle} onSelect={setSelectedId} />
@@ -93,14 +97,30 @@ export function App() {
         <DecisionsScreen theme={theme} onToggleTheme={toggle} />
       ) : route === 'navigator' ? (
         <NavigatorScreen theme={theme} onToggleTheme={toggle} />
+      ) : route === 'search' ? (
+        <SearchScreen
+          theme={theme}
+          onToggleTheme={toggle}
+          onOpenObject={openObject}
+          onOpenSection={(kind) =>
+            setRoute(kind === 'task' ? 'household' : kind === 'decision' ? 'decisions' : 'navigator')
+          }
+        />
       ) : route === 'settings' ? (
-        <SettingsScreen theme={theme} onToggleTheme={toggle} onBack={() => setRoute('today')} />
+        <SettingsScreen
+          theme={theme}
+          onToggleTheme={toggle}
+          preference={preference}
+          onSetPreference={setPreference}
+          onBack={() => setRoute('today')}
+        />
       ) : (
         <TodayScreen
           theme={theme}
           onToggleTheme={toggle}
           onOpenObject={openObject}
           onOpenSettings={() => setRoute('settings')}
+          onOpenLedger={() => setRoute('ledger')}
         />
       )}
     </div>

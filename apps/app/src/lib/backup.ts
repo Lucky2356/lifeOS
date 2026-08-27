@@ -9,6 +9,7 @@ import {
   playbookProgressSchema,
 } from '@life-os/domain';
 import { db, dataStores, getSetting, setSetting } from './store/db';
+import { decryptBackup, encryptBackup, isEncryptedBackup } from './backup-crypto';
 
 /**
  * Резервная копия — единственный способ вынести данные с устройства (ADR 0006). Сервера нет,
@@ -124,9 +125,14 @@ export async function buildBackup(now: Date = new Date()): Promise<Backup> {
   };
 }
 
-export async function backupToBlob(now: Date = new Date()): Promise<Blob> {
-  const backup = await buildBackup(now);
-  return new Blob([JSON.stringify(backup)], { type: 'application/json' });
+/**
+ * Файл резервной копии. С паролем содержимое шифруется (см. backup-crypto.ts) — без него копия
+ * с паспортами и медзаписями лежит открытым текстом там, куда её положил пользователь.
+ */
+export async function backupToBlob(password?: string, now: Date = new Date()): Promise<Blob> {
+  const plaintext = JSON.stringify(await buildBackup(now));
+  const body = password ? JSON.stringify(await encryptBackup(plaintext, password)) : plaintext;
+  return new Blob([body], { type: 'application/json' });
 }
 
 const LAST_BACKUP_KEY = 'last-backup-at';
@@ -155,14 +161,30 @@ export class BackupInvalid extends Error {
   }
 }
 
-/** Прочитать и проверить файл копии. Ничего не меняет — только разбирает. */
-export async function readBackupFile(file: File): Promise<Backup> {
+/** Копия зашифрована — значит, при импорте нужно спросить пароль. */
+export class BackupEncrypted extends Error {
+  constructor() {
+    super('Копия зашифрована паролем');
+  }
+}
+
+/**
+ * Прочитать и проверить файл копии. Ничего не меняет — только разбирает.
+ * Для зашифрованной копии без пароля бросает `BackupEncrypted`, с неверным паролем — `WrongPassword`.
+ */
+export async function readBackupFile(file: File, password?: string): Promise<Backup> {
   let raw: unknown;
   try {
     raw = JSON.parse(await file.text());
   } catch {
     throw new BackupInvalid();
   }
+
+  if (isEncryptedBackup(raw)) {
+    if (!password) throw new BackupEncrypted();
+    raw = JSON.parse(await decryptBackup(raw, password));
+  }
+
   const parsed = backupSchema.safeParse(raw);
   if (!parsed.success) throw new BackupInvalid();
   return parsed.data;

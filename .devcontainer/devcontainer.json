@@ -1,0 +1,35 @@
+{
+  "name": "Life OS",
+  // Node 22 — та же версия, что в CI: расхождение среды разработки и сборки рано или поздно
+  // выстреливает именно в релизе.
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+
+  // Установщики (Windows .exe/.msi и Android .apk) собирает GitHub Actions — здесь нужен только
+  // сам код: правки, тесты, dev-сервер. Поэтому ни Rust, ни Android SDK в образ не тянем:
+  // они добавили бы минуты к запуску и гигабайты к диску Codespace ради того, что и так делает CI.
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "postCreateCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile",
+
+  // 5173 — vite dev. Codespaces сам откроет его в браузере.
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Life OS (dev)",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "eslint.workingDirectories": [{ "mode": "auto" }]
+      }
+    }
+  }
+}

@@ -1,8 +1,27 @@
 name: Release
 
+# Выпуск возможен двумя путями, и оба не требуют ничего, кроме браузера:
+#
+#   1. Actions → Release → Run workflow → ввести версию. Workflow сам проставит её везде,
+#      закоммитит, поставит тег и соберёт установщики.
+#   2. Обычный `git push origin v1.5.0` с машины — как раньше.
+#
+# Тег, поставленный этим workflow, намеренно не запускает второй прогон: события от GITHUB_TOKEN
+# не порождают новых запусков, поэтому сборка продолжается здесь же, а не дублируется.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Версия: 1.5.0 (без v)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Только проверка: ничего не коммитить и не выпускать'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -10,23 +29,135 @@ permissions:
 # Приложение полностью локальное (ADR 0006): серверных артефактов и образов больше нет,
 # выпускаются только установщики — Windows (.exe/.msi) и Android (.apk).
 jobs:
+  prepare:
+    name: Версия и тег
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      build: ${{ steps.plan.outputs.build }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: plan
+        name: Определить версию
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "Тег пришёл пушем: ${GITHUB_REF_NAME}"
+            exit 0
+          fi
+
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Версия должна быть вида 1.5.0 (без v), получено: $VERSION"
+            exit 1
+          fi
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Тег v$VERSION уже существует. Выпущенную версию не перевыпускают — возьмите следующую."
+            exit 1
+          fi
+
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: github.event_name == 'workflow_dispatch'
+      - uses: actions/setup-node@v5
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Гейты качества перед выпуском. С машины их запускают руками; из браузера — некому,
+      # поэтому здесь они обязательны: выпустить сломанное проще всего именно «в один клик».
+      - name: Проверки (lint, типы, тесты, контент)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm format:check
+          pnpm typecheck
+          pnpm test
+          pnpm validate:content
+
+      - name: Проставить версию
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          node scripts/set-version.mjs "$VERSION"
+          git --no-pager diff --stat
+
+      - name: Напомнить про CHANGELOG
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "CHANGELOG: раздел [$VERSION] на месте." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::В CHANGELOG.md нет раздела [$VERSION] — заметки к релизу соберутся только из коммитов."
+            echo "CHANGELOG: раздела [$VERSION] нет — добавьте его через веб-редактор, если он нужен." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Закоммитить версию и поставить тег
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == false
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Версия уже была $VERSION — коммитить нечего, ставим только тег."
+          else
+            git commit -m "chore: версия $VERSION"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+          git tag -a "v$VERSION" -m "Life OS v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Итог проверки
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        run: |
+          echo "### Проверка прошла" >> "$GITHUB_STEP_SUMMARY"
+          echo "Версия ${{ inputs.version }} валидна, гейты зелёные, тег свободен." >> "$GITHUB_STEP_SUMMARY"
+          echo "Ничего не закоммичено и не выпущено — это был dry run." >> "$GITHUB_STEP_SUMMARY"
+
   create-release:
     name: Create GitHub Release
+    needs: prepare
+    if: needs.prepare.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Life OS ${{ github.ref_name }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Life OS ${{ needs.prepare.outputs.tag }}
           generate_release_notes: true
 
   desktop:
     name: Desktop installer (Windows .exe/.msi)
-    needs: create-release
+    needs: [prepare, create-release]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -41,13 +172,15 @@ jobs:
       - run: pnpm --filter @life-os/domain build
       - name: Build desktop bundles (NSIS + MSI, signed for updater)
         env:
-          APP_VERSION: ${{ github.ref_name }}
+          APP_VERSION: ${{ needs.prepare.outputs.tag }}
           # Подпись апдейтер-артефактов. Приватный ключ — единственный секрет; пароль ключа пустой.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: pnpm --filter @life-os/desktop exec tauri build --bundles nsis,msi
       - name: Collect installers + build updater manifest (latest.json)
         shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           mkdir dist-desktop
           NSIS_DIR=apps/desktop/src-tauri/target/release/bundle/nsis
@@ -55,7 +188,7 @@ jobs:
           cp "$NSIS_DIR"/*.exe.sig dist-desktop/ 2>/dev/null || true
           cp apps/desktop/src-tauri/target/release/bundle/msi/*.msi dist-desktop/ 2>/dev/null || true
           # latest.json — то, что читает встроенный updater Tauri (endpoint релиза).
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG#v}"
           SETUP=$(ls "$NSIS_DIR"/*-setup.exe | head -1)
           SIG=$(cat "$SETUP.sig")
           # Пробелы в имени файла GitHub отдаёт как точки в browser_download_url.
@@ -63,12 +196,12 @@ jobs:
           cat > dist-desktop/latest.json <<JSON
           {
             "version": "$VERSION",
-            "notes": "Life OS $GITHUB_REF_NAME",
+            "notes": "Life OS $TAG",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "windows-x86_64": {
                 "signature": "$SIG",
-                "url": "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${URLNAME}"
+                "url": "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${URLNAME}"
               }
             }
           }
@@ -77,14 +210,17 @@ jobs:
       - name: Attach installers + latest.json to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
           files: dist-desktop/*
 
   android:
     name: Android app (.apk, release-signed)
-    needs: create-release
+    needs: [prepare, create-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -111,7 +247,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build app bundle
         env:
-          APP_VERSION: ${{ github.ref_name }}
+          APP_VERSION: ${{ needs.prepare.outputs.tag }}
         run: |
           pnpm --filter @life-os/domain build
           pnpm --filter @life-os/app build
@@ -148,21 +284,24 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK"
 
       - name: Rename APK + build update manifest (mobile-update.json)
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk \
-            "life-os-${{ github.ref_name }}.apk"
+            "life-os-${TAG}.apk"
           # mobile-update.json — приложение читает его на старте и предлагает установить свежий APK.
           cat > mobile-update.json <<JSON
           {
-            "version": "${{ github.ref_name }}",
-            "apkUrl": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/life-os-${{ github.ref_name }}.apk",
-            "notes": "Life OS ${{ github.ref_name }}"
+            "version": "${TAG}",
+            "apkUrl": "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/life-os-${TAG}.apk",
+            "notes": "Life OS ${TAG}"
           }
           JSON
 
       - name: Attach APK + manifest to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
           files: |
-            life-os-${{ github.ref_name }}.apk
+            life-os-${{ needs.prepare.outputs.tag }}.apk
             mobile-update.json

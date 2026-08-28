@@ -1,14 +1,32 @@
 import { useEffect, useRef } from 'react';
+import { pushBackStop } from './history-nav';
 
-/** Закрытие модалки по Escape (клавиатурная доступность). Слушатель снимается при размонтировании. */
+/**
+ * Закрытие модалки по Escape и по кнопке «Назад».
+ *
+ * «Назад» здесь не украшение: на Android аппаратная кнопка закрывала всё приложение вместе с
+ * открытой формой, а закрыть диалог тем жестом, которым его закрывают в любом другом приложении,
+ * было нельзя.
+ *
+ * Обработчик держим в ref: `onClose` почти всегда стрелка, создаваемая заново при каждом рендере
+ * родителя, и без ref запись в истории пере-создавалась бы на каждое нажатие клавиши в соседнем
+ * поле ввода.
+ */
 export function useEscapeToClose(onClose: () => void): void {
+  const latest = useRef(onClose);
+  latest.current = onClose;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') latest.current();
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+    const release = pushBackStop(() => latest.current());
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      release();
+    };
+  }, []);
 }
 
 const FOCUSABLE =

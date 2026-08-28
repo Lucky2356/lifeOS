@@ -3,10 +3,11 @@ import {
   daysUntil,
   lifecycleFor,
   objectTypeLabels,
+  type Decision,
   type HouseholdTask,
   type LifeObject,
 } from '@life-os/domain';
-import { householdStore, ledgerStore } from '../lib/store';
+import { decisionsStore, householdStore, ledgerStore } from '../lib/store';
 import { counted, formatDate } from '../lib/format';
 import { backupIsStale, lastBackupAt } from '../lib/backup';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
@@ -21,15 +22,18 @@ export function TodayScreen({
   onOpenObject,
   onOpenSettings,
   onOpenLedger,
+  onOpenDecisions,
 }: {
   theme: Theme;
   onToggleTheme: () => void;
   onOpenObject: (id: string) => void;
   onOpenSettings: () => void;
   onOpenLedger: () => void;
+  onOpenDecisions: () => void;
 }) {
   const [attention, setAttention] = useState<LifeObject[] | null>(null);
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
+  const [reviews, setReviews] = useState<Decision[]>([]);
   const [backupStale, setBackupStale] = useState(false);
   const [failed, setFailed] = useState(false);
   const [totalObjects, setTotalObjects] = useState(0);
@@ -59,6 +63,24 @@ export function TodayScreen({
       })
       .catch(fail);
 
+    // Решения, к которым пора вернуться: срок наступил, а исход ещё не записан.
+    void decisionsStore
+      .list()
+      .then((all) =>
+        setReviews(
+          all.filter(
+            (d) =>
+              d.status === 'decided' &&
+              d.reviewAt !== null &&
+              !d.actualOutcome &&
+              (daysUntil(d.reviewAt) ?? 1) <= 0,
+          ),
+        ),
+      )
+      .catch(() => {
+        /* решения не настолько срочны, чтобы ронять из-за них главный экран */
+      });
+
     // Данные лежат только здесь: если копии давно не было, об этом стоит сказать спокойно.
     void lastBackupAt()
       .then((at) => setBackupStale(backupIsStale(at)))
@@ -85,9 +107,9 @@ export function TodayScreen({
   // у задач заголовок обязан их учитывать, иначе он врёт.
   const urgentTasks = tasks.filter((t) => (daysUntil(t.dueAt) ?? 1) <= 0).length;
   // Ничего не внесено — «всё под контролем» здесь было бы неправдой и ничего не подсказывало бы.
-  const empty = attention !== null && totalObjects === 0 && tasks.length === 0;
+  const empty = attention !== null && totalObjects === 0 && tasks.length === 0 && reviews.length === 0;
   const flaggedObjects = attention?.length ?? 0;
-  const count = flaggedObjects + urgentTasks;
+  const count = flaggedObjects + urgentTasks + reviews.length;
 
   if (failed) {
     return (
@@ -178,6 +200,38 @@ export function TodayScreen({
         </>
       )}
 
+      {reviews.length > 0 && (
+        <>
+          <div className="section-label">Оглянуться на решение</div>
+          <div className="list-card" style={{ marginBottom: 22 }}>
+            {reviews.map((d) => (
+              <button
+                key={d.id}
+                className="list-row"
+                onClick={onOpenDecisions}
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: '0.5px solid var(--line)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <span className="icon-chip" style={{ width: 32, height: 32, fontSize: 16 }}>
+                  <Icon name="scale" />
+                </span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 500 }}>{d.title}</span>
+                  <span className="page-sub"> · решено {formatDate(d.decidedAt)}</span>
+                </span>
+                <span className="pill pill-warn">записать исход</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       {tasks.length > 0 && (
         <>
           <div className="section-label">Дом · задачи</div>
@@ -226,7 +280,7 @@ export function TodayScreen({
         </div>
       )}
 
-      {attention !== null && !empty && count === 0 && tasks.length === 0 && (
+      {attention !== null && !empty && count === 0 && tasks.length === 0 && reviews.length === 0 && (
         <div className="state">Спокойный день — система держит ваши дела под контролем.</div>
       )}
     </main>

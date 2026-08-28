@@ -1,6 +1,6 @@
 {
   "name": "@life-os/mobile",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Life OS — нативная Android-оболочка (Capacitor) над общим PWA",
   "scripts": {
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.0",
     "@capacitor/filesystem": "^6.0.4",
     "@capacitor/local-notifications": "^6.1.3",

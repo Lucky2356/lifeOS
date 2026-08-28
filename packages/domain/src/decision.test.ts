@@ -5,6 +5,7 @@ import {
   decideDecision,
   recordOutcome,
   reopenDecision,
+  reviewDateAfter,
   scoreOptions,
 } from './decision';
 
@@ -57,7 +58,7 @@ describe('жизненный цикл решения', () => {
   };
 
   it('фиксирует выбор, статус и дату', () => {
-    const decided = decideDecision(withOptions(), 'b', new Date('2026-08-21T10:00:00.000Z'));
+    const decided = decideDecision(withOptions(), 'b', 0, new Date('2026-08-21T10:00:00.000Z'));
     expect(decided.status).toBe('decided');
     expect(decided.chosenOptionId).toBe('b');
     expect(decided.decidedAt).toBe('2026-08-21T10:00:00.000Z');
@@ -84,5 +85,44 @@ describe('жизненный цикл решения', () => {
     expect(reopened.chosenOptionId).toBeNull();
     expect(reopened.decidedAt).toBeNull();
     expect(reopened.actualOutcome).toBeNull();
+  });
+});
+
+describe('возврат к решению', () => {
+  const withOptions = () => {
+    const d = createDecision({ title: 'Менять ли работу' }, OWNER);
+    return applyDecisionUpdate(d, {
+      options: [{ id: 'a', label: 'Остаться', scores: {} }],
+    });
+  };
+
+  it('назначает дату возврата через выбранное число месяцев', () => {
+    const decided = decideDecision(withOptions(), 'a', 6, new Date('2026-08-21T10:00:00.000Z'));
+    // Полдень по месту, а не UTC: напоминание должно приходить днём в часовом поясе человека.
+    const at = new Date(decided.reviewAt!);
+    expect([at.getFullYear(), at.getMonth(), at.getDate(), at.getHours()]).toEqual([2027, 1, 21, 12]);
+  });
+
+  it('без напоминания даты возврата нет', () => {
+    const decided = decideDecision(withOptions(), 'a', 0, new Date('2026-08-21T10:00:00.000Z'));
+    expect(decided.reviewAt).toBeNull();
+  });
+
+  it('записанный исход снимает напоминание — возвращаться больше незачем', () => {
+    const decided = decideDecision(withOptions(), 'a', 3, new Date('2026-08-21T10:00:00.000Z'));
+    expect(recordOutcome(decided, 'вышло лучше ожидаемого').reviewAt).toBeNull();
+  });
+
+  it('возврат в черновик снимает и дату возврата', () => {
+    const decided = decideDecision(withOptions(), 'a', 3, new Date('2026-08-21T10:00:00.000Z'));
+    expect(reopenDecision(decided).reviewAt).toBeNull();
+  });
+
+  it('reviewDateAfter переносит на существующую дату следующего месяца', () => {
+    // 31 декабря + 2 месяца: февраля 31-го не существует, Date сам переносит вперёд.
+    const at = new Date(reviewDateAfter(2, new Date('2026-12-31T08:00:00.000Z'))!);
+    expect([at.getMonth(), at.getDate()]).toEqual([2, 3]);
+    expect(reviewDateAfter(0)).toBeNull();
+    expect(reviewDateAfter(-3)).toBeNull();
   });
 });

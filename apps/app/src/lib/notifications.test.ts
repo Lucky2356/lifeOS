@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { syncReminderNotifications } from './notifications';
 import { ledgerStore } from './store/objects';
+import { decisionsStore } from './store/decisions';
 import { householdStore } from './store/household';
 
 const shown: string[] = [];
@@ -98,6 +99,48 @@ describe('напоминания о домашних задачах', () => {
     await houseWithTask(null);
     const done = await houseWithTask(inDays(0));
     await householdStore.toggleTask(done.id);
+    expect(await syncReminderNotifications()).toBe(0);
+  });
+});
+
+describe('напоминание вернуться к решению', () => {
+  beforeEach(() => {
+    shown.length = 0;
+    vi.stubGlobal('Notification', FakeNotification);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const decided = async (reviewAt: string | null) => {
+    const d = await decisionsStore.create({ title: 'Менять ли работу' });
+    return decisionsStore.update(d.id, {
+      status: 'decided',
+      chosenOptionId: null,
+      decidedAt: new Date().toISOString(),
+      reviewAt,
+    });
+  };
+
+  it('зовёт обратно, когда назначенный срок наступил', async () => {
+    await decided(inDays(-1));
+    expect(await syncReminderNotifications()).toBe(1);
+    expect(shown[0]).toContain('Менять ли работу');
+    // Повторно не зовём: одно напоминание на одну дату.
+    expect(await syncReminderNotifications()).toBe(0);
+  });
+
+  it('молчит, пока срок не наступил', async () => {
+    await decided(inDays(30));
+    expect(await syncReminderNotifications()).toBe(0);
+  });
+
+  it('решение без назначенной даты не напоминает о себе', async () => {
+    await decided(null);
+    expect(await syncReminderNotifications()).toBe(0);
+  });
+
+  it('записанный исход снимает напоминание — возвращаться уже незачем', async () => {
+    const d = await decided(inDays(-1));
+    await decisionsStore.update(d.id, { actualOutcome: 'вышло лучше ожидаемого' });
     expect(await syncReminderNotifications()).toBe(0);
   });
 });

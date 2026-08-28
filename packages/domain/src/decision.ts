@@ -32,6 +32,11 @@ export const decisionSchema = baseEntitySchema.extend({
   expectedOutcome: z.string().max(2000),
   actualOutcome: z.string().max(2000).nullable(),
   decidedAt: z.string().datetime().nullable(),
+  /**
+   * Когда вернуться и посмотреть, что вышло. Без этой даты журнал исхода видит только тот, кто
+   * случайно откроет экран: «через полгода я рассчитываю…» некому напомнить о себе.
+   */
+  reviewAt: z.string().datetime().nullable().default(null),
 });
 export type Decision = z.infer<typeof decisionSchema>;
 
@@ -68,6 +73,7 @@ export const updateDecisionInputSchema = z
     expectedOutcome: z.string().max(2000),
     actualOutcome: z.string().max(2000).nullable(),
     decidedAt: z.string().datetime().nullable(),
+    reviewAt: z.string().datetime().nullable(),
   })
   .partial();
 export type UpdateDecisionInput = z.infer<typeof updateDecisionInputSchema>;
@@ -95,6 +101,7 @@ export function createDecision(
     expectedOutcome: '',
     actualOutcome: null,
     decidedAt: null,
+    reviewAt: null,
   };
 }
 
@@ -112,17 +119,44 @@ export function applyDecisionUpdate(
   };
 }
 
+/** Через сколько месяцев предложено вернуться к решению. 0 — не напоминать. */
+export const reviewMonthChoices = [0, 3, 6, 12] as const;
+export type ReviewMonths = (typeof reviewMonthChoices)[number];
+
+/** Дата возврата к решению через N месяцев. 0 месяцев — возврата нет. */
+export function reviewDateAfter(months: number, now: Date = new Date()): string | null {
+  if (months <= 0) return null;
+  const at = new Date(now);
+  // Полдень, а не полночь: напоминание должно приходить днём, а не в момент смены суток.
+  at.setHours(12, 0, 0, 0);
+  at.setMonth(at.getMonth() + months);
+  return at.toISOString();
+}
+
 /**
  * Зафиксировать решение: выбранный вариант, статус и дату. Ради этого модуль и существует —
  * без фиксации выбора матрица остаётся упражнением, а журнала исходов не возникает.
+ *
+ * `reviewMonths` назначает дату, когда стоит оглянуться: без неё запись «чего я жду» так и
+ * останется непрочитанной.
  */
-export function decideDecision(current: Decision, chosenOptionId: string, now: Date = new Date()): Decision {
+export function decideDecision(
+  current: Decision,
+  chosenOptionId: string,
+  reviewMonths = 0,
+  now: Date = new Date(),
+): Decision {
   if (!current.options.some((o) => o.id === chosenOptionId)) {
     throw new Error('Выбранного варианта нет в решении');
   }
   return applyDecisionUpdate(
     current,
-    { status: 'decided', chosenOptionId, decidedAt: now.toISOString() },
+    {
+      status: 'decided',
+      chosenOptionId,
+      decidedAt: now.toISOString(),
+      reviewAt: reviewDateAfter(reviewMonths, now),
+    },
     now,
   );
 }
@@ -131,7 +165,7 @@ export function decideDecision(current: Decision, chosenOptionId: string, now: D
 export function reopenDecision(current: Decision, now: Date = new Date()): Decision {
   return applyDecisionUpdate(
     current,
-    { status: 'draft', chosenOptionId: null, decidedAt: null, actualOutcome: null },
+    { status: 'draft', chosenOptionId: null, decidedAt: null, actualOutcome: null, reviewAt: null },
     now,
   );
 }
@@ -141,7 +175,8 @@ export function recordOutcome(current: Decision, outcome: string, now: Date = ne
   if (current.status !== 'decided') {
     throw new Error('Исход записывается только для принятого решения');
   }
-  return applyDecisionUpdate(current, { actualOutcome: outcome }, now);
+  // Исход записан — возвращаться больше незачем, напоминание снимается.
+  return applyDecisionUpdate(current, { actualOutcome: outcome, reviewAt: null }, now);
 }
 
 /** Свежий id для критерия/варианта на клиенте. */

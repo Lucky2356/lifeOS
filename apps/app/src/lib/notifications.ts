@@ -1,6 +1,7 @@
 import { computeReminders, daysUntil, reminderRulesFor } from '@life-os/domain';
 import { getSetting, setSetting } from './store/db';
 import { ledgerStore } from './store/objects';
+import { decisionsStore } from './store/decisions';
 import { householdStore } from './store/household';
 import {
   notificationPermission,
@@ -28,6 +29,9 @@ async function shownKeys(): Promise<string[]> {
 
 /** Бытовая задача не нуждается в предупреждении за 90 дней — напоминаем в сам день срока. */
 const taskReminderRules = [{ offsetDays: 0 }];
+
+/** Возврат к решению — тоже единственная дата, без порогов «за неделю до». */
+const reviewReminderRules = [{ offsetDays: 0 }];
 
 function taskPhrase(days: number): string {
   return days < 0 ? `просрочена на ${-days} дн.` : days === 0 ? 'срок сегодня' : `срок через ${days} дн.`;
@@ -98,6 +102,25 @@ export async function syncReminderNotifications(now: Date = new Date()): Promise
     }
     if (shown.has(key)) continue;
     await showNow(title, `задача по дому · ${taskPhrase(daysUntil(task.dueAt, now) ?? 0)}`, key);
+    fresh.push(key);
+  }
+
+  // Решения с назначенной датой возврата: без напоминания журнал исхода читает только тот, кто
+  // случайно откроет экран, а ради него модуль и существует.
+  for (const decision of await decisionsStore.list()) {
+    if (decision.status !== 'decided' || !decision.reviewAt || decision.actualOutcome) continue;
+    const [reminder] = computeReminders(decision.reviewAt, reviewReminderRules);
+    if (!reminder) continue;
+    const key = `decision:${decision.id}:${decision.reviewAt}`;
+    const fireAt = new Date(reminder.fireAt);
+    const title = `Life OS: ${decision.title}`;
+    const body = 'решение · пора оглянуться и записать, что вышло';
+    if (fireAt.getTime() > now.getTime()) {
+      future.push({ key, at: fireAt, title, body });
+      continue;
+    }
+    if (shown.has(key)) continue;
+    await showNow(title, body, key);
     fresh.push(key);
   }
 

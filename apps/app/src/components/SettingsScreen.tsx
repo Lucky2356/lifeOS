@@ -4,11 +4,16 @@ import {
   backupFilename,
   BackupEncrypted,
   backupToBlob,
+  dropRollback,
   lastBackupAt,
   readBackupFile,
   rememberBackup,
+  stashRollback,
   summarize,
+  takeRollback,
+  undoImport,
   type BackupSummary,
+  type StashedRollback,
 } from '../lib/backup';
 import { WrongPassword } from '../lib/backup-crypto';
 import { saveFile, saveTargetLabel } from '../lib/platform-files';
@@ -55,6 +60,9 @@ export function SettingsScreen({
   const [lastBackup, setLastBackup] = useState<string | null>(null);
   const [storage, setStorage] = useState<StorageUsage | null>(null);
   const [askExportPassword, setAskExportPassword] = useState(false);
+  /** Снимок состояния до импорта: пока он есть, восстановление можно отменить. */
+  const [rollback, setRollback] = useState<StashedRollback | null>(null);
+  const [confirmUndo, setConfirmUndo] = useState(false);
   // Файл ждёт пароля: копия зашифрована, без него её не прочитать.
   const [lockedFile, setLockedFile] = useState<File | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -64,6 +72,7 @@ export function SettingsScreen({
     void notificationPermission().then(setNotifPerm);
     void lastBackupAt().then(setLastBackup);
     void storageUsage().then(setStorage);
+    void takeRollback().then(setRollback);
   }, []);
 
   async function exportBackup(password: string) {
@@ -126,6 +135,16 @@ export function SettingsScreen({
     setPendingImport(null);
     setBusy('import');
     try {
+      // Прежние данные откладываем целиком: ошиблись файлом — вернуть их будет неоткуда.
+      // Снимок переживает и импорт, и перезагрузку: настройки при импорте не чистятся.
+      const stashed = await stashRollback();
+      if (!stashed) {
+        setError(
+          'Данных слишком много, чтобы отложить их на случай отмены. Сохраните резервную копию текущих данных и повторите.',
+        );
+        setBusy(null);
+        return;
+      }
       await apply();
       // Экраны держат данные в состоянии — после подмены базы проще перечитать всё заново.
       window.location.reload();
@@ -133,6 +152,23 @@ export function SettingsScreen({
       setError('Не удалось восстановить данные из копии');
       setBusy(null);
     }
+  }
+
+  async function undo() {
+    setConfirmUndo(false);
+    setBusy('import');
+    try {
+      await undoImport();
+      window.location.reload();
+    } catch {
+      setError('Не удалось вернуть прежние данные');
+      setBusy(null);
+    }
+  }
+
+  async function keepImported() {
+    await dropRollback();
+    setRollback(null);
   }
 
   async function wipe() {
@@ -220,6 +256,24 @@ export function SettingsScreen({
             </div>
           </div>
         </>
+      )}
+
+      {rollback && (
+        <div className="hint" style={{ marginBottom: 18 }} role="status">
+          <Icon name="upload" />
+          <span style={{ flex: 1 }}>
+            Данные восстановлены из копии. Прежние сохранены и могут вернуться — они были на устройстве{' '}
+            {formatDateTime(rollback.at)}.
+          </span>
+          <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn" onClick={() => setConfirmUndo(true)} disabled={busy !== null}>
+              Отменить
+            </button>
+            <button className="btn btn-ghost" onClick={() => void keepImported()}>
+              Оставить
+            </button>
+          </span>
+        </div>
       )}
 
       <div className="section-label" style={{ marginTop: 22 }}>
@@ -365,6 +419,17 @@ export function SettingsScreen({
           danger
           onConfirm={() => void confirmImport()}
           onCancel={() => setPendingImport(null)}
+        />
+      )}
+
+      {confirmUndo && (
+        <ConfirmDialog
+          title="Вернуть прежние данные?"
+          message={`Всё, что появилось после восстановления, будет заменено данными на момент ${formatDateTime(rollback?.at ?? '')}.`}
+          confirmLabel="Вернуть"
+          danger
+          onConfirm={() => void undo()}
+          onCancel={() => setConfirmUndo(false)}
         />
       )}
 

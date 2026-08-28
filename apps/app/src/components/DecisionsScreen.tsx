@@ -12,7 +12,7 @@ import {
 import { decisionsStore as decisionApi } from '../lib/store';
 import { formatDate } from '../lib/format';
 import type { Theme } from '../lib/theme';
-import { ConfirmDialog, PromptDialog } from './Dialog';
+import { ChoiceDialog, ConfirmDialog, PromptDialog } from './Dialog';
 import { Icon } from './Icon';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
@@ -35,6 +35,8 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   const [confirmReopen, setConfirmReopen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [context, setContext] = useState('');
+  /** Вариант, который вот-вот зафиксируют: осталось выбрать, когда к нему вернуться. */
+  const [deciding, setDeciding] = useState<string | null>(null);
 
   const load = useCallback(() => {
     void decisionApi.list().then(setDecisions);
@@ -78,20 +80,22 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       chosenOptionId: next.chosenOptionId,
       decidedAt: next.decidedAt,
       actualOutcome: next.actualOutcome,
+      reviewAt: next.reviewAt,
     });
     setSelected(updated);
     setOutcome(updated.actualOutcome ?? '');
     load();
   }
 
-  async function decide(optionId: string) {
+  async function decide(optionId: string, reviewMonths: number) {
     if (!selected) return;
     // Несохранённые правки матрицы фиксируем вместе с решением, иначе они потеряются.
     const base = dirty
       ? await decisionApi.update(selected.id, { criteria, options, context, expectedOutcome: expected })
       : selected;
     setDirty(false);
-    await apply(decideDecision(base, optionId));
+    setDeciding(null);
+    await apply(decideDecision(base, optionId, reviewMonths));
   }
 
   async function saveOutcome() {
@@ -313,7 +317,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                     <span className="pill pill-ok">выбрано</span>
                   ) : (
                     !decided && (
-                      <button className="reveal-btn" onClick={() => void decide(r.optionId)}>
+                      <button className="reveal-btn" onClick={() => setDeciding(r.optionId)}>
                         выбрать
                       </button>
                     )
@@ -322,6 +326,16 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               ))}
             </div>
           </>
+        )}
+
+        {decided && selected.reviewAt && !selected.actualOutcome && (
+          <div className="hint" style={{ marginBottom: 20 }}>
+            <Icon name="bell" />
+            <span>
+              Вернуться к этому решению {formatDate(selected.reviewAt)} — тогда и станет видно, совпало ли
+              ожидание с тем, что вышло.
+            </span>
+          </div>
         )}
 
         <div className="section-label">Журнал исхода</div>
@@ -398,6 +412,21 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             danger
             onConfirm={() => void reopen()}
             onCancel={() => setConfirmReopen(false)}
+          />
+        )}
+
+        {deciding && (
+          <ChoiceDialog
+            title="Когда вернуться к этому решению?"
+            message="Записанное ожидание имеет смысл, только если кто-то напомнит его перечитать. Приложение позовёт обратно в выбранный срок."
+            choices={[
+              { value: 6, label: 'Через полгода', hint: 'подходит большинству решений' },
+              { value: 3, label: 'Через три месяца', hint: 'быстро проверяемый выбор' },
+              { value: 12, label: 'Через год', hint: 'то, что раскрывается долго' },
+              { value: 0, label: 'Не напоминать' },
+            ]}
+            onChoose={(months) => void decide(deciding, months)}
+            onCancel={() => setDeciding(null)}
           />
         )}
       </main>

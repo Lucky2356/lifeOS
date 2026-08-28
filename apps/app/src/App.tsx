@@ -9,9 +9,11 @@ import { NavigatorScreen } from './components/NavigatorScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { SearchScreen } from './components/SearchScreen';
 import { useTheme } from './lib/theme';
-import { migrateLegacyLocalStorage, requestPersistentStorage } from './lib/store';
+import { ledgerStore, migrateLegacyLocalStorage, requestPersistentStorage } from './lib/store';
 import { initNativeUpdate, openApkDownload, type AndroidUpdate } from './lib/native-update';
 import { startReminderWatcher } from './lib/notifications';
+import { initHardwareBack, pushBackStop } from './lib/history-nav';
+import { cleanupCache } from './lib/platform-files';
 
 type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'search' | 'settings';
 
@@ -31,12 +33,30 @@ export function App() {
       .finally(() => {
         setReady(true);
         void startReminderWatcher();
+        // Корзина обязана пустеть сама, иначе обещание «через 30 дней» остаётся словами.
+        void ledgerStore.purgeExpired().catch(() => {});
       });
     // Данные на устройстве — единственная копия, поэтому просим систему их не вытеснять.
     void requestPersistentStorage();
     // Desktop (Tauri) обновляется тихо; Android — баннер с предложением установить свежий APK.
     initNativeUpdate(setAndroidUpdate);
+    // Аппаратная «Назад» на Android: без этого она закрывает приложение с любого экрана.
+    void initHardwareBack();
+    // Временные файлы предыдущего запуска (просмотр вложений, сохранение копии) больше не нужны.
+    void cleanupCache();
   }, []);
+
+  // «Назад» из карточки объекта возвращает к списку, а не выбрасывает из приложения.
+  useEffect(() => {
+    if (!selectedId) return;
+    return pushBackStop(() => setSelectedId(null));
+  }, [selectedId]);
+
+  // «Назад» из любого раздела возвращает на «Сегодня» — верхний экран приложения.
+  useEffect(() => {
+    if (route === 'today') return;
+    return pushBackStop(() => setRoute('today'));
+  }, [route]);
 
   function navigate(key: string) {
     setSelectedId(null);
@@ -88,6 +108,7 @@ export function App() {
           onOpenObject={openObject}
           onOpenSettings={() => setRoute('settings')}
           onOpenLedger={() => setRoute('ledger')}
+          onOpenDecisions={() => setRoute('decisions')}
         />
       ) : route === 'ledger' ? (
         <LedgerScreen theme={theme} onToggleTheme={toggle} onSelect={setSelectedId} />
@@ -121,6 +142,7 @@ export function App() {
           onOpenObject={openObject}
           onOpenSettings={() => setRoute('settings')}
           onOpenLedger={() => setRoute('ledger')}
+          onOpenDecisions={() => setRoute('decisions')}
         />
       )}
     </div>

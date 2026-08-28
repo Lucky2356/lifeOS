@@ -96,3 +96,49 @@ export function applyLifeObjectUpdate(
     version: current.version + 1,
   };
 }
+
+/**
+ * Сколько объект лежит в корзине, прежде чем исчезнуть окончательно. Данные на устройстве
+ * единственные, поэтому удаление обязано быть обратимым хотя бы какое-то время.
+ */
+export const trashRetentionDays = 30;
+
+/**
+ * Убрать объект в корзину. Вложения при этом не трогаются — иначе восстанавливать было бы нечего:
+ * документ без скана не тот же документ.
+ */
+export function softDeleteLifeObject(current: LifeObject, now: Date = new Date()): LifeObject {
+  const ts = now.toISOString();
+  return { ...current, deletedAt: ts, updatedAt: ts, version: current.version + 1 };
+}
+
+/** Вернуть объект из корзины. */
+export function restoreLifeObject(current: LifeObject, now: Date = new Date()): LifeObject {
+  const ts = now.toISOString();
+  return { ...current, deletedAt: null, updatedAt: ts, version: current.version + 1 };
+}
+
+/** Отлежал ли объект в корзине свой срок и пора ли удалять его насовсем. */
+export function trashExpired(
+  obj: Pick<LifeObject, 'deletedAt'>,
+  now: Date = new Date(),
+  retentionDays: number = trashRetentionDays,
+): boolean {
+  if (!obj.deletedAt) return false;
+  const deleted = new Date(obj.deletedAt).getTime();
+  if (Number.isNaN(deleted)) return false;
+  return now.getTime() - deleted > retentionDays * 86_400_000;
+}
+
+/** Сколько дней осталось до окончательного удаления. null — объект не в корзине. */
+export function daysLeftInTrash(
+  obj: Pick<LifeObject, 'deletedAt'>,
+  now: Date = new Date(),
+  retentionDays: number = trashRetentionDays,
+): number | null {
+  if (!obj.deletedAt) return null;
+  const deleted = new Date(obj.deletedAt).getTime();
+  if (Number.isNaN(deleted)) return null;
+  const left = retentionDays * 86_400_000 - (now.getTime() - deleted);
+  return Math.max(0, Math.ceil(left / 86_400_000));
+}

@@ -209,3 +209,66 @@ export async function applyBackup(backup: Backup): Promise<void> {
 
   await Promise.all([...ops, tx.done]);
 }
+
+/**
+ * Страховка перед восстановлением из копии.
+ *
+ * `applyBackup` стирает всё и заливает файл. Выбрали не тот файл — прежних данных больше нет, а
+ * второй копии у локального приложения по определению не существует. Поэтому перед импортом
+ * состояние откладывается целиком.
+ *
+ * Снимок живёт в хранилище `settings`, и это не случайность: ни `applyBackup`, ни `clearAllData`
+ * настройки не трогают (они чистят только `dataStores`), поэтому снимок переживает и импорт, и
+ * перезагрузку страницы, которой импорт заканчивается.
+ */
+
+const ROLLBACK_KEY = 'pre-import-rollback';
+
+/** Больше этого снимок не откладываем: он лёг бы в то же хранилище, которое и так на пределе. */
+export const rollbackMaxBytes = 50 * 1024 * 1024;
+/** Сколько дней предлагать откат. Дальше решение считается принятым. */
+export const rollbackKeepDays = 7;
+
+export interface StashedRollback {
+  /** Когда сделан снимок — то есть момент, к которому вернёт откат. */
+  at: string;
+  backup: Backup;
+}
+
+/**
+ * Отложить текущее состояние. `false` — данных слишком много, снимок не поместится;
+ * интерфейс обязан сказать это прямо, а не делать вид, что откат есть.
+ */
+export async function stashRollback(now: Date = new Date()): Promise<boolean> {
+  const attachments = await (await db()).getAll('attachments');
+  // base64 раздувает содержимое на треть — считаем по факту, а не по размеру файлов.
+  const estimate = attachments.reduce((sum, a) => sum + a.size, 0) * (4 / 3);
+  if (estimate > rollbackMaxBytes) return false;
+
+  await setSetting(ROLLBACK_KEY, { at: now.toISOString(), backup: await buildBackup(now) });
+  return true;
+}
+
+/** Отложенный снимок, если он есть и ещё не протух. */
+export async function takeRollback(now: Date = new Date()): Promise<StashedRollback | null> {
+  const stashed = await getSetting<StashedRollback>(ROLLBACK_KEY);
+  if (!stashed) return null;
+  if (now.getTime() - new Date(stashed.at).getTime() > rollbackKeepDays * 86_400_000) {
+    await dropRollback();
+    return null;
+  }
+  return stashed;
+}
+
+export async function dropRollback(): Promise<void> {
+  await (await db()).delete('settings', ROLLBACK_KEY);
+}
+
+/** Вернуть данные к состоянию до импорта и убрать снимок. */
+export async function undoImport(now: Date = new Date()): Promise<boolean> {
+  const stashed = await takeRollback(now);
+  if (!stashed) return false;
+  await applyBackup(stashed.backup);
+  await dropRollback();
+  return true;
+}

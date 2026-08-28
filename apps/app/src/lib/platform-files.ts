@@ -17,6 +17,13 @@ function isCapacitor(): boolean {
   );
 }
 
+/** Свой подкаталог в кэше: чистить чужие файлы нельзя, а свои — нужно. */
+const CACHE_DIR = 'life-os-share';
+
+function cachePath(filename: string): string {
+  return `${CACHE_DIR}/${filename}`;
+}
+
 /** Capacitor Filesystem принимает содержимое строкой base64. */
 async function blobToBase64(blob: Blob): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -50,10 +57,12 @@ export async function saveFile(filename: string, blob: Blob): Promise<SaveTarget
       import('@capacitor/filesystem'),
       import('@capacitor/share'),
     ]);
+    const path = cachePath(filename);
     const { uri } = await Filesystem.writeFile({
-      path: filename,
+      path,
       data: await blobToBase64(blob),
       directory: Directory.Cache,
+      recursive: true,
     });
     await Share.share({ title: filename, url: uri, dialogTitle: 'Куда сохранить копию' });
     return 'shared';
@@ -80,10 +89,12 @@ export async function openFile(filename: string, mime: string, bytes: ArrayBuffe
       import('@capacitor/filesystem'),
       import('@capacitor/share'),
     ]);
+    const path = cachePath(filename);
     const { uri } = await Filesystem.writeFile({
-      path: filename,
+      path,
       data: await blobToBase64(new Blob([bytes], { type: mime })),
       directory: Directory.Cache,
+      recursive: true,
     });
     await Share.share({ title: filename, url: uri, dialogTitle: filename });
     return;
@@ -93,6 +104,27 @@ export async function openFile(filename: string, mime: string, bytes: ArrayBuffe
   window.open(url, '_blank', 'noopener');
   // Освобождаем blob после того, как просмотрщик успел его загрузить (иначе утечка памяти).
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
+ * Временные файлы прошлых запусков. Раньше каждый просмотренный скан и каждая резервная копия
+ * оставались в кэше навсегда: открыл паспорт десять раз — десять копий скана лежат на устройстве
+ * рядом с базой, и место они занимают молча.
+ *
+ * Файлы в общем каталоге кэша принадлежат не только нам, поэтому чистим строго свой подкаталог.
+ *
+ * Чистим на старте, а не сразу после «Поделиться»: система отдаёт файл принимающему приложению по
+ * ссылке, и часть приложений читает её не сразу. Удалить файл в ту же секунду — значит иногда
+ * отдавать пустоту.
+ */
+export async function cleanupCache(): Promise<void> {
+  if (!isCapacitor()) return;
+  try {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    await Filesystem.rmdir({ path: CACHE_DIR, directory: Directory.Cache, recursive: true });
+  } catch {
+    // Каталога ещё нет — чистить нечего.
+  }
 }
 
 export function saveTargetLabel(target: SaveTarget): string {

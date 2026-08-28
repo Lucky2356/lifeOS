@@ -6,6 +6,7 @@ import {
   objectTypeLabels,
   reminderOffsetChoices,
   reminderRulesFor,
+  trashRetentionDays,
   upcomingReminders,
   type LifeObject,
   type LifeObjectStatus,
@@ -372,8 +373,8 @@ export function ObjectDetailScreen({
       {confirmDelete && (
         <ConfirmDialog
           title="Удалить объект?"
-          message="Его можно будет восстановить позднее."
-          confirmLabel="Удалить"
+          message={`Объект и приложенные файлы попадут в корзину. Оттуда их можно вернуть в течение ${trashRetentionDays} дней — потом они удалятся окончательно.`}
+          confirmLabel="В корзину"
           danger
           onConfirm={remove}
           onCancel={() => setConfirmDelete(false)}

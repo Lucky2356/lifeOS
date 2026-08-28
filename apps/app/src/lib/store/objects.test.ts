@@ -65,13 +65,14 @@ describe('ledgerStore', () => {
     expect(stored?.sensitivity).toBe('high');
   });
 
-  it('удаление объекта уносит его вложения и файлы', async () => {
+  it('окончательное удаление уносит вложения объекта и не задевает чужие', async () => {
     const obj = await ledgerStore.create({ type: 'document', title: 'Договор' });
     const other = await ledgerStore.create({ type: 'document', title: 'Другой' });
     const attachment = await attachmentsStore.add(obj.id, pngFile());
     const keep = await attachmentsStore.add(other.id, pngFile('keep.png'));
 
-    await ledgerStore.remove(obj.id);
+    // remove() кладёт в корзину и вложения бережёт — уносит их только purge().
+    await ledgerStore.purge(obj.id);
 
     expect(await ledgerStore.get(obj.id)).toBeNull();
     expect(await attachmentsStore.list(obj.id)).toEqual([]);

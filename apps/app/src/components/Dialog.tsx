@@ -153,3 +153,75 @@ export function PromptDialog({
     </div>
   );
 }
+
+export interface DialogChoice<T> {
+  value: T;
+  label: string;
+  /** Пояснение под кнопкой — когда из самой подписи не видно, что выбор означает. */
+  hint?: string;
+}
+
+/**
+ * Диалог с несколькими равнозначными вариантами (не «да/нет»). Пример — когда вернуться к
+ * принятому решению: вариантов четыре, и ни один не «подтверждение».
+ */
+export function ChoiceDialog<T extends string | number>({
+  title,
+  message,
+  choices,
+  onChoose,
+  onCancel,
+}: {
+  title: string;
+  message?: string;
+  choices: DialogChoice<T>[];
+  onChoose: (value: T) => void;
+  onCancel: () => void;
+}) {
+  const titleId = useId();
+  useEscapeToClose(onCancel);
+  const trapRef = useFocusTrap<HTMLDivElement>();
+  return (
+    <div className="overlay" onClick={onCancel}>
+      <div
+        ref={trapRef}
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <h2 id={titleId} className="serif" style={{ fontSize: 20, margin: '0 0 10px' }}>
+          {title}
+        </h2>
+        {message && (
+          <p className="page-sub" style={{ margin: '0 0 16px' }}>
+            {message}
+          </p>
+        )}
+        <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+          {choices.map((choice, i) => (
+            <button
+              key={String(choice.value)}
+              type="button"
+              className={`btn ${i === 0 ? 'btn-primary' : ''}`}
+              style={{ justifyContent: 'flex-start', textAlign: 'left' }}
+              onClick={() => onChoose(choice.value)}
+              autoFocus={i === 0}
+            >
+              <span>
+                {choice.label}
+                {choice.hint && <span className="page-sub"> · {choice.hint}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

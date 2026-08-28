@@ -11,7 +11,9 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
-  "postCreateCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile",
+  // Версия pnpm берётся из "packageManager" в package.json — той же, что использует CI.
+  // Ставить "последнюю" нельзя: расхождение с лок-файлом всплывёт при установке зависимостей.
+  "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile",
 
   // 5173 — vite dev. Codespaces сам откроет его в браузере.
   "forwardPorts": [5173],

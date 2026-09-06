@@ -1,7 +1,6 @@
 **/dist/**
 **/node_modules/**
 **/.turbo/**
-apps/api/drizzle/**
 pnpm-lock.yaml
 # Нативные/генерируемые проекты — не форматируем
 apps/mobile/android/**

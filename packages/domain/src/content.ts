@@ -82,6 +82,35 @@ export function startProgress(
   };
 }
 
+/**
+ * Согласовать сохранённый прогресс с актуальным набором шагов плейбука.
+ *
+ * Контент-пак обновляется вместе с релизом приложения (ADR 0004), поэтому у уже начатого плейбука
+ * шаги могут появиться или исчезнуть. Набор ключей задаёт плейбук, а не сохранённая запись: иначе
+ * добавленный шаг виден на экране, но не участвует в подсчёте, а отметка по исчезнувшему шагу
+ * навсегда искажает долю выполненного.
+ */
+export function reconcileProgress(
+  progress: PlaybookProgress,
+  playbook: Playbook,
+  pack: Pick<ContentPack, 'packId' | 'version'>,
+  now: Date = new Date(),
+): PlaybookProgress {
+  const stepStates = Object.fromEntries(
+    playbook.steps.map((s) => [s.key, progress.stepStates[s.key] ?? false]),
+  );
+  // Плейбук, в который добавили шаг, перестаёт быть завершённым — иначе «выполнено» означало бы
+  // выполнение прежней, более короткой версии.
+  const allDone = playbook.steps.length > 0 && Object.values(stepStates).every(Boolean);
+  return {
+    ...progress,
+    packId: pack.packId,
+    packVersion: pack.version,
+    stepStates,
+    completedAt: allDone ? (progress.completedAt ?? now.toISOString()) : null,
+  };
+}
+
 /** Доля выполненных шагов (0..1). */
 export function progressPercent(progress: PlaybookProgress): number {
   const states = Object.values(progress.stepStates);

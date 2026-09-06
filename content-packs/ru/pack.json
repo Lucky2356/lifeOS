@@ -402,6 +402,182 @@
           "embedsGuideKey": null
         }
       ]
+    },
+    {
+      "key": "divorce",
+      "kind": "crisis",
+      "title": { "ru": "Развод", "en": "Divorce" },
+      "summary": {
+        "ru": "Порядок расторжения брака, раздел общего и что переоформить после.",
+        "en": "How a marriage is dissolved, how joint property is split and what to update afterwards."
+      },
+      "steps": [
+        {
+          "key": "decide_procedure",
+          "order": 1,
+          "title": { "ru": "Понять порядок", "en": "Work out the procedure" },
+          "description": {
+            "ru": "При взаимном согласии и без общих несовершеннолетних детей — через ЗАГС. Если есть спор или дети — через суд.",
+            "en": "By mutual consent and without shared minor children it goes through the registry office. A dispute or children means court."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "gather_documents",
+          "order": 2,
+          "title": { "ru": "Собрать документы", "en": "Gather the documents" },
+          "description": {
+            "ru": "Свидетельство о браке, паспорта, документы на детей, подтверждение оплаты пошлины.",
+            "en": "Marriage certificate, passports, children's documents, proof the fee is paid."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "split_property",
+          "order": 3,
+          "title": { "ru": "Разделить общее", "en": "Divide what is shared" },
+          "description": {
+            "ru": "Жильё, транспорт, накопления и, что важнее, общие долги: кредит остаётся общим, пока его не разделили отдельно.",
+            "en": "Housing, vehicles, savings and — more importantly — joint debts: a loan stays joint until it is divided explicitly."
+          },
+          "requiredDocumentTypes": ["property", "vehicle", "financial_obligation"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "update_documents",
+          "order": 4,
+          "title": { "ru": "Обновить документы", "en": "Update the documents" },
+          "description": {
+            "ru": "Смена фамилии тянет за собой паспорт и всё, что на него завязано. Меняется место жительства — потребуется и смена адреса.",
+            "en": "A change of surname pulls the passport and everything tied to it. If you move, the registered address changes too."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": "address_change"
+        },
+        {
+          "key": "review_obligations",
+          "order": 5,
+          "title": { "ru": "Пересмотреть обязательства", "en": "Review the ongoing commitments" },
+          "description": {
+            "ru": "Страховки, подписки, получатели выплат и доступ к счетам: там часто годами остаётся прежний человек.",
+            "en": "Insurance policies, subscriptions, payout beneficiaries and account access: the former partner often stays there for years."
+          },
+          "requiredDocumentTypes": ["insurance", "subscription"],
+          "embedsGuideKey": null
+        }
+      ]
+    },
+    {
+      "key": "serious_diagnosis",
+      "kind": "crisis",
+      "title": { "ru": "Тяжёлый диагноз", "en": "A serious diagnosis" },
+      "summary": {
+        "ru": "Собрать медицинские документы, узнать положенное и решить вопрос с работой.",
+        "en": "Put the medical documents together, learn what you are entitled to and settle things at work."
+      },
+      "steps": [
+        {
+          "key": "collect_medical",
+          "order": 1,
+          "title": { "ru": "Собрать медицинские документы", "en": "Collect the medical documents" },
+          "description": {
+            "ru": "Выписки, результаты обследований, назначения — в одном месте. Их будут спрашивать все: врачи, работодатель, экспертиза.",
+            "en": "Discharge notes, test results, prescriptions — in one place. Everyone will ask for them: doctors, employer, the assessment board."
+          },
+          "requiredDocumentTypes": ["health_record"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "know_rights",
+          "order": 2,
+          "title": { "ru": "Узнать, что положено", "en": "Find out what you are entitled to" },
+          "description": {
+            "ru": "Лекарственное обеспечение, квоты на лечение, выплаты. Часть из этого доступна только после оформления статуса.",
+            "en": "Medicine coverage, treatment quotas, payments. Some of it becomes available only after the status is granted."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": "disability_benefit"
+        },
+        {
+          "key": "arrange_work",
+          "order": 3,
+          "title": { "ru": "Решить вопрос с работой", "en": "Settle things at work" },
+          "description": {
+            "ru": "Больничный, облегчённый режим или перевод. Увольнение по собственному желанию лишает части гарантий — не торопитесь с ним.",
+            "en": "Sick leave, lighter duties or a transfer. Resigning voluntarily forfeits part of your protections, so do not rush into it."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "arrange_support",
+          "order": 4,
+          "title": { "ru": "Организовать поддержку", "en": "Arrange support" },
+          "description": {
+            "ru": "Доверенность на близкого, доступ к документам и счетам, договорённость о том, кто и что решает, если вы не сможете.",
+            "en": "A power of attorney for someone close, access to documents and accounts, and an agreement on who decides what if you cannot."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        }
+      ]
+    },
+    {
+      "key": "debt_trouble",
+      "kind": "crisis",
+      "title": { "ru": "Долги", "en": "Debt trouble" },
+      "summary": {
+        "ru": "Увидеть картину целиком, расставить приоритеты и договориться до просрочки.",
+        "en": "See the whole picture, set priorities and negotiate before you default."
+      },
+      "steps": [
+        {
+          "key": "inventory",
+          "order": 1,
+          "title": { "ru": "Собрать полную картину", "en": "Take stock of everything" },
+          "description": {
+            "ru": "Все обязательства в одном списке: суммы, ставки, сроки, кредиторы. Пока картина неполная, любой план — угадывание.",
+            "en": "Every obligation in one list: amounts, rates, dates, creditors. While the picture is incomplete, any plan is guesswork."
+          },
+          "requiredDocumentTypes": ["financial_obligation"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "prioritize",
+          "order": 2,
+          "title": { "ru": "Расставить приоритеты", "en": "Set the priorities" },
+          "description": {
+            "ru": "Сначала то, где заложено жильё или транспорт: потеря обеспечения необратима, а штраф по потребительскому кредиту — нет.",
+            "en": "Start where housing or a vehicle is pledged: losing the collateral is irreversible, a penalty on a consumer loan is not."
+          },
+          "requiredDocumentTypes": ["property", "vehicle", "financial_obligation"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "negotiate",
+          "order": 3,
+          "title": { "ru": "Договориться до просрочки", "en": "Negotiate before you default" },
+          "description": {
+            "ru": "Реструктуризация, отсрочка или кредитные каникулы обсуждаются заметно легче, пока платёж ещё не пропущен.",
+            "en": "Restructuring, deferral or a payment holiday are far easier to agree while no payment has been missed yet."
+          },
+          "requiredDocumentTypes": ["financial_obligation"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "protect_income",
+          "order": 4,
+          "title": { "ru": "Защитить необходимое", "en": "Protect what you need to live on" },
+          "description": {
+            "ru": "Часть дохода и часть имущества взысканию не подлежат, но защита включается по заявлению, а не сама.",
+            "en": "Part of your income and some property cannot be seized, but that protection has to be claimed — it does not switch itself on."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        }
+      ]
     }
   ]
 }

@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  objectTypeLabels,
-  pickText,
-  progressPercent,
-  type Playbook,
-  type PlaybookProgress,
-} from '@life-os/domain';
+import { objectTypeLabels, pickText, type Playbook, type PlaybookProgress } from '@life-os/domain';
 import { ledgerStore, navigatorStore as contentApi } from '../lib/store';
 import { counted } from '../lib/format';
 import type { Theme } from '../lib/theme';
+import { ConfirmDialog } from './Dialog';
 import { Icon } from './Icon';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
@@ -19,15 +14,52 @@ function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   );
 }
 
+/** Сколько шагов отмечено — считается по актуальному плейбуку, а не по записи прогресса. */
+function doneCount(progress: PlaybookProgress): number {
+  return Object.values(progress.stepStates).filter(Boolean).length;
+}
+
+function ProgressBar({ done, total }: { done: number; total: number }) {
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ flex: 1, height: 7, background: 'var(--line)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sage)' }} />
+      </div>
+      <span style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
+        {done} из {counted(total, 'шага', 'шагов', 'шагов')}
+      </span>
+    </div>
+  );
+}
+
 export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [selected, setSelected] = useState<Playbook | null>(null);
   const [progress, setProgress] = useState<PlaybookProgress | null>(null);
-  /** Какие типы документов уже есть в реестре — шаг должен говорить «есть», а не просто «нужно». */
-  const [ownedTypes, setOwnedTypes] = useState<Set<string>>(new Set());
+  /** Прогресс по всем начатым плейбукам — чтобы список показывал, за что уже брались. */
+  const [started, setStarted] = useState<Map<string, PlaybookProgress>>(new Map());
+  /**
+   * Из какого плейбука открыт встроенный гид. Гид — это обычный плейбук, но пришли в него из шага,
+   * и «Назад» обязано вернуть туда же, а не в общий список.
+   */
+  const [parentKey, setParentKey] = useState<string | null>(null);
+  /**
+   * Какие типы документов уже есть в реестре. null означает «прочитать не удалось» — это не то же
+   * самое, что «ничего нет»: сказать человеку в кризисе, что у него нет паспорта, хуже, чем
+   * промолчать.
+   */
+  const [ownedTypes, setOwnedTypes] = useState<Set<string> | null>(new Set());
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Контент-пак вшит в сборку — плейбуки доступны сразу, без загрузки.
-  const load = useCallback(() => setPlaybooks(contentApi.playbooks()), []);
+  const load = useCallback(() => {
+    setPlaybooks(contentApi.playbooks());
+    void contentApi
+      .progress()
+      .then((all) => setStarted(new Map(all.map((p) => [p.playbookKey, p]))))
+      .catch(() => setError('Не удалось прочитать сохранённый прогресс.'));
+  }, []);
   useEffect(() => load(), [load]);
 
   useEffect(() => {
@@ -36,14 +68,30 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       .then((objects) =>
         setOwnedTypes(new Set(objects.filter((o) => o.status === 'active').map((o) => o.type))),
       )
-      .catch(() => {
-        /* без реестра шаги просто не покажут отметку «есть у вас» */
-      });
+      .catch(() => setOwnedTypes(null));
   }, []);
 
-  async function open(pb: Playbook) {
-    setSelected(contentApi.playbook(pb.key));
-    setProgress(await contentApi.start(pb.key));
+  async function open(pb: Playbook, from: string | null = null) {
+    try {
+      setSelected(contentApi.playbook(pb.key));
+      setParentKey(from);
+      setProgress(await contentApi.start(pb.key));
+      setError(null);
+    } catch {
+      setError('Не удалось открыть плейбук.');
+    }
+  }
+
+  function back() {
+    const parent = parentKey ? playbooks.find((p) => p.key === parentKey) : null;
+    if (parent) {
+      void open(parent);
+      return;
+    }
+    setSelected(null);
+    setProgress(null);
+    setParentKey(null);
+    load();
   }
 
   /**
@@ -54,23 +102,51 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
   async function toggle(stepKey: string) {
     if (!progress) return;
-    const updated = await contentApi.toggleStep(progress.id, stepKey);
-    setProgress(updated);
+    try {
+      setProgress(await contentApi.toggleStep(progress.id, stepKey));
+      setError(null);
+    } catch {
+      setError('Не удалось сохранить отметку — попробуйте ещё раз.');
+    }
+  }
+
+  async function reset() {
+    if (!selected) return;
+    setConfirmReset(false);
+    try {
+      await contentApi.reset(selected.key);
+      setProgress(await contentApi.start(selected.key));
+    } catch {
+      setError('Не удалось начать заново.');
+    }
   }
 
   const crisis = playbooks.filter((p) => p.kind === 'crisis');
   const bureaucracy = playbooks.filter((p) => p.kind === 'bureaucracy');
 
+  const errorNote = error && (
+    <div className="page-sub" role="status" style={{ color: 'var(--brick-ink)', marginBottom: 12 }}>
+      {error}
+    </div>
+  );
+
   if (selected && progress) {
-    const pct = Math.round(progressPercent(progress) * 100);
-    const doneCount = Object.values(progress.stepStates).filter(Boolean).length;
+    const done = doneCount(progress);
     return (
       <main className="main">
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-          <button className="btn btn-ghost" onClick={() => setSelected(null)}>
-            <Icon name="arrow-left" /> Навигатор
+          <button className="btn btn-ghost" onClick={back}>
+            <Icon name="arrow-left" />{' '}
+            {parentKey ? pickText(contentApi.playbook(parentKey).title, 'ru') : 'Навигатор'}
           </button>
-          <ThemeBtn theme={theme} onToggle={onToggleTheme} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            {done > 0 && (
+              <button className="btn btn-ghost" onClick={() => setConfirmReset(true)}>
+                Начать заново
+              </button>
+            )}
+            <ThemeBtn theme={theme} onToggle={onToggleTheme} />
+          </div>
         </div>
 
         <div className="serif page-title">{pickText(selected.title, 'ru')}</div>
@@ -78,35 +154,30 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
           {pickText(selected.summary, 'ru')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
-          <div
-            style={{ flex: 1, height: 7, background: 'var(--line)', borderRadius: 999, overflow: 'hidden' }}
-          >
-            <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sage)' }} />
-          </div>
-          <span style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
-            {doneCount} из {counted(selected.steps.length, 'шага', 'шагов', 'шагов')}
-          </span>
+        {errorNote}
+
+        <div style={{ marginBottom: 22 }}>
+          <ProgressBar done={done} total={selected.steps.length} />
         </div>
 
         {selected.steps.map((step) => {
-          const done = progress.stepStates[step.key] ?? false;
+          const stepDone = progress.stepStates[step.key] ?? false;
           return (
             <div className="step-card" key={step.key}>
               <button
-                className={`check ${done ? 'check-done' : ''}`}
-                onClick={() => toggle(step.key)}
-                aria-label={done ? 'Снять отметку' : 'Отметить готовым'}
+                className={`check ${stepDone ? 'check-done' : ''}`}
+                onClick={() => void toggle(step.key)}
+                aria-label={stepDone ? 'Снять отметку' : 'Отметить готовым'}
               >
-                {done && <Icon name="check" />}
+                {stepDone && <Icon name="check" />}
               </button>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span
                     style={{
                       fontWeight: 500,
-                      textDecoration: done ? 'line-through' : 'none',
-                      color: done ? 'var(--ink-3)' : 'var(--ink)',
+                      textDecoration: stepDone ? 'line-through' : 'none',
+                      color: stepDone ? 'var(--ink-3)' : 'var(--ink)',
                     }}
                   >
                     {pickText(step.title, 'ru')}
@@ -118,7 +189,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                       onClick={(e) => {
                         e.stopPropagation();
                         const guide = guideFor(step.embedsGuideKey);
-                        if (guide) void open(guide);
+                        if (guide) void open(guide, selected.key);
                       }}
                     >
                       Открыть гид
@@ -132,16 +203,20 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {step.requiredDocumentTypes.map((t) => {
                       // Смысл Навигатора — не перечислить нужные бумаги, а сказать, чего у вас нет.
-                      const owned = ownedTypes.has(t);
+                      // Но только когда реестр действительно прочитан: иначе пилюля молчит о наличии.
+                      const owned = ownedTypes?.has(t) ?? false;
+                      const unknown = ownedTypes === null;
                       return (
                         <span
                           key={t}
-                          className={`pill ${owned ? 'pill-ok' : 'pill-due'}`}
-                          title={owned ? 'Есть в реестре' : 'В реестре не нашлось'}
+                          className={`pill ${unknown ? '' : owned ? 'pill-ok' : 'pill-due'}`}
+                          title={
+                            unknown ? 'Реестр не прочитан' : owned ? 'Есть в реестре' : 'В реестре не нашлось'
+                          }
                         >
                           <Icon name={owned ? 'check' : 'file'} style={{ marginRight: 4 }} />
                           {objectTypeLabels[t].ru}
-                          {owned ? ' · есть' : ' · нужно оформить'}
+                          {unknown ? '' : owned ? ' · есть' : ' · нужно оформить'}
                         </span>
                       );
                     })}
@@ -151,7 +226,49 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             </div>
           );
         })}
+
+        {confirmReset && (
+          <ConfirmDialog
+            title={`Начать «${pickText(selected.title, 'ru')}» заново?`}
+            message="Отметки по всем шагам будут сняты. Сам плейбук и его содержание не изменятся."
+            confirmLabel="Начать заново"
+            onConfirm={() => void reset()}
+            onCancel={() => setConfirmReset(false)}
+          />
+        )}
       </main>
+    );
+  }
+
+  function section(title: string, list: Playbook[], icon: 'compass' | 'file-text') {
+    // Заголовок над пустотой ничего не сообщает: секция появляется вместе с плейбуками.
+    if (list.length === 0) return null;
+    return (
+      <>
+        <div className="section-label">{title}</div>
+        <div className="grid" style={{ marginBottom: 24 }}>
+          {list.map((pb) => {
+            const inProgress = started.get(pb.key);
+            return (
+              <button key={pb.key} className="card" onClick={() => void open(pb)}>
+                <div className="card-top">
+                  <span className="icon-chip">
+                    <Icon name={icon} />
+                  </span>
+                </div>
+                <div className="card-title">{pickText(pb.title, 'ru')}</div>
+                {inProgress ? (
+                  <div style={{ marginTop: 6 }}>
+                    <ProgressBar done={doneCount(inProgress)} total={pb.steps.length} />
+                  </div>
+                ) : (
+                  <div className="card-meta">{counted(pb.steps.length, 'шаг', 'шага', 'шагов')}</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </>
     );
   }
 
@@ -165,35 +282,9 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         <ThemeBtn theme={theme} onToggle={onToggleTheme} />
       </div>
 
-      <div className="section-label">Кризисные ситуации</div>
-      <div className="grid" style={{ marginBottom: 24 }}>
-        {crisis.map((pb) => (
-          <button key={pb.key} className="card" onClick={() => open(pb)}>
-            <div className="card-top">
-              <span className="icon-chip">
-                <Icon name="compass" />
-              </span>
-            </div>
-            <div className="card-title">{pickText(pb.title, 'ru')}</div>
-            <div className="card-meta">{counted(pb.steps.length, 'шаг', 'шага', 'шагов')}</div>
-          </button>
-        ))}
-      </div>
-
-      <div className="section-label">Бюрократия</div>
-      <div className="grid">
-        {bureaucracy.map((pb) => (
-          <button key={pb.key} className="card" onClick={() => open(pb)}>
-            <div className="card-top">
-              <span className="icon-chip">
-                <Icon name="file-text" />
-              </span>
-            </div>
-            <div className="card-title">{pickText(pb.title, 'ru')}</div>
-            <div className="card-meta">{counted(pb.steps.length, 'шаг', 'шага', 'шагов')}</div>
-          </button>
-        ))}
-      </div>
+      {errorNote}
+      {section('Кризисные ситуации', crisis, 'compass')}
+      {section('Бюрократия', bureaucracy, 'file-text')}
     </main>
   );
 }

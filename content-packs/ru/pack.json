@@ -182,6 +182,116 @@
           "embedsGuideKey": null
         }
       ]
+    },
+    {
+      "key": "unemployment_benefit",
+      "kind": "bureaucracy",
+      "title": { "ru": "Пособие по безработице", "en": "Unemployment benefit" },
+      "summary": {
+        "ru": "Как встать на учёт и оформить выплату после потери работы.",
+        "en": "How to register as unemployed and claim the benefit after job loss."
+      },
+      "steps": [
+        {
+          "key": "gather_documents",
+          "order": 1,
+          "title": { "ru": "Собрать документы", "en": "Gather the documents" },
+          "description": {
+            "ru": "Паспорт, сведения о трудовой деятельности, документ об образовании, справка о заработке с последнего места работы.",
+            "en": "Passport, employment record, education document, earnings statement from the last job."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "register_center",
+          "order": 2,
+          "title": { "ru": "Встать на учёт", "en": "Register with the employment service" },
+          "description": {
+            "ru": "Подать заявление в службу занятости лично или через портал госуслуг. Срок обращения влияет на размер и длительность выплаты — не откладывайте.",
+            "en": "Apply to the employment service in person or online. How soon you apply affects the amount and duration of the payment, so do not postpone it."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "apply_benefit",
+          "order": 3,
+          "title": { "ru": "Подать заявление на пособие", "en": "Claim the benefit" },
+          "description": {
+            "ru": "Заявление подаётся вместе с постановкой на учёт или сразу после неё. Решение приходит в личный кабинет.",
+            "en": "The claim is filed together with registration or right after it. The decision arrives in your personal account."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "keep_status",
+          "order": 4,
+          "title": { "ru": "Сохранять статус", "en": "Keep the status active" },
+          "description": {
+            "ru": "Являться на перерегистрацию в назначенные дни и рассматривать предложения работы: пропуск снимает с учёта и прекращает выплату.",
+            "en": "Attend the scheduled check-ins and consider job offers: missing them ends the registration and stops the payment."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        }
+      ]
+    },
+    {
+      "key": "address_change",
+      "kind": "bureaucracy",
+      "title": { "ru": "Смена адреса регистрации", "en": "Change of registered address" },
+      "summary": {
+        "ru": "Что переоформить после переезда, чтобы документы и счета нашли вас на новом месте.",
+        "en": "What to update after a move so that documents and bills reach you at the new address."
+      },
+      "steps": [
+        {
+          "key": "submit_registration",
+          "order": 1,
+          "title": { "ru": "Подать заявление о регистрации", "en": "File the registration request" },
+          "description": {
+            "ru": "Через портал госуслуг, МФЦ или управляющую компанию. Понадобится документ, подтверждающий право проживания по новому адресу.",
+            "en": "Via the public services portal, a service centre or the building management. You will need a document confirming your right to live at the new address."
+          },
+          "requiredDocumentTypes": ["document", "property"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "update_documents",
+          "order": 2,
+          "title": { "ru": "Обновить адрес в документах", "en": "Update the address in documents" },
+          "description": {
+            "ru": "Регистрационные документы на транспорт, полис ОМС, документы на имущество — везде, где адрес указан явно.",
+            "en": "Vehicle registration, health insurance, property papers — everywhere the address is stated explicitly."
+          },
+          "requiredDocumentTypes": ["vehicle", "insurance"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "notify_organizations",
+          "order": 3,
+          "title": { "ru": "Уведомить организации", "en": "Notify the organisations" },
+          "description": {
+            "ru": "Банк, страховая, работодатель, поставщики услуг и подписки с доставкой. Письма по старому адресу продолжают идти, пока их не перенаправить.",
+            "en": "Bank, insurer, employer, utility providers and subscriptions with delivery. Mail keeps going to the old address until it is redirected."
+          },
+          "requiredDocumentTypes": ["financial_obligation", "subscription"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "update_ledger",
+          "order": 4,
+          "title": { "ru": "Обновить записи в реестре", "en": "Update the records in the ledger" },
+          "description": {
+            "ru": "Поправьте адрес в карточках объектов Life Ledger, чтобы напоминания и сверка с плейбуками опирались на актуальные данные.",
+            "en": "Fix the address in your Life Ledger records so that reminders and playbook checks rely on current data."
+          },
+          "requiredDocumentTypes": ["property"],
+          "embedsGuideKey": null
+        }
+      ]
     }
   ]
 }

@@ -16,3 +16,8 @@ apps/desktop/lifeos-updater.key
 *.jks
 *.jks.b64
 *.keystore
+
+# Манифесты автообновления: их генерирует release-workflow и кладёт в ассеты релиза,
+# приложения читают их оттуда. В репозитории копия только протухает.
+/latest.json
+/mobile-update.json

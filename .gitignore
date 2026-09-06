@@ -11,3 +11,8 @@ coverage/
 
 # Приватный ключ подписи обновлений десктопа (только локально и в секретах CI)
 apps/desktop/lifeos-updater.key
+
+# Keystore подписи Android-релиза и его base64 — только локально и в секретах CI
+*.jks
+*.jks.b64
+*.keystore

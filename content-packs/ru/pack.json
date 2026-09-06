@@ -124,8 +124,36 @@
           "embedsGuideKey": "address_change"
         },
         {
-          "key": "transfer_services",
+          "key": "medical_attachment",
           "order": 2,
+          "title": {
+            "ru": "Перенести медицинское прикрепление",
+            "en": "Move your medical registration"
+          },
+          "description": {
+            "ru": "Прикрепление к поликлинике по новому адресу и обновление данных в полисе. Пока этого нет, плановая помощь идёт по старому месту.",
+            "en": "Attach to a clinic at the new address and update the insurance details. Until then, routine care stays at the old location."
+          },
+          "requiredDocumentTypes": ["health_record", "insurance"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "documents_address",
+          "order": 3,
+          "title": {
+            "ru": "Обновить адрес в документах на имущество и транспорт",
+            "en": "Update the address on property and vehicle documents"
+          },
+          "description": {
+            "ru": "Регистрационные документы на транспорт и бумаги на недвижимость содержат адрес явно: расхождение всплывает при первой же сделке или штрафе.",
+            "en": "Vehicle registration and property papers state the address explicitly: a mismatch surfaces at the first transaction or fine."
+          },
+          "requiredDocumentTypes": ["property", "vehicle"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "transfer_services",
+          "order": 4,
           "title": {
             "ru": "Перенести коммунальные услуги и подписки",
             "en": "Transfer utilities and subscriptions"

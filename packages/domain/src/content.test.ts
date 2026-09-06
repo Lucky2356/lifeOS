@@ -12,13 +12,13 @@ const playbook: Playbook = {
   key: 'job_loss',
   kind: 'crisis',
   title: { ru: 'Потеря работы', en: 'Job loss' },
-  summary: { ru: '', en: '' },
+  summary: { ru: 'Сводка', en: 'Summary' },
   steps: [
     {
       key: 's1',
       order: 1,
       title: { ru: 'A', en: 'A' },
-      description: { ru: '', en: '' },
+      description: { ru: 'Шаг A', en: 'Step A' },
       requiredDocumentTypes: [],
       embedsGuideKey: null,
     },
@@ -26,7 +26,7 @@ const playbook: Playbook = {
       key: 's2',
       order: 2,
       title: { ru: 'B', en: 'B' },
-      description: { ru: '', en: '' },
+      description: { ru: 'Шаг B', en: 'Step B' },
       requiredDocumentTypes: [],
       embedsGuideKey: null,
     },
@@ -63,7 +63,7 @@ const changed: Playbook = {
       key: 's3',
       order: 2,
       title: { ru: 'C', en: 'C' },
-      description: { ru: '', en: '' },
+      description: { ru: 'Шаг C', en: 'Step C' },
       requiredDocumentTypes: [],
       embedsGuideKey: null,
     },
@@ -110,6 +110,37 @@ describe('reconcileProgress', () => {
   });
 });
 
+/** Бюрократический гид, на который можно сослаться из шага. */
+const guide: Playbook = {
+  key: 'guide',
+  kind: 'bureaucracy',
+  title: { ru: 'Гид', en: 'Guide' },
+  summary: { ru: 'Сводка', en: 'Summary' },
+  steps: [
+    {
+      key: 'g1',
+      order: 1,
+      title: { ru: 'Шаг', en: 'Step' },
+      description: { ru: 'Описание', en: 'Description' },
+      requiredDocumentTypes: [],
+      embedsGuideKey: null,
+    },
+  ],
+};
+
+const withGuide = (key: string): Playbook => ({
+  ...playbook,
+  steps: [{ ...playbook.steps[0]!, embedsGuideKey: key }, playbook.steps[1]!],
+});
+
+const packWith = (...playbooks: Playbook[]) => ({
+  packId: 'ru',
+  version: '1.0.0',
+  region: 'RU',
+  locales: ['ru', 'en'],
+  playbooks,
+});
+
 describe('validateContentPack', () => {
   it('валидирует корректный пак', () => {
     const pack = validateContentPack({
@@ -124,5 +155,37 @@ describe('validateContentPack', () => {
 
   it('отклоняет пак без обязательных полей', () => {
     expect(() => validateContentPack({ packId: 'ru' })).toThrow();
+  });
+
+  it('отклоняет ссылку на несуществующий гид', () => {
+    expect(() => validateContentPack(packWith(withGuide('нет-такого-гида')))).toThrow(/нет в паке/);
+  });
+
+  it('отклоняет ссылку на кризисный плейбук вместо гида', () => {
+    expect(() => validateContentPack(packWith(withGuide('job_loss'), playbook))).toThrow(/bureaucracy/);
+  });
+
+  it('принимает ссылку на настоящий гид', () => {
+    const pack = validateContentPack(packWith(withGuide('guide'), guide));
+    expect(pack.playbooks).toHaveLength(2);
+  });
+
+  it('отклоняет повторяющийся ключ шага', () => {
+    const broken = { ...playbook, steps: [playbook.steps[0]!, { ...playbook.steps[1]!, key: 's1' }] };
+    expect(() => validateContentPack(packWith(broken))).toThrow(/повторяется/);
+  });
+
+  it('отклоняет дыру в нумерации шагов', () => {
+    const broken = { ...playbook, steps: [playbook.steps[0]!, { ...playbook.steps[1]!, order: 5 }] };
+    expect(() => validateContentPack(packWith(broken))).toThrow(/подряд/);
+  });
+
+  it('отклоняет пустой перевод', () => {
+    const broken = { ...playbook, summary: { ru: 'Есть', en: '' } };
+    expect(() => validateContentPack(packWith(broken))).toThrow();
+  });
+
+  it('отклоняет плейбук без шагов', () => {
+    expect(() => validateContentPack(packWith({ ...playbook, steps: [] }))).toThrow();
   });
 });

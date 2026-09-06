@@ -292,6 +292,116 @@
           "embedsGuideKey": null
         }
       ]
+    },
+    {
+      "key": "tax_deduction",
+      "kind": "bureaucracy",
+      "title": { "ru": "Налоговый вычет", "en": "Tax deduction" },
+      "summary": {
+        "ru": "Как вернуть часть уплаченного налога за лечение, обучение или покупку жилья.",
+        "en": "How to reclaim part of the tax paid for treatment, education or buying a home."
+      },
+      "steps": [
+        {
+          "key": "check_eligibility",
+          "order": 1,
+          "title": { "ru": "Понять, какой вычет положен", "en": "Find out which deduction applies" },
+          "description": {
+            "ru": "Лечение, обучение, покупка жилья, взносы на пенсию и инвестиционный счёт — основания разные, и у каждого свой предел суммы.",
+            "en": "Treatment, education, buying a home, pension contributions and investment accounts are separate grounds, each with its own cap."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "collect_confirmations",
+          "order": 2,
+          "title": { "ru": "Собрать подтверждения расходов", "en": "Collect proof of the expenses" },
+          "description": {
+            "ru": "Договоры, чеки, справки об оплате, лицензии организаций. Без подтверждения расход не зачтут.",
+            "en": "Contracts, receipts, payment certificates, the organisation's licence. An expense without proof will not be counted."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "file_declaration",
+          "order": 3,
+          "title": { "ru": "Подать декларацию или заявление", "en": "File the declaration or application" },
+          "description": {
+            "ru": "Через личный кабинет налоговой — либо через работодателя, тогда налог перестают удерживать сразу, не дожидаясь конца года.",
+            "en": "Through the tax office account, or via your employer — then the tax stops being withheld right away instead of at year end."
+          },
+          "requiredDocumentTypes": ["document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "track_decision",
+          "order": 4,
+          "title": { "ru": "Дождаться проверки и возврата", "en": "Wait for the review and the refund" },
+          "description": {
+            "ru": "Заявление рассматривают, потом переводят деньги. Статус виден в личном кабинете; при отказе там же указана причина.",
+            "en": "The claim is reviewed, then the money is transferred. The status is visible in your account, and a refusal states its reason there too."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        }
+      ]
+    },
+    {
+      "key": "disability_benefit",
+      "kind": "bureaucracy",
+      "title": { "ru": "Инвалидность и выплаты", "en": "Disability status and payments" },
+      "summary": {
+        "ru": "Порядок оформления статуса и положенных по нему выплат и льгот.",
+        "en": "How to obtain the status and the payments and benefits that come with it."
+      },
+      "steps": [
+        {
+          "key": "referral",
+          "order": 1,
+          "title": { "ru": "Получить направление на экспертизу", "en": "Get a referral for the assessment" },
+          "description": {
+            "ru": "Направление выдаёт лечащий врач по результатам обследований. При отказе направление можно получить самостоятельно.",
+            "en": "The referral is issued by your doctor based on the examinations. If refused, you may obtain it yourself."
+          },
+          "requiredDocumentTypes": ["health_record"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "prepare_medical",
+          "order": 2,
+          "title": { "ru": "Собрать медицинские документы", "en": "Collect the medical documents" },
+          "description": {
+            "ru": "Выписки, результаты обследований, заключения специалистов. Держите их в реестре: они понадобятся и на переосвидетельствовании.",
+            "en": "Discharge notes, test results, specialist opinions. Keep them in the ledger: they will be needed at the re-assessment too."
+          },
+          "requiredDocumentTypes": ["health_record", "document"],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "pass_examination",
+          "order": 3,
+          "title": { "ru": "Пройти экспертизу", "en": "Go through the assessment" },
+          "description": {
+            "ru": "Медико-социальная экспертиза проводится очно или по документам. Решение выдаётся справкой и программой реабилитации.",
+            "en": "The medical and social assessment is held in person or on the documents. The decision comes as a certificate and a rehabilitation plan."
+          },
+          "requiredDocumentTypes": [],
+          "embedsGuideKey": null
+        },
+        {
+          "key": "claim_payments",
+          "order": 4,
+          "title": { "ru": "Оформить выплаты и льготы", "en": "Claim the payments and benefits" },
+          "description": {
+            "ru": "Пенсия, ежемесячная выплата, набор социальных услуг, льготы на лекарства и проезд оформляются отдельными заявлениями.",
+            "en": "The pension, the monthly payment, the social services package and the medicine and travel benefits are each claimed separately."
+          },
+          "requiredDocumentTypes": ["document", "insurance"],
+          "embedsGuideKey": null
+        }
+      ]
     }
   ]
 }

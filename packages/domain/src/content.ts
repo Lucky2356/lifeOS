@@ -35,6 +35,50 @@ export const playbookSchema = z.object({
 });
 export type Playbook = z.infer<typeof playbookSchema>;
 
+/** Проверки одного плейбука — вынесены из superRefine, чтобы вложенность оставалась читаемой. */
+function checkPlaybook(
+  playbook: Playbook,
+  index: number,
+  kinds: Map<string, Playbook['kind']>,
+  ctx: z.RefinementCtx,
+): void {
+  const at = (...tail: (string | number)[]) => ['playbooks', index, ...tail];
+  const complain = (path: (string | number)[], message: string) =>
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+
+  const orders = playbook.steps.map((s) => s.order).sort((a, b) => a - b);
+  // Шаги нумеруются подряд с единицы: дыра или дубль означают потерянный или задвоенный шаг.
+  if (orders.some((order, k) => order !== k + 1)) {
+    complain(
+      at('steps'),
+      `Шаги «${playbook.key}» должны быть пронумерованы подряд от 1 до ${playbook.steps.length}`,
+    );
+  }
+
+  playbook.steps.forEach((step, k) => {
+    if (playbook.steps.findIndex((s) => s.key === step.key) !== k) {
+      complain(at('steps', k, 'key'), `Ключ шага «${step.key}» повторяется внутри «${playbook.key}»`);
+    }
+
+    // Пилюля «Открыть гид» рисуется только для существующего гида, поэтому ссылка в никуда не
+    // ломает экран — она молча лишает шаг обещанной подсказки. Ловим здесь.
+    const guide = step.embedsGuideKey;
+    if (guide === null) return;
+    const kind = kinds.get(guide);
+    if (kind === undefined) {
+      complain(
+        at('steps', k, 'embedsGuideKey'),
+        `Шаг «${step.key}» ссылается на гид «${guide}», которого нет в паке`,
+      );
+    } else if (kind !== 'bureaucracy') {
+      complain(
+        at('steps', k, 'embedsGuideKey'),
+        `Гид «${guide}» должен быть kind: bureaucracy, а не ${kind}`,
+      );
+    }
+  });
+}
+
 /**
  * Правила целостности пака живут в схеме, а не в скрипте валидации: схема — единственный источник
  * правды о паке, и её же зовёт любая проверка, включая будущую проверку в рантайме. Правило,
@@ -49,8 +93,7 @@ export const contentPackSchema = z
     playbooks: z.array(playbookSchema),
   })
   .superRefine((pack, ctx) => {
-    const guides = new Map(pack.playbooks.map((p) => [p.key, p.kind]));
-
+    const kinds = new Map(pack.playbooks.map((p) => [p.key, p.kind]));
     pack.playbooks.forEach((playbook, i) => {
       if (pack.playbooks.findIndex((p) => p.key === playbook.key) !== i) {
         ctx.addIssue({
@@ -59,47 +102,10 @@ export const contentPackSchema = z
           message: `Ключ плейбука «${playbook.key}» повторяется`,
         });
       }
-
-      const orders = playbook.steps.map((s) => s.order).sort((a, b) => a - b);
-      // Шаги нумеруются подряд с единицы: дыра или дубль означают потерянный или задвоенный шаг.
-      if (orders.some((order, k) => order !== k + 1)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['playbooks', i, 'steps'],
-          message: `Шаги «${playbook.key}» должны быть пронумерованы подряд от 1 до ${playbook.steps.length}`,
-        });
-      }
-
-      playbook.steps.forEach((step, k) => {
-        if (playbook.steps.findIndex((s) => s.key === step.key) !== k) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['playbooks', i, 'steps', k, 'key'],
-            message: `Ключ шага «${step.key}» повторяется внутри «${playbook.key}»`,
-          });
-        }
-
-        // Пилюля «Открыть гид» рисуется только для существующего гида, поэтому ссылка в никуда
-        // не ломает экран — она молча лишает шаг обещанной подсказки. Ловим здесь.
-        const guide = step.embedsGuideKey;
-        if (guide === null) return;
-        const kind = guides.get(guide);
-        if (kind === undefined) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['playbooks', i, 'steps', k, 'embedsGuideKey'],
-            message: `Шаг «${step.key}» ссылается на гид «${guide}», которого нет в паке`,
-          });
-        } else if (kind !== 'bureaucracy') {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['playbooks', i, 'steps', k, 'embedsGuideKey'],
-            message: `Гид «${guide}» должен быть kind: bureaucracy, а не ${kind}`,
-          });
-        }
-      });
+      checkPlaybook(playbook, i, kinds, ctx);
     });
   });
+
 export type ContentPack = z.infer<typeof contentPackSchema>;
 
 /** Валидирует контент-пак по схеме (используется при загрузке и в CI). */

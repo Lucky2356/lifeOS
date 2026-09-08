@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { applyBackup, BackupEncrypted, backupToBlob, readBackupFile, summarize } from './backup';
+import {
+  applyBackup,
+  BackupEncrypted,
+  BackupInvalid,
+  backupToBlob,
+  readBackupFile,
+  summarize,
+} from './backup';
 import { attachmentsStore } from './store/attachments';
 import { ledgerStore } from './store/objects';
 import { decisionsStore } from './store/decisions';
@@ -81,6 +88,34 @@ describe('резервная копия', () => {
     await expect(readBackupFile(notJson)).rejects.toThrow();
 
     expect(await ledgerStore.list()).toHaveLength(1);
+  });
+
+  it('копия с повреждённым содержимым вложения отклоняется на чтении', async () => {
+    await seed();
+    const raw = JSON.parse(await (await backupToBlob()).text()) as {
+      attachments: { data: string }[];
+    };
+    raw.attachments[0]!.data = 'это не base64!';
+    const broken = new File([JSON.stringify(raw)], 'backup.json', { type: 'application/json' });
+
+    await expect(readBackupFile(broken)).rejects.toThrow(BackupInvalid);
+    expect(await ledgerStore.list()).toHaveLength(1);
+  });
+
+  it('повреждённое вложение не оставляет базу наполовину стёртой', async () => {
+    // Схема ловит такое раньше, но applyBackup зовётся и со снимком отката, минуя чтение файла.
+    // Раскодирование вынесено до открытия транзакции, чтобы падать внутри неё было негде.
+    // fake-indexeddb очистку при броске не коммитит, поэтому здесь проверяется свойство, а не
+    // конкретный порядок: данные после отказа целы.
+    const { obj } = await seed();
+    const backup = await readBackupFile(await asFile(await backupToBlob()));
+
+    await expect(
+      applyBackup({ ...backup, attachments: [{ ...backup.attachments[0]!, data: 'не base64!' }] }),
+    ).rejects.toThrow();
+
+    expect((await ledgerStore.list()).map((o) => o.title)).toEqual(['Загранпаспорт']);
+    expect(await attachmentsStore.list(obj.id)).toHaveLength(1);
   });
 
   it('импорт заменяет прежние данные, а не смешивается с ними', async () => {

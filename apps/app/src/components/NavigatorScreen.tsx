@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { objectTypeLabels, pickText, type Playbook, type PlaybookProgress } from '@life-os/domain';
+import {
+  objectTypeLabels,
+  pickText,
+  type ObjectType,
+  type Playbook,
+  type PlaybookProgress,
+} from '@life-os/domain';
 import { ledgerStore, navigatorStore as contentApi } from '../lib/store';
 import { counted } from '../lib/format';
 import type { Theme } from '../lib/theme';
@@ -17,6 +23,28 @@ function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
 /** Сколько шагов отмечено — считается по актуальному плейбуку, а не по записи прогресса. */
 function doneCount(progress: PlaybookProgress): number {
   return Object.values(progress.stepStates).filter(Boolean).length;
+}
+
+interface DocPillState {
+  cls: string;
+  title: string;
+  suffix: string;
+  icon: 'check' | 'file';
+}
+
+/**
+ * Состояние пилюли требуемого документа. Состояний три, а не два: реестр мог не прочитаться, и
+ * тогда пилюля молчит о наличии. Смысл Навигатора — сказать, чего у вас нет; но сообщить человеку
+ * в кризисе, что у него нет паспорта, который у него есть, хуже, чем промолчать.
+ */
+function docPill(type: ObjectType, owned: Set<string> | null): DocPillState {
+  if (owned === null) {
+    return { cls: 'pill', title: 'Реестр не прочитан', suffix: '', icon: 'file' };
+  }
+  if (owned.has(type)) {
+    return { cls: 'pill pill-ok', title: 'Есть в реестре', suffix: ' · есть', icon: 'check' };
+  }
+  return { cls: 'pill pill-due', title: 'В реестре не нашлось', suffix: ' · нужно оформить', icon: 'file' };
 }
 
 function ProgressBar({ done, total }: { done: number; total: number }) {
@@ -201,22 +229,13 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                 </div>
                 {step.requiredDocumentTypes.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                    {step.requiredDocumentTypes.map((t) => {
-                      // Смысл Навигатора — не перечислить нужные бумаги, а сказать, чего у вас нет.
-                      // Но только когда реестр действительно прочитан: иначе пилюля молчит о наличии.
-                      const owned = ownedTypes?.has(t) ?? false;
-                      const unknown = ownedTypes === null;
+                    {step.requiredDocumentTypes.map((type) => {
+                      const pill = docPill(type, ownedTypes);
                       return (
-                        <span
-                          key={t}
-                          className={`pill ${unknown ? '' : owned ? 'pill-ok' : 'pill-due'}`}
-                          title={
-                            unknown ? 'Реестр не прочитан' : owned ? 'Есть в реестре' : 'В реестре не нашлось'
-                          }
-                        >
-                          <Icon name={owned ? 'check' : 'file'} style={{ marginRight: 4 }} />
-                          {objectTypeLabels[t].ru}
-                          {unknown ? '' : owned ? ' · есть' : ' · нужно оформить'}
+                        <span key={type} className={pill.cls} title={pill.title}>
+                          <Icon name={pill.icon} style={{ marginRight: 4 }} />
+                          {objectTypeLabels[type].ru}
+                          {pill.suffix}
                         </span>
                       );
                     })}

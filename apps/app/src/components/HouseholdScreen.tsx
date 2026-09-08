@@ -13,10 +13,11 @@ import {
   type Role,
 } from '@life-os/domain';
 import { householdStore } from '../lib/store';
-import { counted, formatDate } from '../lib/format';
+import { formatDate } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog } from './Dialog';
 import { Icon } from './Icon';
+import { useLocale, useT, type TFunction } from '../lib/i18n';
 
 const roleTint: Record<Role, string> = {
   owner: 'tint-sage',
@@ -29,7 +30,19 @@ const roleTint: Record<Role, string> = {
  * «Дом» в локальном виде: люди, которых касаются домашние дела, и общий список задач.
  * Совместного доступа нет — данные не покидают устройство, делиться ими не с кем.
  */
+/** Подпись под заголовком: три состояния, и обе части счётчика склоняются по своему числу. */
+function summary(t: TFunction, loading: boolean, hasHousehold: boolean, people: number, open: number) {
+  if (loading) return t('app.loading');
+  if (!hasHousehold) return t('household.subtitle');
+  return t('household.summary', {
+    people: t('household.people', { n: people }),
+    tasks: t('household.openTasks', { n: open }),
+  });
+}
+
 export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
+  const t = useT();
+  const locale = useLocale();
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
@@ -53,9 +66,9 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   });
 
   const loadDetail = useCallback(async (id: string) => {
-    const [m, t] = await Promise.all([householdStore.members(id), householdStore.tasks(id)]);
-    setMembers(m);
-    setTasks(t);
+    const [people, loaded] = await Promise.all([householdStore.members(id), householdStore.tasks(id)]);
+    setMembers(people);
+    setTasks(loaded);
   }, []);
 
   const load = useCallback(() => {
@@ -72,7 +85,10 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   useEffect(() => load(), [load]);
 
   async function createHouse() {
-    const h = await householdStore.create('Наш дом', myName.trim() || 'Я');
+    const h = await householdStore.create(
+      t('household.defaultName'),
+      myName.trim() || t('household.defaultSelf'),
+    );
     setHousehold(h);
     await loadDetail(h.id);
   }
@@ -143,29 +159,23 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   }
 
   const nameOf = (id: string | null) => members.find((m) => m.id === id)?.displayName ?? null;
-  const openCount = tasks.filter((t) => t.status === 'open').length;
+  const openCount = tasks.filter((task) => task.status === 'open').length;
 
   return (
     <main className="main">
       <div className="page-head">
         <div>
-          <div className="serif page-title">Дом</div>
-          <div className="page-sub">
-            {loading
-              ? 'Загрузка…'
-              : household
-                ? `${counted(members.length, 'человек', 'человека', 'человек')} · ${counted(openCount, 'открытая задача', 'открытые задачи', 'открытых задач')}`
-                : 'Домашние дела и люди'}
-          </div>
+          <div className="serif page-title">{t('household.title')}</div>
+          <div className="page-sub">{summary(t, loading, household !== null, members.length, openCount)}</div>
         </div>
-        <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
+        <button className="btn" onClick={onToggleTheme} aria-label={t('theme.toggle')}>
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
 
       {!loading && !household && (
         <div className="state">
-          Соберите здесь домашние дела и людей, которых они касаются.
+          {t('household.intro')}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
             <input
               className="inline-input"
@@ -173,11 +183,11 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               value={myName}
               onChange={(e) => setMyName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void createHouse()}
-              placeholder="Как вас зовут"
-              aria-label="Как вас зовут"
+              placeholder={t('household.yourName')}
+              aria-label={t('household.yourName')}
             />
             <button className="btn btn-primary" onClick={() => void createHouse()}>
-              Создать дом
+              {t('household.create')}
             </button>
           </div>
         </div>
@@ -186,10 +196,10 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       {household && (
         <>
           <div className="section-label">
-            Люди
+            {t('household.peopleSection')}
             {!adding && (
               <button className="reveal-btn" onClick={() => setAdding(true)}>
-                <Icon name="user-plus" /> добавить
+                <Icon name="user-plus" /> {t('household.addPerson')}
               </button>
             )}
           </div>
@@ -198,7 +208,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             <div className="list-card" style={{ marginBottom: 14, padding: 14 }}>
               <div style={{ display: 'grid', gap: 10 }}>
                 <label className="page-sub" htmlFor="member-name">
-                  Имя
+                  {t('household.name')}
                 </label>
                 <input
                   id="member-name"
@@ -206,11 +216,11 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   value={mName}
                   onChange={(e) => setMName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && void submitMember()}
-                  placeholder="Как зовут"
+                  placeholder={t('household.namePlaceholder')}
                   autoFocus
                 />
                 <label className="page-sub" htmlFor="member-rel">
-                  Кто это для вас
+                  {t('household.relationship')}
                 </label>
                 <select
                   id="member-rel"
@@ -221,7 +231,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                     .filter((r) => r !== 'self')
                     .map((r) => (
                       <option key={r} value={r}>
-                        {relationshipLabels[r].ru}
+                        {relationshipLabels[r][locale]}
                       </option>
                     ))}
                 </select>
@@ -231,10 +241,10 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                     onClick={() => void submitMember()}
                     disabled={mName.trim().length === 0}
                   >
-                    Добавить
+                    {t('household.add')}
                   </button>
                   <button className="btn btn-ghost" onClick={() => setAdding(false)}>
-                    Отмена
+                    {t('dialog.cancel')}
                   </button>
                 </div>
               </div>
@@ -250,13 +260,13 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                     <div className="card-title">{m.displayName}</div>
                     {/* Роль без сервера ничего не разрешает и не запрещает — показываем только,
                         кто это человек для владельца. */}
-                    <div className="card-meta">{relationshipLabels[m.relationship].ru}</div>
+                    <div className="card-meta">{relationshipLabels[m.relationship][locale]}</div>
                   </div>
                   {m.relationship !== 'self' && (
                     <button
                       className="reveal-btn"
                       onClick={() => setPendingRemove(m)}
-                      aria-label={`Убрать ${m.displayName}`}
+                      aria-label={t('household.remove', { name: m.displayName })}
                     >
                       <Icon name="trash" />
                     </button>
@@ -266,16 +276,16 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             ))}
           </div>
 
-          <div className="section-label">Общие задачи</div>
+          <div className="section-label">{t('household.tasksSection')}</div>
           <div className="list-card" style={{ marginBottom: 14 }}>
             {tasks.length === 0 && (
               <div className="list-row" style={{ color: 'var(--ink-3)' }}>
-                Пока нет задач
+                {t('household.noTasks')}
               </div>
             )}
-            {tasks.map((t) =>
-              editingTask === t.id ? (
-                <div className="list-row" key={t.id} style={{ flexWrap: 'wrap', gap: 8 }}>
+            {tasks.map((task) =>
+              editingTask === task.id ? (
+                <div className="list-row" key={task.id} style={{ flexWrap: 'wrap', gap: 8 }}>
                   <input
                     className="inline-input"
                     value={draft.title}
@@ -284,32 +294,32 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                       if (e.key === 'Enter') void saveTask();
                       if (e.key === 'Escape') setEditingTask(null);
                     }}
-                    aria-label="Название задачи"
+                    aria-label={t('household.taskTitle')}
                     autoFocus
                   />
                   <input
                     type="date"
                     value={draft.dueAt}
                     onChange={(e) => setDraft((d) => ({ ...d, dueAt: e.target.value }))}
-                    aria-label="Срок задачи"
+                    aria-label={t('household.taskDue')}
                   />
                   <select
                     value={draft.repeat}
                     onChange={(e) => setDraft((d) => ({ ...d, repeat: e.target.value as Repeat }))}
-                    aria-label="Повтор"
+                    aria-label={t('household.taskRepeat')}
                   >
                     {repeats.map((r) => (
                       <option key={r} value={r}>
-                        {repeatLabels[r].ru}
+                        {repeatLabels[r][locale]}
                       </option>
                     ))}
                   </select>
                   <select
                     value={draft.assignee}
                     onChange={(e) => setDraft((d) => ({ ...d, assignee: e.target.value }))}
-                    aria-label="Исполнитель"
+                    aria-label={t('household.taskAssignee')}
                   >
-                    <option value="">Без исполнителя</option>
+                    <option value="">{t('household.noAssignee')}</option>
                     {members.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.displayName}
@@ -321,59 +331,59 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                     onClick={() => void saveTask()}
                     disabled={draft.title.trim().length === 0}
                   >
-                    Сохранить
+                    {t('household.save')}
                   </button>
                   <button className="btn btn-ghost" onClick={() => setEditingTask(null)}>
-                    Отмена
+                    {t('dialog.cancel')}
                   </button>
                 </div>
               ) : (
-                <div className="list-row" key={t.id}>
+                <div className="list-row" key={task.id}>
                   <button
-                    className={`check ${t.status === 'done' ? 'check-done' : ''}`}
-                    onClick={() => void toggle(t.id)}
-                    aria-label={t.status === 'done' ? 'Снять отметку' : 'Отметить выполненной'}
+                    className={`check ${task.status === 'done' ? 'check-done' : ''}`}
+                    onClick={() => void toggle(task.id)}
+                    aria-label={task.status === 'done' ? t('household.taskUndone') : t('household.taskDone')}
                   >
-                    {t.status === 'done' && <Icon name="check" />}
+                    {task.status === 'done' && <Icon name="check" />}
                   </button>
                   <span
                     style={{
                       flex: 1,
-                      textDecoration: t.status === 'done' ? 'line-through' : 'none',
-                      color: t.status === 'done' ? 'var(--ink-3)' : 'var(--ink)',
+                      textDecoration: task.status === 'done' ? 'line-through' : 'none',
+                      color: task.status === 'done' ? 'var(--ink-3)' : 'var(--ink)',
                     }}
                   >
-                    {t.title}
+                    {task.title}
                   </span>
-                  {t.dueAt && t.status === 'open' && (
+                  {task.dueAt && task.status === 'open' && (
                     <span
                       className="list-row-meta"
                       style={{
-                        color: lifecycleFor(t.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
+                        color: lifecycleFor(task.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
                       }}
                     >
-                      {formatDate(t.dueAt)}
+                      {formatDate(task.dueAt)}
                     </span>
                   )}
-                  {t.repeat !== 'none' && (
-                    <span className="list-row-meta" title={repeatLabels[t.repeat].ru}>
+                  {task.repeat !== 'none' && (
+                    <span className="list-row-meta" title={repeatLabels[task.repeat][locale]}>
                       <Icon name="repeat" />
                     </span>
                   )}
-                  {nameOf(t.assigneeMembershipId) && (
-                    <span className="list-row-meta">{nameOf(t.assigneeMembershipId)}</span>
+                  {nameOf(task.assigneeMembershipId) && (
+                    <span className="list-row-meta">{nameOf(task.assigneeMembershipId)}</span>
                   )}
                   <button
                     className="reveal-btn"
-                    onClick={() => startEdit(t)}
-                    aria-label={`Изменить задачу «${t.title}»`}
+                    onClick={() => startEdit(task)}
+                    aria-label={t('household.editTask', { title: task.title })}
                   >
                     <Icon name="edit" />
                   </button>
                   <button
                     className="reveal-btn"
-                    onClick={() => setPendingTaskRemove(t)}
-                    aria-label={`Удалить задачу «${t.title}»`}
+                    onClick={() => setPendingTaskRemove(task)}
+                    aria-label={t('household.deleteTask', { title: task.title })}
                   >
                     <Icon name="trash" />
                   </button>
@@ -387,23 +397,31 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void addTask()}
-              placeholder="Новая общая задача"
+              placeholder={t('household.newTask')}
             />
             <input
               type="date"
               value={dueAt}
               onChange={(e) => setDueAt(e.target.value)}
-              aria-label="Срок задачи"
+              aria-label={t('household.taskDue')}
             />
-            <select value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)} aria-label="Повтор">
+            <select
+              value={repeat}
+              onChange={(e) => setRepeat(e.target.value as Repeat)}
+              aria-label={t('household.taskRepeat')}
+            >
               {repeats.map((r) => (
                 <option key={r} value={r}>
-                  {repeatLabels[r].ru}
+                  {repeatLabels[r][locale]}
                 </option>
               ))}
             </select>
-            <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Исполнитель">
-              <option value="">Без исполнителя</option>
+            <select
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              aria-label={t('household.taskAssignee')}
+            >
+              <option value="">{t('household.noAssignee')}</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.displayName}
@@ -415,7 +433,7 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               onClick={() => void addTask()}
               disabled={newTask.trim().length === 0}
             >
-              Добавить
+              {t('household.add')}
             </button>
           </div>
         </>
@@ -423,8 +441,8 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
       {pendingTaskRemove && (
         <ConfirmDialog
-          title={`Удалить задачу «${pendingTaskRemove.title}»?`}
-          confirmLabel="Удалить"
+          title={t('household.deleteTaskTitle', { title: pendingTaskRemove.title })}
+          confirmLabel={t('household.deleteConfirm')}
           danger
           onConfirm={() => void confirmTaskRemove()}
           onCancel={() => setPendingTaskRemove(null)}
@@ -433,8 +451,8 @@ export function HouseholdScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
       {pendingRemove && (
         <ConfirmDialog
-          title={`Убрать ${pendingRemove.displayName} из дома?`}
-          confirmLabel="Убрать"
+          title={t('household.removeTitle', { name: pendingRemove.displayName })}
+          confirmLabel={t('household.removeConfirm')}
           danger
           onConfirm={() => void confirmRemove()}
           onCancel={() => setPendingRemove(null)}

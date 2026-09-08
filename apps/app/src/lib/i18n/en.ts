@@ -288,6 +288,28 @@ export const en = {
   'attachments.kilobytes': '{n} KB',
   'attachments.megabytes': '{n} MB',
 
+  'search.title': 'Search',
+  'search.subtitle': 'What are we looking for?',
+  'search.aria': 'Search the app',
+  'search.hint': 'Start typing — we look in every section at once.',
+  'search.searching': 'Searching…',
+  'search.nothing': 'Nothing found.',
+  'search.found': {
+    one: '{n} match',
+    other: '{n} matches',
+  },
+  'search.kindObject': 'Ledger',
+  'search.kindTask': 'Household',
+  'search.kindDecision': 'Decisions',
+  'search.kindPlaybook': 'Navigator',
+  'search.archivedSuffix': ' · archived',
+  'search.taskDone': 'task · done',
+  'search.taskOpen': 'household task',
+  'search.decisionDecided': 'decision · made',
+  'search.decisionDraft': 'decision · draft',
+  'search.playbook': 'playbook',
+  'search.guide': 'bureaucratic guide',
+
   'navigator.progress': {
     one: '{done} of {n} step',
     other: '{done} of {n} steps',

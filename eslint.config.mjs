@@ -45,14 +45,12 @@ export default tseslint.config(
       'apps/app/src/lib/i18n/ru.ts',
 
       // Ещё не переведено:
-      'apps/app/src/components/SearchScreen.tsx',
       'apps/app/src/components/SettingsScreen.tsx',
       'apps/app/src/lib/backup-crypto.ts',
       'apps/app/src/lib/backup.ts',
       'apps/app/src/lib/notifications.ts',
       'apps/app/src/lib/object-visuals.ts',
       'apps/app/src/lib/platform-files.ts',
-      'apps/app/src/lib/search.ts',
       'apps/app/src/lib/theme.ts',
       'apps/app/src/lib/store/decisions.ts',
       'apps/app/src/lib/store/household.ts',

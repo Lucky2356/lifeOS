@@ -63,6 +63,55 @@ export const ru = {
   'navigator.toggleFailed': 'Не удалось сохранить отметку — попробуйте ещё раз.',
   'navigator.restartFailed': 'Не удалось начать заново.',
 
+  'theme.light': 'Светлая тема',
+  'theme.dark': 'Тёмная тема',
+
+  'ledger.title': 'Реестр',
+  'ledger.countTrash': {
+    one: '{n} объект в корзине',
+    few: '{n} объекта в корзине',
+    many: '{n} объектов в корзине',
+  },
+  'ledger.countArchive': {
+    one: '{n} объект в архиве',
+    few: '{n} объекта в архиве',
+    many: '{n} объектов в архиве',
+  },
+  'ledger.countActive': {
+    one: '{n} объект вашей жизни',
+    few: '{n} объекта вашей жизни',
+    many: '{n} объектов вашей жизни',
+  },
+  'ledger.add': 'Добавить',
+  'ledger.addFirst': 'Добавить первый объект',
+  'ledger.search': 'Поиск по реестру',
+  'ledger.allTypes': 'Все',
+  'ledger.toActive': 'К активным',
+  'ledger.archive': 'Архив · {n}',
+  'ledger.trash': 'Корзина · {n}',
+  'ledger.loadFailed': 'Ошибка загрузки',
+  'ledger.readFailed': 'Не удалось прочитать данные на этом устройстве.',
+  'ledger.retry': 'Повторить',
+  'ledger.empty': 'Здесь появятся ваши документы, вещи и подписки.',
+  'ledger.trashEmpty': 'В корзине ничего нет.',
+  'ledger.archiveEmpty': 'В архиве ничего не найдено.',
+  'ledger.nothingFound': 'Ничего не найдено. Измените запрос или фильтр.',
+  'ledger.trashNote':
+    'Удалённое лежит здесь {days} дней вместе с приложенными файлами. Потом исчезает окончательно — восстанавливать будет неоткуда.',
+  'ledger.purgeToday': 'удалится сегодня',
+  'ledger.purgeIn': {
+    one: '{n} день до удаления',
+    few: '{n} дня до удаления',
+    many: '{n} дней до удаления',
+  },
+  'ledger.restore': 'Восстановить',
+  'ledger.restoreOne': 'Восстановить «{title}»',
+  'ledger.purgeOne': 'Удалить «{title}» окончательно',
+  'ledger.purgeTitle': 'Удалить «{title}» окончательно?',
+  'ledger.purgeMessage':
+    'Объект и приложенные к нему файлы исчезнут с устройства. Вернуть их можно будет только из резервной копии, сделанной раньше.',
+  'ledger.purgeConfirm': 'Удалить навсегда',
+
   'navigator.progress': {
     one: '{done} из {n} шага',
     few: '{done} из {n} шагов',

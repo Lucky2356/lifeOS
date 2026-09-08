@@ -63,6 +63,51 @@ export const en = {
   'navigator.toggleFailed': 'Could not save the mark — please try again.',
   'navigator.restartFailed': 'Could not start over.',
 
+  'theme.light': 'Light theme',
+  'theme.dark': 'Dark theme',
+
+  'ledger.title': 'Ledger',
+  'ledger.countTrash': {
+    one: '{n} object in the trash',
+    other: '{n} objects in the trash',
+  },
+  'ledger.countArchive': {
+    one: '{n} object in the archive',
+    other: '{n} objects in the archive',
+  },
+  'ledger.countActive': {
+    one: '{n} object of your life',
+    other: '{n} objects of your life',
+  },
+  'ledger.add': 'Add',
+  'ledger.addFirst': 'Add the first object',
+  'ledger.search': 'Search the ledger',
+  'ledger.allTypes': 'All',
+  'ledger.toActive': 'Back to active',
+  'ledger.archive': 'Archive · {n}',
+  'ledger.trash': 'Trash · {n}',
+  'ledger.loadFailed': 'Loading failed',
+  'ledger.readFailed': 'Could not read the data on this device.',
+  'ledger.retry': 'Try again',
+  'ledger.empty': 'Your documents, belongings and subscriptions will show up here.',
+  'ledger.trashEmpty': 'The trash is empty.',
+  'ledger.archiveEmpty': 'Nothing found in the archive.',
+  'ledger.nothingFound': 'Nothing found. Change the query or the filter.',
+  'ledger.trashNote':
+    'Deleted items stay here for {days} days together with their attachments. After that they are gone for good — there will be nowhere to restore them from.',
+  'ledger.purgeToday': 'goes away today',
+  'ledger.purgeIn': {
+    one: '{n} day until deletion',
+    other: '{n} days until deletion',
+  },
+  'ledger.restore': 'Restore',
+  'ledger.restoreOne': 'Restore “{title}”',
+  'ledger.purgeOne': 'Delete “{title}” for good',
+  'ledger.purgeTitle': 'Delete “{title}” for good?',
+  'ledger.purgeMessage':
+    'The object and its attachments will disappear from the device. The only way back is a backup made earlier.',
+  'ledger.purgeConfirm': 'Delete for good',
+
   'navigator.progress': {
     one: '{done} of {n} step',
     other: '{done} of {n} steps',

@@ -7,16 +7,28 @@ import {
   type ObjectType,
 } from '@life-os/domain';
 import { ledgerStore } from '../lib/store';
-import { counted } from '../lib/format';
+import { compareText } from '../lib/format';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { matchesQuery } from '../lib/ledger-search';
 import { AddObjectModal } from './AddObjectModal';
 import { ConfirmDialog } from './Dialog';
 import type { Theme } from '../lib/theme';
 import { Icon } from './Icon';
+import { useLocale, useT } from '../lib/i18n';
 
 /** Что показывает список: активное, архив или корзину. */
 type Scope = 'active' | 'archive' | 'trash';
+
+/** Подпись под заголовком и текст пустоты зависят от раздела — ключи выбираются здесь, а не в разметке. */
+function countKey(scope: Scope) {
+  if (scope === 'trash') return 'ledger.countTrash';
+  return scope === 'archive' ? 'ledger.countArchive' : 'ledger.countActive';
+}
+
+function emptyKey(scope: Scope) {
+  if (scope === 'trash') return 'ledger.trashEmpty';
+  return scope === 'archive' ? 'ledger.archiveEmpty' : 'ledger.nothingFound';
+}
 
 export function LedgerScreen({
   theme,
@@ -27,6 +39,8 @@ export function LedgerScreen({
   onToggleTheme: () => void;
   onSelect: (id: string) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [objects, setObjects] = useState<LifeObject[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -52,8 +66,9 @@ export function LedgerScreen({
   // Типы, реально присутствующие в текущем разделе — из них строим чипы-фильтры.
   const presentTypes = useMemo(() => {
     const set = new Set<ObjectType>(inScope.map((o) => o.type));
-    return [...set].sort((a, b) => objectTypeLabels[a].ru.localeCompare(objectTypeLabels[b].ru));
-  }, [inScope]);
+    return [...set].sort((a, b) => compareText(objectTypeLabels[a][locale], objectTypeLabels[b][locale]));
+    // locale в зависимостях не для красоты: без него смена языка оставила бы прежний порядок чипов.
+  }, [inScope, locale]);
 
   const filtered = useMemo(
     () => inScope.filter((o) => (typeFilter === 'all' || o.type === typeFilter) && matchesQuery(o, query)),
@@ -65,7 +80,7 @@ export function LedgerScreen({
     ledgerStore
       .list()
       .then(setObjects)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Ошибка загрузки'));
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : t('ledger.loadFailed')));
     // Корзина живёт отдельно от списка: в `list()` удалённого нет и быть не должно.
     void ledgerStore
       .deleted()
@@ -90,29 +105,23 @@ export function LedgerScreen({
     <main className="main">
       <div className="page-head">
         <div>
-          <div className="serif page-title">Реестр</div>
+          <div className="serif page-title">{t('ledger.title')}</div>
           <div className="page-sub">
-            {objects === null
-              ? 'Загрузка…'
-              : scope === 'trash'
-                ? `${counted(inScope.length, 'объект', 'объекта', 'объектов')} в корзине`
-                : showArchive
-                  ? `${counted(inScope.length, 'объект', 'объекта', 'объектов')} в архиве`
-                  : `${counted(inScope.length, 'объект', 'объекта', 'объектов')} вашей жизни`}
+            {objects === null ? t('app.loading') : t(countKey(scope), { n: inScope.length })}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
             className="btn"
             onClick={onToggleTheme}
-            aria-label="Переключить тему"
-            title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            aria-label={t('theme.toggle')}
+            title={theme === 'dark' ? t('theme.light') : t('theme.dark')}
           >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
           </button>
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
             <Icon name="plus" />
-            Добавить
+            {t('ledger.add')}
           </button>
         </div>
       </div>
@@ -135,8 +144,8 @@ export function LedgerScreen({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск по реестру"
-              aria-label="Поиск по реестру"
+              placeholder={t('ledger.search')}
+              aria-label={t('ledger.search')}
               style={{ width: '100%', paddingLeft: 34 }}
             />
           </div>
@@ -145,7 +154,7 @@ export function LedgerScreen({
               className={`chip ${typeFilter === 'all' ? 'active' : ''}`}
               onClick={() => setTypeFilter('all')}
             >
-              Все
+              {t('ledger.allTypes')}
             </button>
             {presentTypes.map((t) => (
               <button
@@ -166,7 +175,7 @@ export function LedgerScreen({
                 }}
                 aria-pressed={showArchive}
               >
-                {showArchive ? 'К активным' : `Архив · ${archivedCount}`}
+                {showArchive ? t('ledger.toActive') : t('ledger.archive', { n: archivedCount })}
               </button>
             )}
             {(trash.length > 0 || scope === 'trash') && (
@@ -178,7 +187,7 @@ export function LedgerScreen({
                 }}
                 aria-pressed={scope === 'trash'}
               >
-                {scope === 'trash' ? 'К активным' : `Корзина · ${trash.length}`}
+                {scope === 'trash' ? t('ledger.toActive') : t('ledger.trash', { n: trash.length })}
               </button>
             )}
           </div>
@@ -187,10 +196,10 @@ export function LedgerScreen({
 
       {error && (
         <div className="state">
-          Не удалось прочитать данные на этом устройстве.
+          {t('ledger.readFailed')}
           <div style={{ marginTop: 12 }}>
             <button className="btn" onClick={load}>
-              Повторить
+              {t('ledger.retry')}
             </button>
           </div>
         </div>
@@ -198,23 +207,17 @@ export function LedgerScreen({
 
       {!error && objects !== null && objects.length === 0 && scope !== 'trash' && (
         <div className="state">
-          Здесь появятся ваши документы, вещи и подписки.
+          {t('ledger.empty')}
           <div style={{ marginTop: 12 }}>
             <button className="btn btn-primary" onClick={() => setAdding(true)}>
-              Добавить первый объект
+              {t('ledger.addFirst')}
             </button>
           </div>
         </div>
       )}
 
       {!error && objects && (objects.length > 0 || scope === 'trash') && filtered.length === 0 && (
-        <div className="state">
-          {scope === 'trash'
-            ? 'В корзине ничего нет.'
-            : showArchive
-              ? 'В архиве ничего не найдено.'
-              : 'Ничего не найдено. Измените запрос или фильтр.'}
-        </div>
+        <div className="state">{t(emptyKey(scope))}</div>
       )}
 
       {!error && objects && filtered.length > 0 && scope !== 'trash' && (
@@ -240,8 +243,7 @@ export function LedgerScreen({
       {scope === 'trash' && filtered.length > 0 && (
         <>
           <div className="note" style={{ marginBottom: 14 }}>
-            Удалённое лежит здесь {trashRetentionDays} дней вместе с приложенными файлами. Потом исчезает
-            окончательно — восстанавливать будет неоткуда.
+            {t('ledger.trashNote', { days: trashRetentionDays })}
           </div>
           <div className="list-card">
             {filtered.map((o) => {
@@ -253,22 +255,22 @@ export function LedgerScreen({
                   </span>
                   <span style={{ flex: 1, minWidth: 160 }}>
                     <span style={{ fontWeight: 500 }}>{o.title}</span>
-                    <span className="page-sub"> · {objectTypeLabels[o.type].ru}</span>
+                    <span className="page-sub"> · {objectTypeLabels[o.type][locale]}</span>
                   </span>
                   <span className="list-row-meta">
-                    {left === 0 ? 'удалится сегодня' : `${left} дн. до удаления`}
+                    {left === 0 ? t('ledger.purgeToday') : t('ledger.purgeIn', { n: left })}
                   </span>
                   <button
                     className="btn"
                     onClick={() => void restore(o.id)}
-                    aria-label={`Восстановить «${o.title}»`}
+                    aria-label={t('ledger.restoreOne', { title: o.title })}
                   >
-                    Восстановить
+                    {t('ledger.restore')}
                   </button>
                   <button
                     className="btn btn-danger"
                     onClick={() => setPurging(o)}
-                    aria-label={`Удалить «${o.title}» окончательно`}
+                    aria-label={t('ledger.purgeOne', { title: o.title })}
                   >
                     <Icon name="trash" />
                   </button>
@@ -281,9 +283,9 @@ export function LedgerScreen({
 
       {purging && (
         <ConfirmDialog
-          title={`Удалить «${purging.title}» окончательно?`}
-          message="Объект и приложенные к нему файлы исчезнут с устройства. Вернуть их можно будет только из резервной копии, сделанной раньше."
-          confirmLabel="Удалить навсегда"
+          title={t('ledger.purgeTitle', { title: purging.title })}
+          message={t('ledger.purgeMessage')}
+          confirmLabel={t('ledger.purgeConfirm')}
           danger
           onConfirm={() => void purge(purging.id)}
           onCancel={() => setPurging(null)}

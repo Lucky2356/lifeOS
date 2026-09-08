@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { objectTypeLabels } from '@life-os/domain';
 import { ledgerStore } from '../lib/store';
+import { t } from '../lib/i18n';
 import { LedgerScreen } from './LedgerScreen';
 
 function renderLedger() {
@@ -21,7 +22,7 @@ describe('LedgerScreen — поиск и фильтр по типу', () => {
     expect(await screen.findByText('Загранпаспорт')).toBeTruthy();
     expect(screen.getByText('ОСАГО')).toBeTruthy();
 
-    await user.type(screen.getByPlaceholderText('Поиск по реестру'), 'загран');
+    await user.type(screen.getByPlaceholderText(t('ledger.search')), 'загран');
     expect(screen.getByText('Загранпаспорт')).toBeTruthy();
     expect(screen.queryByText('ОСАГО')).toBeNull();
   });
@@ -41,9 +42,9 @@ describe('LedgerScreen — поиск и фильтр по типу', () => {
     renderLedger();
     await screen.findByText('Загранпаспорт');
 
-    await user.click(screen.getByRole('button', { name: 'Добавить' }));
-    expect(screen.getByText('Новый объект')).toBeTruthy(); // модалка открыта
+    await user.click(screen.getByRole('button', { name: t('ledger.add') }));
+    expect(screen.getByText(t('object.new'))).toBeTruthy(); // модалка открыта
     await user.keyboard('{Escape}');
-    expect(screen.queryByText('Новый объект')).toBeNull(); // закрылась
+    expect(screen.queryByText(t('object.new'))).toBeNull(); // закрылась
   });
 });

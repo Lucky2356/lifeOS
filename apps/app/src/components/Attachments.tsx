@@ -4,24 +4,29 @@ import { AttachmentFailure, attachmentsStore } from '../lib/store';
 import { openFile } from '../lib/platform-files';
 import { ConfirmDialog } from './Dialog';
 import { Icon } from './Icon';
+import { useT, type TFunction } from '../lib/i18n';
 
-function fmtSize(n: number): string {
-  return n < 1024 ? `${n} Б` : n < 1048576 ? `${Math.round(n / 1024)} КБ` : `${(n / 1048576).toFixed(1)} МБ`;
+function fmtSize(n: number, t: TFunction): string {
+  if (n < 1024) return t('attachments.bytes', { n });
+  if (n < 1048576) return t('attachments.kilobytes', { n: Math.round(n / 1024) });
+  return t('attachments.megabytes', { n: (n / 1048576).toFixed(1) });
 }
 function iconFor(mime: string): string {
-  return mime.startsWith('image/') ? 'photo' : mime === 'application/pdf' ? 'file-type-pdf' : 'file';
+  if (mime.startsWith('image/')) return 'photo';
+  return mime === 'application/pdf' ? 'file-type-pdf' : 'file';
 }
-function messageFor(err: unknown): string {
+function messageFor(err: unknown, t: TFunction): string {
   if (err instanceof AttachmentFailure) {
-    if (err.code === 'too-large') return 'Файл больше 25 МБ';
-    if (err.code === 'unsupported') return 'Можно приложить PDF или изображение';
-    if (err.code === 'no-space') return 'На устройстве закончилось место';
+    if (err.code === 'too-large') return t('attachments.tooLarge');
+    if (err.code === 'unsupported') return t('attachments.unsupported');
+    if (err.code === 'no-space') return t('attachments.noSpace');
   }
-  return 'Не удалось добавить файл';
+  return t('attachments.addFailed');
 }
 
 /** Вложения к объекту реестра. Файлы хранятся на этом устройстве, рядом с самим объектом. */
 export function Attachments({ objectId }: { objectId: string }) {
+  const t = useT();
   const [items, setItems] = useState<Attachment[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +50,7 @@ export function Attachments({ objectId }: { objectId: string }) {
       await attachmentsStore.add(objectId, file);
       load();
     } catch (err) {
-      setError(messageFor(err));
+      setError(messageFor(err, t));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -57,7 +62,7 @@ export function Attachments({ objectId }: { objectId: string }) {
       const { meta, bytes } = await attachmentsStore.read(id);
       await openFile(meta.filename, meta.mime, bytes);
     } catch {
-      setError('Не удалось открыть файл');
+      setError(t('attachments.openFailed'));
     }
   }
 
@@ -70,9 +75,9 @@ export function Attachments({ objectId }: { objectId: string }) {
   return (
     <>
       <div className="section-label">
-        Документы
+        {t('attachments.section')}
         <button className="reveal-btn" onClick={() => fileRef.current?.click()} disabled={busy}>
-          <Icon name="upload" /> {busy ? 'добавление…' : 'добавить файл'}
+          <Icon name="upload" /> {busy ? t('attachments.adding') : t('attachments.add')}
         </button>
       </div>
       <input
@@ -85,7 +90,7 @@ export function Attachments({ objectId }: { objectId: string }) {
       <div className="list-card" style={{ marginBottom: error ? 8 : 22 }}>
         {items.length === 0 && (
           <div className="list-row" style={{ color: 'var(--ink-3)' }}>
-            Приложите скан или PDF документа
+            {t('attachments.empty')}
           </div>
         )}
         {items.map((a) => (
@@ -94,8 +99,12 @@ export function Attachments({ objectId }: { objectId: string }) {
             <button className="link-btn" style={{ flex: 1, textAlign: 'left' }} onClick={() => open(a.id)}>
               {a.filename}
             </button>
-            <span className="list-row-meta">{fmtSize(a.size)}</span>
-            <button className="reveal-btn" onClick={() => setConfirmId(a.id)} aria-label="Удалить файл">
+            <span className="list-row-meta">{fmtSize(a.size, t)}</span>
+            <button
+              className="reveal-btn"
+              onClick={() => setConfirmId(a.id)}
+              aria-label={t('attachments.delete')}
+            >
               <Icon name="trash" />
             </button>
           </div>
@@ -112,8 +121,8 @@ export function Attachments({ objectId }: { objectId: string }) {
       )}
       {confirmId && (
         <ConfirmDialog
-          title="Удалить файл?"
-          confirmLabel="Удалить"
+          title={t('attachments.deleteTitle')}
+          confirmLabel={t('attachments.deleteConfirm')}
           danger
           onConfirm={() => remove(confirmId)}
           onCancel={() => setConfirmId(null)}

@@ -45,8 +45,6 @@ export default tseslint.config(
       'apps/app/src/lib/i18n/ru.ts',
 
       // Ещё не переведено:
-      'apps/app/src/components/Attachments.tsx',
-      'apps/app/src/components/ObjectDetailScreen.tsx',
       'apps/app/src/components/SearchScreen.tsx',
       'apps/app/src/components/SettingsScreen.tsx',
       'apps/app/src/lib/backup-crypto.ts',

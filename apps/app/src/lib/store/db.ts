@@ -102,11 +102,29 @@ export async function setSetting(key: string, value: unknown): Promise<void> {
   await (await db()).put('settings', value, key);
 }
 
-/** Удалить все пользовательские данные, сохранив настройки (тему, id владельца). */
+/**
+ * Ключи `settings`, которые полное удаление данных обязано снести вместе с самими данными.
+ *
+ * Снимок отката — это копия всех записей и вложений целиком (см. `stashRollback` в `backup.ts`).
+ * Он намеренно лежит в `settings`, чтобы пережить импорт; но пережить «удалить все данные» он не
+ * должен: тогда приложение обещает удаление и его не делает, а копия документов и сканов остаётся
+ * на устройстве ещё на неделю. Показанные напоминания — тоже след пользователя, и без данных они
+ * ссылаются в пустоту.
+ *
+ * Остальные настройки очистку переживают намеренно: id владельца и отметка о переносе описывают
+ * не данные, а саму установку приложения.
+ */
+export const wipedSettings = ['pre-import-rollback', 'notified-keys'] as const;
+
+/** Удалить все пользовательские данные, сохранив настройки установки (id владельца, флаг переноса). */
 export async function clearAllData(): Promise<void> {
   const database = await db();
-  const tx = database.transaction(dataStores, 'readwrite');
-  await Promise.all([...dataStores.map((name) => tx.objectStore(name).clear()), tx.done]);
+  const tx = database.transaction([...dataStores, 'settings'], 'readwrite');
+  await Promise.all([
+    ...dataStores.map((name) => tx.objectStore(name).clear()),
+    ...wipedSettings.map((key) => tx.objectStore('settings').delete(key)),
+    tx.done,
+  ]);
 }
 
 export interface StorageUsage {

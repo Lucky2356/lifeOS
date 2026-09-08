@@ -164,6 +164,60 @@ export class BackupInvalid extends Error {
   }
 }
 
+/** Копия сделана приложением новее этого — читать её нечем, и делать вид, что файл чужой, нельзя. */
+export class BackupTooNew extends Error {
+  constructor(readonly fileSchema: number) {
+    super('Копия сделана более новой версией Life OS. Обновите приложение и попробуйте снова.');
+  }
+}
+
+/** Копия опознана, но её содержимое не сходится со схемой. */
+export class BackupCorrupted extends Error {
+  constructor(readonly issue: string) {
+    super(`Копия повреждена: ${issue}`);
+  }
+}
+
+/**
+ * Опознание конверта: копия ли это Life OS и какого поколения формата. Содержимое здесь
+ * намеренно не проверяется — сначала надо понять, чем его читать.
+ */
+const envelopeSchema = z.object({ app: z.literal('life-os'), schema: z.number().int() });
+
+/**
+ * Читатели по поколениям формата. Появится schema 2 — здесь появится второй читатель, а первый
+ * останется: копия, сделанная сегодня, обязана открываться и через год.
+ */
+const readers: Record<number, (raw: unknown) => Backup> = {
+  1(raw) {
+    const parsed = backupSchema.safeParse(raw);
+    if (parsed.success) return parsed.data;
+    // Дамп ZodError человеку не поможет: показываем первую претензию с путём до неё.
+    const first = parsed.error.issues[0];
+    throw new BackupCorrupted(
+      first ? `${first.path.join('.') || '(корень)'} — ${first.message}` : 'разбор не удался',
+    );
+  },
+};
+
+/**
+ * Разобрать содержимое копии, каким бы поколением формата она ни была.
+ *
+ * Три исхода вместо прежнего одного: файл вообще не копия, копия из будущего, копия своя, но
+ * битая. Раньше человек получал «Файл не похож на резервную копию» и на фотографию кота, и на
+ * собственную копию с испорченной датой.
+ */
+export function readBackup(raw: unknown): Backup {
+  const envelope = envelopeSchema.safeParse(raw);
+  if (!envelope.success) throw new BackupInvalid();
+  if (envelope.data.schema > CURRENT_SCHEMA) throw new BackupTooNew(envelope.data.schema);
+
+  const reader = readers[envelope.data.schema];
+  // Поколения, которого никогда не существовало, — значит, и файл не наш.
+  if (!reader) throw new BackupInvalid();
+  return reader(raw);
+}
+
 /** Копия зашифрована — значит, при импорте нужно спросить пароль. */
 export class BackupEncrypted extends Error {
   constructor() {
@@ -188,9 +242,7 @@ export async function readBackupFile(file: File, password?: string): Promise<Bac
     raw = JSON.parse(await decryptBackup(raw, password));
   }
 
-  const parsed = backupSchema.safeParse(raw);
-  if (!parsed.success) throw new BackupInvalid();
-  return parsed.data;
+  return readBackup(raw);
 }
 
 /** Заменить все данные на устройстве содержимым копии. Прежние данные удаляются. */
@@ -280,7 +332,10 @@ export async function dropRollback(): Promise<void> {
 export async function undoImport(now: Date = new Date()): Promise<boolean> {
   const stashed = await takeRollback(now);
   if (!stashed) return false;
-  await applyBackup(stashed.backup);
+  // Снимок сделан прежней версией приложения и проходит ту же проверку, что и файл с диска:
+  // ровно так поколение формата поднимается до текущего. Не прошёл — снимок остаётся на месте,
+  // а человек видит, что именно не так; молча записать в базу непонятно что было бы хуже.
+  await applyBackup(readBackup(stashed.backup));
   await dropRollback();
   return true;
 }

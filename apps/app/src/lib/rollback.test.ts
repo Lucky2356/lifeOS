@@ -54,6 +54,19 @@ describe('страховка перед восстановлением из ко
     expect(await getSetting('owner-user-id')).toBeTruthy();
   });
 
+  it('битый снимок не уезжает в базу молча — откат отказывает, снимок остаётся', async () => {
+    await ledgerStore.create({ type: 'document', title: 'Мои данные' });
+    await stashRollback();
+
+    const stashed = await getSetting<{ backup: { objects: { createdAt: string }[] } }>('pre-import-rollback');
+    stashed!.backup.objects[0]!.createdAt = 'позавчера';
+    await setSetting('pre-import-rollback', stashed);
+
+    await expect(undoImport()).rejects.toThrow();
+    // Испорченный снимок — не повод потерять единственную копию прежних данных.
+    expect(await getSetting('pre-import-rollback')).toBeTruthy();
+  });
+
   it('после отката снимок убирается — второй раз откатывать нечего', async () => {
     await ledgerStore.create({ type: 'document', title: 'Мои данные' });
     await stashRollback();

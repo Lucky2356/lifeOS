@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   applyBackup,
   BackupEncrypted,
+  BackupCorrupted,
   BackupInvalid,
   backupToBlob,
+  BackupTooNew,
   readBackupFile,
   summarize,
 } from './backup';
@@ -82,12 +84,34 @@ describe('резервная копия', () => {
   it('посторонний файл отклоняется, данные не трогаются', async () => {
     await seed();
     const junk = new File(['{"hello":"world"}'], 'junk.json', { type: 'application/json' });
-    await expect(readBackupFile(junk)).rejects.toThrow();
+    await expect(readBackupFile(junk)).rejects.toThrow(BackupInvalid);
 
     const notJson = new File(['совсем не json'], 'x.json', { type: 'application/json' });
-    await expect(readBackupFile(notJson)).rejects.toThrow();
+    await expect(readBackupFile(notJson)).rejects.toThrow(BackupInvalid);
 
     expect(await ledgerStore.list()).toHaveLength(1);
+  });
+
+  it('копия из более новой версии опознаётся как копия, а не как чужой файл', async () => {
+    await seed();
+    const raw = JSON.parse(await (await backupToBlob()).text()) as { schema: number };
+    raw.schema = 2;
+    const future = new File([JSON.stringify(raw)], 'backup.json', { type: 'application/json' });
+
+    await expect(readBackupFile(future)).rejects.toThrow(BackupTooNew);
+    expect(await ledgerStore.list()).toHaveLength(1);
+  });
+
+  it('битая копия называет, что именно не сошлось', async () => {
+    await seed();
+    const raw = JSON.parse(await (await backupToBlob()).text()) as {
+      objects: { createdAt: string }[];
+    };
+    raw.objects[0]!.createdAt = 'позавчера';
+    const broken = new File([JSON.stringify(raw)], 'backup.json', { type: 'application/json' });
+
+    await expect(readBackupFile(broken)).rejects.toThrow(BackupCorrupted);
+    await expect(readBackupFile(broken)).rejects.toThrow(/objects\.0\.createdAt/);
   });
 
   it('копия с повреждённым содержимым вложения отклоняется на чтении', async () => {
@@ -98,7 +122,9 @@ describe('резервная копия', () => {
     raw.attachments[0]!.data = 'это не base64!';
     const broken = new File([JSON.stringify(raw)], 'backup.json', { type: 'application/json' });
 
-    await expect(readBackupFile(broken)).rejects.toThrow(BackupInvalid);
+    // Конверт свой, поэтому это не «чужой файл», а именно повреждение — с указанием места.
+    await expect(readBackupFile(broken)).rejects.toThrow(BackupCorrupted);
+    await expect(readBackupFile(broken)).rejects.toThrow(/attachments\.0\.data/);
     expect(await ledgerStore.list()).toHaveLength(1);
   });
 

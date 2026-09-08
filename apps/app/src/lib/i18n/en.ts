@@ -108,6 +108,33 @@ export const en = {
     'The object and its attachments will disappear from the device. The only way back is a backup made earlier.',
   'ledger.purgeConfirm': 'Delete for good',
 
+  'today.greeting': 'Good morning',
+  'today.readFailed': 'Could not read the data',
+  'today.readFailedHint': 'Storage on this device is unavailable. Try restarting the app.',
+  'today.emptyHint': 'Whatever needs attention will show up here.',
+  'today.allCalm': 'Everything is under control. Nothing urgent.',
+  'today.needsAttention': {
+    one: '{n} thing needs attention. The rest is under control.',
+    other: '{n} things need attention. The rest is under control.',
+  },
+  'today.backupNote':
+    'Your data lives only on this device, and there has been no backup for a while. A backup takes a minute and saves you if the phone is lost or reset.',
+  'today.backupAction': 'Save a backup',
+  'today.attentionSection': 'Needs attention',
+  'today.decisionsSection': 'Look back at a decision',
+  'today.decidedOn': ' · decided {date}',
+  'today.recordOutcome': 'record the outcome',
+  'today.tasksSection': 'Household · tasks',
+  'today.onboardingTitle': 'Where to start',
+  'today.onboardingBody':
+    'Life OS keeps documents, belongings and obligations in one place — and reminds you of deadlines in advance. Everything stays on this device and is never sent anywhere.',
+  'today.onboarding1': 'Add your first document with a deadline — a passport or an insurance policy.',
+  'today.onboarding2': 'Attach a scan so it is at hand when you need it.',
+  'today.onboarding3': 'Allow notifications in settings so a deadline never catches you off guard.',
+  'today.onboarding4': 'Save a backup: no other copy of this data exists.',
+  'today.openSettings': 'Open settings',
+  'today.calmDay': 'A calm day — the system is keeping your affairs in order.',
+
   'navigator.progress': {
     one: '{done} of {n} step',
     other: '{done} of {n} steps',

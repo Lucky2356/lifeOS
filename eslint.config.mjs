@@ -51,7 +51,6 @@ export default tseslint.config(
       'apps/app/src/components/ObjectDetailScreen.tsx',
       'apps/app/src/components/SearchScreen.tsx',
       'apps/app/src/components/SettingsScreen.tsx',
-      'apps/app/src/components/TodayScreen.tsx',
       'apps/app/src/lib/backup-crypto.ts',
       'apps/app/src/lib/backup.ts',
       'apps/app/src/lib/notifications.ts',

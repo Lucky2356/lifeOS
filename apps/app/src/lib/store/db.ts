@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction, type StoreNames } from 'idb';
 import type {
   Attachment,
   Decision,
@@ -20,7 +20,6 @@ import type {
  */
 
 const DB_NAME = 'life-os';
-const DB_VERSION = 1;
 
 export interface LifeOsSchema extends DBSchema {
   objects: { key: string; value: LifeObject };
@@ -64,31 +63,58 @@ export const dataStores = [
   'files',
 ] as const satisfies readonly StoreName[];
 
+/** Транзакция обновления схемы: в ней доступны все хранилища базы. */
+type UpgradeTx = IDBPTransaction<LifeOsSchema, StoreNames<LifeOsSchema>[], 'versionchange'>;
+
+export type SchemaStep = (database: IDBPDatabase<LifeOsSchema>, tx: UpgradeTx) => void;
+
+/**
+ * Шаги обновления схемы: индекс + 1 — версия, до которой шаг поднимает базу. `schemaSteps[0]`
+ * создаёт версию 1, следующий поднимет с 1 до 2, и так далее. Уже применённые не повторяются:
+ * `upgrade` получает `oldVersion`, и цикл начинается с него.
+ *
+ * Шагу передаётся и база, и транзакция версии. Второе принципиально: без транзакции нельзя ни
+ * добавить индекс к существующему хранилищу, ни переписать уже лежащие записи. Прежний `upgrade`
+ * принимал одну только базу и умел лишь создавать недостающие хранилища — то есть на живой базе
+ * не сделал бы ни того, ни другого, хотя код и документация обещали, что следующая версия просто
+ * допишет своё.
+ */
+export const schemaSteps: SchemaStep[] = [
+  /** → версия 1: база создаётся с нуля, поэтому проверять существующее незачем. */
+  function createStores(database) {
+    database.createObjectStore('objects', { keyPath: 'id' });
+    database.createObjectStore('decisions', { keyPath: 'id' });
+    database.createObjectStore('households', { keyPath: 'id' });
+    database.createObjectStore('progress', { keyPath: 'id' });
+    database.createObjectStore('files');
+    database.createObjectStore('settings');
+
+    database.createObjectStore('members', { keyPath: 'id' }).createIndex('by-household', 'householdId');
+    database.createObjectStore('tasks', { keyPath: 'id' }).createIndex('by-household', 'householdId');
+    database.createObjectStore('attachments', { keyPath: 'id' }).createIndex('by-object', 'objectId');
+  },
+];
+
+/** Версия базы — это число шагов. Добавили шаг — версия выросла сама, забыть её нельзя. */
+export const DB_VERSION = schemaSteps.length;
+
 let dbPromise: Promise<IDBPDatabase<LifeOsSchema>> | null = null;
 
 export function db(): Promise<IDBPDatabase<LifeOsSchema>> {
   dbPromise ??= openDB<LifeOsSchema>(DB_NAME, DB_VERSION, {
-    // Версия 1 — база создаётся с нуля. Следующие версии дописывают свои изменения здесь же,
-    // поэтому каждое хранилище создаётся только при его отсутствии.
-    upgrade(database) {
-      const missing = (name: StoreName) => !database.objectStoreNames.contains(name);
-
-      if (missing('objects')) database.createObjectStore('objects', { keyPath: 'id' });
-      if (missing('decisions')) database.createObjectStore('decisions', { keyPath: 'id' });
-      if (missing('households')) database.createObjectStore('households', { keyPath: 'id' });
-      if (missing('progress')) database.createObjectStore('progress', { keyPath: 'id' });
-      if (missing('files')) database.createObjectStore('files');
-      if (missing('settings')) database.createObjectStore('settings');
-
-      if (missing('members')) {
-        database.createObjectStore('members', { keyPath: 'id' }).createIndex('by-household', 'householdId');
-      }
-      if (missing('tasks')) {
-        database.createObjectStore('tasks', { keyPath: 'id' }).createIndex('by-household', 'householdId');
-      }
-      if (missing('attachments')) {
-        database.createObjectStore('attachments', { keyPath: 'id' }).createIndex('by-object', 'objectId');
-      }
+    upgrade(database, oldVersion, _newVersion, tx) {
+      for (const step of schemaSteps.slice(oldVersion)) step(database, tx);
+    },
+    /**
+     * Другая вкладка держит базу открытой на прежней версии и не даёт обновить схему. Без этого
+     * обработчика `openDB` просто не разрешается — молча и навсегда.
+     */
+    blocked() {
+      console.warn('Life OS: обновление хранилища ждёт, пока закроются другие вкладки приложения.');
+    },
+    /** Обратная сторона: это нас просят закрыться ради обновления. Держать чужое обновление нельзя. */
+    blocking() {
+      void closeDb();
     },
   });
   return dbPromise;

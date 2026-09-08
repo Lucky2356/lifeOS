@@ -12,6 +12,9 @@ import { ledgerStore } from './store/objects';
 import { clearAllData, getSetting, setSetting } from './store/db';
 import { ownerUserId } from './store/local-user';
 
+/** Ключ снимка в хранилище настроек — тесты читают его напрямую, минуя backup.ts. */
+const ROLLBACK_KEY = 'pre-import-rollback';
+
 describe('страховка перед восстановлением из копии', () => {
   it('возвращает данные, какими они были до импорта', async () => {
     await ledgerStore.create({ type: 'document', title: 'Мои данные' });
@@ -48,7 +51,7 @@ describe('страховка перед восстановлением из ко
 
     await clearAllData();
 
-    expect(await getSetting('pre-import-rollback')).toBeUndefined();
+    expect(await getSetting(ROLLBACK_KEY)).toBeUndefined();
     expect(await takeRollback()).toBeNull();
     // Настройки самой установки — не данные, они остаются.
     expect(await getSetting('owner-user-id')).toBeTruthy();
@@ -60,11 +63,11 @@ describe('страховка перед восстановлением из ко
 
     const stashed = await getSetting<{ backup: { objects: { createdAt: string }[] } }>('pre-import-rollback');
     stashed!.backup.objects[0]!.createdAt = 'позавчера';
-    await setSetting('pre-import-rollback', stashed);
+    await setSetting(ROLLBACK_KEY, stashed);
 
     await expect(undoImport()).rejects.toThrow();
     // Испорченный снимок — не повод потерять единственную копию прежних данных.
-    expect(await getSetting('pre-import-rollback')).toBeTruthy();
+    expect(await getSetting(ROLLBACK_KEY)).toBeTruthy();
   });
 
   it('после отката снимок убирается — второй раз откатывать нечего', async () => {
@@ -81,7 +84,7 @@ describe('страховка перед восстановлением из ко
     await stashRollback(new Date(Date.now() - (rollbackKeepDays + 1) * 86_400_000));
 
     expect(await takeRollback()).toBeNull();
-    expect(await getSetting('pre-import-rollback')).toBeUndefined();
+    expect(await getSetting(ROLLBACK_KEY)).toBeUndefined();
   });
 
   it('снимок не откладывается, если вложения не помещаются', async () => {

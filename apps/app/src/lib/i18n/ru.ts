@@ -36,6 +36,33 @@ export const ru = {
   'object.sensitivity': 'Чувствительность',
   'object.sensitivityHint': 'Значения выше обычной скрыты в карточке, пока их не откроют.',
 
+  'theme.toggle': 'Переключить тему',
+
+  'navigator.title': 'Навигатор',
+  'navigator.subtitle': 'Плейбуки трудных ситуаций и бюрократические гиды',
+  'navigator.crisis': 'Кризисные ситуации',
+  'navigator.bureaucracy': 'Бюрократия',
+  'navigator.stepCount': {
+    one: '{n} шаг',
+    few: '{n} шага',
+    many: '{n} шагов',
+  },
+  'navigator.openGuide': 'Открыть гид',
+  'navigator.restart': 'Начать заново',
+  'navigator.restartTitle': 'Начать «{playbook}» заново?',
+  'navigator.restartMessage': 'Отметки по всем шагам будут сняты. Сам плейбук и его содержание не изменятся.',
+  'navigator.stepDone': 'Отметить готовым',
+  'navigator.stepUndone': 'Снять отметку',
+  'navigator.docUnknown': 'Реестр не прочитан',
+  'navigator.docOwned': 'Есть в реестре',
+  'navigator.docMissing': 'В реестре не нашлось',
+  'navigator.docOwnedSuffix': ' · есть',
+  'navigator.docMissingSuffix': ' · нужно оформить',
+  'navigator.progressFailed': 'Не удалось прочитать сохранённый прогресс.',
+  'navigator.openFailed': 'Не удалось открыть плейбук.',
+  'navigator.toggleFailed': 'Не удалось сохранить отметку — попробуйте ещё раз.',
+  'navigator.restartFailed': 'Не удалось начать заново.',
+
   'navigator.progress': {
     one: '{done} из {n} шага',
     few: '{done} из {n} шагов',

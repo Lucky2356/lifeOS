@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { pickText } from '@life-os/domain';
 import { ledgerStore, navigatorStore } from '../lib/store';
+import { setLocale, t } from '../lib/i18n';
 import { NavigatorScreen } from './NavigatorScreen';
 
 function renderNavigator() {
@@ -19,13 +20,17 @@ describe('NavigatorScreen', () => {
     await navigatorStore.toggleStep(progress.id, jobLoss.steps[0]!.key);
 
     renderNavigator();
-    expect(await screen.findByText(`1 из ${jobLoss.steps.length} шагов`)).toBeTruthy();
+    expect(
+      await screen.findByText(t('navigator.progress', { done: 1, n: jobLoss.steps.length })),
+    ).toBeTruthy();
   });
 
   it('нетронутая карточка показывает число шагов', async () => {
     renderNavigator();
     expect(await screen.findByText(jobLossTitle)).toBeTruthy();
-    expect(screen.getAllByText(`${jobLoss.steps.length} шага`).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(t('navigator.stepCount', { n: jobLoss.steps.length })).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('«Назад» из встроенного гида возвращает в плейбук, а не в список', async () => {
@@ -33,7 +38,7 @@ describe('NavigatorScreen', () => {
     renderNavigator();
 
     await user.click(await screen.findByText(jobLossTitle));
-    await user.click(await screen.findByRole('button', { name: 'Открыть гид' }));
+    await user.click(await screen.findByRole('button', { name: t('navigator.openGuide') }));
     expect(await screen.findByText(guideTitle)).toBeTruthy();
 
     // Кнопка возврата названа родительским плейбуком — по ней и видно, куда она ведёт.
@@ -47,10 +52,10 @@ describe('NavigatorScreen', () => {
 
     await user.click(await screen.findByText(jobLossTitle));
     await screen.findByText(pickText(jobLoss.summary, 'ru'));
-    expect(screen.queryByRole('button', { name: 'Начать заново' })).toBeNull();
+    expect(screen.queryByRole('button', { name: t('navigator.restart') })).toBeNull();
 
-    await user.click(screen.getAllByRole('button', { name: 'Отметить готовым' })[0]!);
-    expect(await screen.findByRole('button', { name: 'Начать заново' })).toBeTruthy();
+    await user.click(screen.getAllByRole('button', { name: t('navigator.stepDone') })[0]!);
+    expect(await screen.findByRole('button', { name: t('navigator.restart') })).toBeTruthy();
   });
 
   it('прочитанный реестр выносит вердикт по каждому требуемому документу', async () => {
@@ -61,8 +66,8 @@ describe('NavigatorScreen', () => {
     await user.click(await screen.findByText(jobLossTitle));
     await screen.findByText(pickText(jobLoss.summary, 'ru'));
 
-    expect(await screen.findAllByTitle('Есть в реестре')).toHaveLength(2);
-    expect(screen.getAllByTitle('В реестре не нашлось')).toHaveLength(3);
+    expect(await screen.findAllByTitle(t('navigator.docOwned'))).toHaveLength(2);
+    expect(screen.getAllByTitle(t('navigator.docMissing'))).toHaveLength(3);
   });
 
   it('непрочитанный реестр не выдаётся за отсутствие документов', async () => {
@@ -75,8 +80,22 @@ describe('NavigatorScreen', () => {
     await user.click(await screen.findByText(jobLossTitle));
     await screen.findByText(pickText(jobLoss.summary, 'ru'));
 
-    expect(await screen.findAllByTitle('Реестр не прочитан')).toHaveLength(5);
-    expect(screen.queryByTitle('Есть в реестре')).toBeNull();
-    expect(screen.queryByTitle('В реестре не нашлось')).toBeNull();
+    expect(await screen.findAllByTitle(t('navigator.docUnknown'))).toHaveLength(5);
+    expect(screen.queryByTitle(t('navigator.docOwned'))).toBeNull();
+    expect(screen.queryByTitle(t('navigator.docMissing'))).toBeNull();
+  });
+
+  it('переключение языка переводит и интерфейс, и содержимое пака', async () => {
+    // Единственный тест, который что-то доказывает про сам переключатель: остальные сверяют вывод
+    // со словарём и прошли бы даже с пустым сообщением. Здесь литералы английские, намеренно.
+    setLocale('en');
+    const user = userEvent.setup();
+    renderNavigator();
+
+    expect(await screen.findByText('Crisis situations')).toBeTruthy();
+    expect(screen.getByText('Playbooks for hard situations and bureaucratic guides')).toBeTruthy();
+
+    await user.click(screen.getByText(pickText(jobLoss.title, 'en')));
+    expect(await screen.findByRole('button', { name: 'Open guide' })).toBeTruthy();
   });
 });

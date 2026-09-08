@@ -49,7 +49,6 @@ export default tseslint.config(
       'apps/app/src/components/DecisionsScreen.tsx',
       'apps/app/src/components/HouseholdScreen.tsx',
       'apps/app/src/components/LedgerScreen.tsx',
-      'apps/app/src/components/NavigatorScreen.tsx',
       'apps/app/src/components/ObjectDetailScreen.tsx',
       'apps/app/src/components/SearchScreen.tsx',
       'apps/app/src/components/SettingsScreen.tsx',

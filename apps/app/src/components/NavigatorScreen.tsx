@@ -7,14 +7,15 @@ import {
   type PlaybookProgress,
 } from '@life-os/domain';
 import { ledgerStore, navigatorStore as contentApi } from '../lib/store';
-import { counted } from '../lib/format';
+import { useLocale, useT, type TFunction } from '../lib/i18n';
 import type { Theme } from '../lib/theme';
 import { ConfirmDialog } from './Dialog';
 import { Icon } from './Icon';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  const t = useT();
   return (
-    <button className="btn" onClick={onToggle} aria-label="Переключить тему">
+    <button className="btn" onClick={onToggle} aria-label={t('theme.toggle')}>
       <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
     </button>
   );
@@ -37,17 +38,28 @@ interface DocPillState {
  * тогда пилюля молчит о наличии. Смысл Навигатора — сказать, чего у вас нет; но сообщить человеку
  * в кризисе, что у него нет паспорта, который у него есть, хуже, чем промолчать.
  */
-function docPill(type: ObjectType, owned: Set<string> | null): DocPillState {
+function docPill(type: ObjectType, owned: Set<string> | null, t: TFunction): DocPillState {
   if (owned === null) {
-    return { cls: 'pill', title: 'Реестр не прочитан', suffix: '', icon: 'file' };
+    return { cls: 'pill', title: t('navigator.docUnknown'), suffix: '', icon: 'file' };
   }
   if (owned.has(type)) {
-    return { cls: 'pill pill-ok', title: 'Есть в реестре', suffix: ' · есть', icon: 'check' };
+    return {
+      cls: 'pill pill-ok',
+      title: t('navigator.docOwned'),
+      suffix: t('navigator.docOwnedSuffix'),
+      icon: 'check',
+    };
   }
-  return { cls: 'pill pill-due', title: 'В реестре не нашлось', suffix: ' · нужно оформить', icon: 'file' };
+  return {
+    cls: 'pill pill-due',
+    title: t('navigator.docMissing'),
+    suffix: t('navigator.docMissingSuffix'),
+    icon: 'file',
+  };
 }
 
 function ProgressBar({ done, total }: { done: number; total: number }) {
+  const t = useT();
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -55,13 +67,15 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
         <div style={{ width: `${pct}%`, height: '100%', background: 'var(--sage)' }} />
       </div>
       <span style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'nowrap' }}>
-        {done} из {counted(total, 'шага', 'шагов', 'шагов')}
+        {t('navigator.progress', { done, n: total })}
       </span>
     </div>
   );
 }
 
 export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
+  const t = useT();
+  const locale = useLocale();
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [selected, setSelected] = useState<Playbook | null>(null);
   const [progress, setProgress] = useState<PlaybookProgress | null>(null);
@@ -86,7 +100,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     void contentApi
       .progress()
       .then((all) => setStarted(new Map(all.map((p) => [p.playbookKey, p]))))
-      .catch(() => setError('Не удалось прочитать сохранённый прогресс.'));
+      .catch(() => setError(t('navigator.progressFailed')));
   }, []);
   useEffect(() => load(), [load]);
 
@@ -106,7 +120,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       setProgress(await contentApi.start(pb.key));
       setError(null);
     } catch {
-      setError('Не удалось открыть плейбук.');
+      setError(t('navigator.openFailed'));
     }
   }
 
@@ -134,7 +148,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       setProgress(await contentApi.toggleStep(progress.id, stepKey));
       setError(null);
     } catch {
-      setError('Не удалось сохранить отметку — попробуйте ещё раз.');
+      setError(t('navigator.toggleFailed'));
     }
   }
 
@@ -145,7 +159,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       await contentApi.reset(selected.key);
       setProgress(await contentApi.start(selected.key));
     } catch {
-      setError('Не удалось начать заново.');
+      setError(t('navigator.restartFailed'));
     }
   }
 
@@ -165,21 +179,21 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
           <button className="btn btn-ghost" onClick={back}>
             <Icon name="arrow-left" />{' '}
-            {parentKey ? pickText(contentApi.playbook(parentKey).title, 'ru') : 'Навигатор'}
+            {parentKey ? pickText(contentApi.playbook(parentKey).title, locale) : t('navigator.title')}
           </button>
           <div style={{ display: 'flex', gap: 8 }}>
             {done > 0 && (
               <button className="btn btn-ghost" onClick={() => setConfirmReset(true)}>
-                Начать заново
+                {t('navigator.restart')}
               </button>
             )}
             <ThemeBtn theme={theme} onToggle={onToggleTheme} />
           </div>
         </div>
 
-        <div className="serif page-title">{pickText(selected.title, 'ru')}</div>
+        <div className="serif page-title">{pickText(selected.title, locale)}</div>
         <div className="page-sub" style={{ marginBottom: 16 }}>
-          {pickText(selected.summary, 'ru')}
+          {pickText(selected.summary, locale)}
         </div>
 
         {errorNote}
@@ -195,7 +209,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               <button
                 className={`check ${stepDone ? 'check-done' : ''}`}
                 onClick={() => void toggle(step.key)}
-                aria-label={stepDone ? 'Снять отметку' : 'Отметить готовым'}
+                aria-label={stepDone ? t('navigator.stepUndone') : t('navigator.stepDone')}
               >
                 {stepDone && <Icon name="check" />}
               </button>
@@ -208,7 +222,7 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                       color: stepDone ? 'var(--ink-3)' : 'var(--ink)',
                     }}
                   >
-                    {pickText(step.title, 'ru')}
+                    {pickText(step.title, locale)}
                   </span>
                   {guideFor(step.embedsGuideKey) && (
                     <button
@@ -220,17 +234,17 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                         if (guide) void open(guide, selected.key);
                       }}
                     >
-                      Открыть гид
+                      {t('navigator.openGuide')}
                     </button>
                   )}
                 </div>
                 <div className="page-sub" style={{ marginTop: 4 }}>
-                  {pickText(step.description, 'ru')}
+                  {pickText(step.description, locale)}
                 </div>
                 {step.requiredDocumentTypes.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {step.requiredDocumentTypes.map((type) => {
-                      const pill = docPill(type, ownedTypes);
+                      const pill = docPill(type, ownedTypes, t);
                       return (
                         <span key={type} className={pill.cls} title={pill.title}>
                           <Icon name={pill.icon} style={{ marginRight: 4 }} />
@@ -248,9 +262,9 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
         {confirmReset && (
           <ConfirmDialog
-            title={`Начать «${pickText(selected.title, 'ru')}» заново?`}
-            message="Отметки по всем шагам будут сняты. Сам плейбук и его содержание не изменятся."
-            confirmLabel="Начать заново"
+            title={t('navigator.restartTitle', { playbook: pickText(selected.title, locale) })}
+            message={t('navigator.restartMessage')}
+            confirmLabel={t('navigator.restart')}
             onConfirm={() => void reset()}
             onCancel={() => setConfirmReset(false)}
           />
@@ -275,13 +289,13 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                     <Icon name={icon} />
                   </span>
                 </div>
-                <div className="card-title">{pickText(pb.title, 'ru')}</div>
+                <div className="card-title">{pickText(pb.title, locale)}</div>
                 {inProgress ? (
                   <div style={{ marginTop: 6 }}>
                     <ProgressBar done={doneCount(inProgress)} total={pb.steps.length} />
                   </div>
                 ) : (
-                  <div className="card-meta">{counted(pb.steps.length, 'шаг', 'шага', 'шагов')}</div>
+                  <div className="card-meta">{t('navigator.stepCount', { n: pb.steps.length })}</div>
                 )}
               </button>
             );
@@ -295,15 +309,15 @@ export function NavigatorScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     <main className="main">
       <div className="page-head">
         <div>
-          <div className="serif page-title">Навигатор</div>
-          <div className="page-sub">Плейбуки трудных ситуаций и бюрократические гиды</div>
+          <div className="serif page-title">{t('navigator.title')}</div>
+          <div className="page-sub">{t('navigator.subtitle')}</div>
         </div>
         <ThemeBtn theme={theme} onToggle={onToggleTheme} />
       </div>
 
       {errorNote}
-      {section('Кризисные ситуации', crisis, 'compass')}
-      {section('Бюрократия', bureaucracy, 'file-text')}
+      {section(t('navigator.crisis'), crisis, 'compass')}
+      {section(t('navigator.bureaucracy'), bureaucracy, 'file-text')}
     </main>
   );
 }

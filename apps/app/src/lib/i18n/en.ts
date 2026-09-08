@@ -36,6 +36,33 @@ export const en = {
   'object.sensitivity': 'Sensitivity',
   'object.sensitivityHint': 'Anything above normal stays hidden on the card until you reveal it.',
 
+  'theme.toggle': 'Toggle theme',
+
+  'navigator.title': 'Navigator',
+  'navigator.subtitle': 'Playbooks for hard situations and bureaucratic guides',
+  'navigator.crisis': 'Crisis situations',
+  'navigator.bureaucracy': 'Bureaucracy',
+  'navigator.stepCount': {
+    one: '{n} step',
+    other: '{n} steps',
+  },
+  'navigator.openGuide': 'Open guide',
+  'navigator.restart': 'Start over',
+  'navigator.restartTitle': 'Start “{playbook}” over?',
+  'navigator.restartMessage':
+    'Every step mark will be cleared. The playbook itself and its content stay as they are.',
+  'navigator.stepDone': 'Mark as done',
+  'navigator.stepUndone': 'Clear the mark',
+  'navigator.docUnknown': 'Ledger not read',
+  'navigator.docOwned': 'In the ledger',
+  'navigator.docMissing': 'Not found in the ledger',
+  'navigator.docOwnedSuffix': ' · have',
+  'navigator.docMissingSuffix': ' · missing',
+  'navigator.progressFailed': 'Could not read the saved progress.',
+  'navigator.openFailed': 'Could not open the playbook.',
+  'navigator.toggleFailed': 'Could not save the mark — please try again.',
+  'navigator.restartFailed': 'Could not start over.',
+
   'navigator.progress': {
     one: '{done} of {n} step',
     other: '{done} of {n} steps',

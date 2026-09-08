@@ -34,6 +34,20 @@ async function asFile(blob: Blob): Promise<File> {
   return new File([await blob.text()], 'life-os-backup.json', { type: 'application/json' });
 }
 
+/** Поля копии, которые тесты портят намеренно. */
+interface RawBackup {
+  schema: number;
+  objects: { createdAt: string }[];
+  attachments: { data: string }[];
+}
+
+/** Файл копии с намеренно испорченным содержимым: так проверяются повреждения и чужие поколения. */
+async function tamperedBackup(edit: (raw: RawBackup) => void): Promise<File> {
+  const raw = JSON.parse(await (await backupToBlob()).text()) as RawBackup;
+  edit(raw);
+  return asFile(new Blob([JSON.stringify(raw)]));
+}
+
 describe('резервная копия', () => {
   it('экспорт → удаление → импорт восстанавливает данные и файлы', async () => {
     const { obj, attachment } = await seed();
@@ -94,9 +108,9 @@ describe('резервная копия', () => {
 
   it('копия из более новой версии опознаётся как копия, а не как чужой файл', async () => {
     await seed();
-    const raw = JSON.parse(await (await backupToBlob()).text()) as { schema: number };
-    raw.schema = 2;
-    const future = new File([JSON.stringify(raw)], 'backup.json', { type: 'application/json' });
+    const future = await tamperedBackup((raw) => {
+      raw.schema = 2;
+    });
 
     await expect(readBackupFile(future)).rejects.toThrow(BackupTooNew);
     expect(await ledgerStore.list()).toHaveLength(1);
@@ -104,11 +118,9 @@ describe('резервная копия', () => {
 
   it('битая копия называет, что именно не сошлось', async () => {
     await seed();
-    const raw = JSON.parse(await (await backupToBlob()).text()) as {
-      objects: { createdAt: string }[];
-    };
-    raw.objects[0]!.createdAt = 'позавчера';
-    const broken = new File([JSON.stringify(raw)], 'backup.json', { type: 'application/json' });
+    const broken = await tamperedBackup((raw) => {
+      raw.objects[0]!.createdAt = 'позавчера';
+    });
 
     await expect(readBackupFile(broken)).rejects.toThrow(BackupCorrupted);
     await expect(readBackupFile(broken)).rejects.toThrow(/objects\.0\.createdAt/);
@@ -116,11 +128,9 @@ describe('резервная копия', () => {
 
   it('копия с повреждённым содержимым вложения отклоняется на чтении', async () => {
     await seed();
-    const raw = JSON.parse(await (await backupToBlob()).text()) as {
-      attachments: { data: string }[];
-    };
-    raw.attachments[0]!.data = 'это не base64!';
-    const broken = new File([JSON.stringify(raw)], 'backup.json', { type: 'application/json' });
+    const broken = await tamperedBackup((raw) => {
+      raw.attachments[0]!.data = 'это не base64!';
+    });
 
     // Конверт свой, поэтому это не «чужой файл», а именно повреждение — с указанием места.
     await expect(readBackupFile(broken)).rejects.toThrow(BackupCorrupted);

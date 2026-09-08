@@ -12,7 +12,9 @@ import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const root = document.getElementById('root');
-if (!root) throw new Error('Не найден #root');
+// По-английски намеренно: сюда попадают только при сломанной сборке без #root в index.html,
+// и читает это разработчик рядом с английским стеком, а не пользователь.
+if (!root) throw new Error('Life OS: #root element is missing');
 
 createRoot(root).render(
   <StrictMode>

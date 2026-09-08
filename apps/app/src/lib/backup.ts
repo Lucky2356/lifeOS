@@ -22,8 +22,11 @@ import { decryptBackup, encryptBackup, isEncryptedBackup } from './backup-crypto
 const CURRENT_SCHEMA = 1;
 
 const backupAttachmentSchema = attachmentSchema.extend({
-  /** Содержимое файла в base64. */
-  data: z.string(),
+  /**
+   * Содержимое файла в base64. Проверяется именно как base64, а не просто как строка: иначе
+   * повреждённое содержимое доходит до применения копии и роняет atob уже внутри транзакции.
+   */
+  data: z.string().base64(),
 });
 
 export const backupSchema = z.object({
@@ -193,6 +196,15 @@ export async function readBackupFile(file: File, password?: string): Promise<Bac
 /** Заменить все данные на устройстве содержимым копии. Прежние данные удаляются. */
 export async function applyBackup(backup: Backup): Promise<void> {
   const database = await db();
+
+  // Содержимое вложений раскодируется ДО открытия транзакции. Внутри неё бросок из atob оставил бы
+  // базу наполовину стёртой: запросы clear() к тому моменту уже выданы и успевают закоммититься.
+  // Транзакция открывается, когда раскодировать больше нечего и упасть уже негде.
+  const files = backup.attachments.map(({ data, ...meta }) => ({
+    meta,
+    bytes: fromBase64(data).buffer,
+  }));
+
   const tx = database.transaction(dataStores, 'readwrite');
   const ops: Promise<unknown>[] = dataStores.map((name) => tx.objectStore(name).clear());
 
@@ -202,9 +214,9 @@ export async function applyBackup(backup: Backup): Promise<void> {
   ops.push(...backup.members.map((m) => tx.objectStore('members').put(m)));
   ops.push(...backup.tasks.map((t) => tx.objectStore('tasks').put(t)));
   ops.push(...backup.progress.map((p) => tx.objectStore('progress').put(p)));
-  for (const { data, ...meta } of backup.attachments) {
+  for (const { meta, bytes } of files) {
     ops.push(tx.objectStore('attachments').put(meta));
-    ops.push(tx.objectStore('files').put(fromBase64(data).buffer, meta.id));
+    ops.push(tx.objectStore('files').put(bytes, meta.id));
   }
 
   await Promise.all([...ops, tx.done]);

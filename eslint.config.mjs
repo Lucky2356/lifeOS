@@ -45,16 +45,12 @@ export default tseslint.config(
       'apps/app/src/lib/i18n/ru.ts',
 
       // Ещё не переведено:
-      'apps/app/src/components/AddObjectModal.tsx',
       'apps/app/src/components/Attachments.tsx',
       'apps/app/src/components/DecisionsScreen.tsx',
-      'apps/app/src/components/Dialog.tsx',
-      'apps/app/src/components/ErrorBoundary.tsx',
       'apps/app/src/components/HouseholdScreen.tsx',
       'apps/app/src/components/LedgerScreen.tsx',
       'apps/app/src/components/NavigatorScreen.tsx',
       'apps/app/src/components/ObjectDetailScreen.tsx',
-      'apps/app/src/components/ObjectFields.tsx',
       'apps/app/src/components/SearchScreen.tsx',
       'apps/app/src/components/SettingsScreen.tsx',
       'apps/app/src/components/TodayScreen.tsx',

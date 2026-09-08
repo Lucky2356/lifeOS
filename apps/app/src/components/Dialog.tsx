@@ -1,16 +1,20 @@
 import { useId, useState } from 'react';
 import { useEscapeToClose, useFocusTrap } from '../lib/use-modal';
+import { useT } from '../lib/i18n';
 
 /**
  * Единые внутренние диалоги в стиле приложения (.overlay/.modal) — вместо нативных
  * window.prompt/confirm, которые выпадают из общего дизайна.
  */
 
+/** Кнопка отмены есть во всех трёх диалогах — ключ один. */
+const CANCEL = 'dialog.cancel';
+
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = 'Подтвердить',
-  cancelLabel = 'Отмена',
+  confirmLabel,
+  cancelLabel,
   danger = false,
   onConfirm,
   onCancel,
@@ -23,6 +27,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const titleId = useId();
   useEscapeToClose(onCancel);
   const trapRef = useFocusTrap<HTMLDivElement>();
@@ -46,7 +51,7 @@ export function ConfirmDialog({
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            {cancelLabel}
+            {cancelLabel ?? t(CANCEL)}
           </button>
           <button
             type="button"
@@ -54,7 +59,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             autoFocus
           >
-            {confirmLabel}
+            {confirmLabel ?? t('dialog.confirm')}
           </button>
         </div>
       </div>
@@ -67,7 +72,7 @@ export function PromptDialog({
   message,
   label,
   placeholder,
-  confirmLabel = 'Готово',
+  confirmLabel,
   secret = false,
   allowEmpty = false,
   emptyLabel,
@@ -90,6 +95,7 @@ export function PromptDialog({
   onCancel: () => void;
 }) {
   const [value, setValue] = useState('');
+  const t = useT();
   const titleId = useId();
   useEscapeToClose(onCancel);
   const trapRef = useFocusTrap<HTMLFormElement>();
@@ -134,7 +140,7 @@ export function PromptDialog({
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4, flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            Отмена
+            {t(CANCEL)}
           </button>
           {allowEmpty && emptyLabel && (
             <button type="button" className="btn" onClick={() => onSubmit('')}>
@@ -146,7 +152,7 @@ export function PromptDialog({
             className="btn btn-primary"
             disabled={!allowEmpty && value.trim().length === 0}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('dialog.done')}
           </button>
         </div>
       </form>
@@ -178,6 +184,7 @@ export function ChoiceDialog<T extends string | number>({
   onChoose: (value: T) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const titleId = useId();
   useEscapeToClose(onCancel);
   const trapRef = useFocusTrap<HTMLDivElement>();
@@ -218,7 +225,7 @@ export function ChoiceDialog<T extends string | number>({
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            Отмена
+            {t(CANCEL)}
           </button>
         </div>
       </div>

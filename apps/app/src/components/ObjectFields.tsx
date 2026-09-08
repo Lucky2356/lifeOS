@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { objectFields, sensitivityLabels, type ObjectType, type Sensitivity } from '@life-os/domain';
-import { useLocale } from '../lib/i18n';
+import { useLocale, useT } from '../lib/i18n';
 
 /**
  * Общие поля карточки объекта: значения, специфичные для типа, и уровень чувствительности.
@@ -17,9 +17,10 @@ export function SensitivityField({
 }) {
   const id = useId();
   const locale = useLocale();
+  const t = useT();
   return (
     <div className="field">
-      <label htmlFor={id}>Чувствительность</label>
+      <label htmlFor={id}>{t('object.sensitivity')}</label>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value as Sensitivity)}>
         {(Object.keys(sensitivityLabels) as Sensitivity[]).map((s) => (
           <option key={s} value={s}>
@@ -28,7 +29,7 @@ export function SensitivityField({
         ))}
       </select>
       <div className="page-sub" style={{ fontSize: 12, marginTop: 5 }}>
-        Значения выше обычной скрыты в карточке, пока их не откроют.
+        {t('object.sensitivityHint')}
       </div>
     </div>
   );

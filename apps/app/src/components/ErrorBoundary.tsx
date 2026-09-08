@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { t } from '../lib/i18n';
 
 /**
  * Последняя линия обороны интерфейса. Всё приложение стоит на IndexedDB, и если хранилище
@@ -7,6 +8,9 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
  *
  * Экран намеренно не предлагает «очистить данные»: при сбое чтения они могут быть целы, и стирать
  * единственную копию по совету приложения — худшее, что можно посоветовать.
+ *
+ * Классовый компонент, хуков здесь нет: берёт окружающий `t`. На смену языка он не перерисуется,
+ * но к этому моменту приложение уже упало — перерисовывать нечего.
  */
 export class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   override state: { error: Error | null } = { error: null };
@@ -16,7 +20,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Сбой интерфейса Life OS', error, info.componentStack);
+    // По-английски намеренно: это диагностика в консоли рядом с английским стеком.
+    console.error('Life OS: interface crash', error, info.componentStack);
   }
 
   override render() {
@@ -26,20 +31,19 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
     return (
       <main className="main" role="alert">
         <div className="serif page-title" style={{ marginBottom: 8 }}>
-          Что-то пошло не так
+          {t('error.title')}
         </div>
         <div className="page-sub" style={{ maxWidth: 520, marginBottom: 18 }}>
-          Приложение не смогло прочитать данные на этом устройстве. Чаще всего помогает перезапуск. Ваши
-          записи при этом не трогаются.
+          {t('error.body')}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => window.location.reload()}>
-            Перезапустить
+            {t('error.restart')}
           </button>
         </div>
         <details style={{ marginTop: 22 }}>
           <summary className="page-sub" style={{ cursor: 'pointer' }}>
-            Подробности ошибки
+            {t('error.details')}
           </summary>
           <pre
             style={{

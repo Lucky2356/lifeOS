@@ -15,6 +15,27 @@ export const ru = {
   'nav.search': 'Поиск',
   'nav.settings': 'Настройки',
 
+  'dialog.confirm': 'Подтвердить',
+  'dialog.cancel': 'Отмена',
+  'dialog.done': 'Готово',
+
+  'error.title': 'Что-то пошло не так',
+  'error.body':
+    'Приложение не смогло прочитать данные на этом устройстве. Чаще всего помогает перезапуск. Ваши записи при этом не трогаются.',
+  'error.restart': 'Перезапустить',
+  'error.details': 'Подробности ошибки',
+
+  'object.new': 'Новый объект',
+  'object.title': 'Название',
+  'object.titlePlaceholder': 'Загранпаспорт',
+  'object.type': 'Тип',
+  'object.validUntil': 'Действует до / дедлайн (необязательно)',
+  'object.add': 'Добавить',
+  'object.saving': 'Сохраняю…',
+  'object.saveFailed': 'Не удалось сохранить',
+  'object.sensitivity': 'Чувствительность',
+  'object.sensitivityHint': 'Значения выше обычной скрыты в карточке, пока их не откроют.',
+
   'navigator.progress': {
     one: '{done} из {n} шага',
     few: '{done} из {n} шагов',

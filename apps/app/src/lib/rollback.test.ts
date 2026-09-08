@@ -9,7 +9,8 @@ import {
   undoImport,
 } from './backup';
 import { ledgerStore } from './store/objects';
-import { getSetting, setSetting } from './store/db';
+import { clearAllData, getSetting, setSetting } from './store/db';
+import { ownerUserId } from './store/local-user';
 
 describe('страховка перед восстановлением из копии', () => {
   it('возвращает данные, какими они были до импорта', async () => {
@@ -29,15 +30,28 @@ describe('страховка перед восстановлением из ко
     expect((await ledgerStore.list()).map((o) => o.title)).toEqual(['Мои данные']);
   });
 
-  it('снимок переживает полную очистку данных — он лежит в настройках', async () => {
+  it('снимок переживает импорт — ради этого он и лежит в настройках', async () => {
     await ledgerStore.create({ type: 'document', title: 'Мои данные' });
     await stashRollback();
 
-    const { clearAllData } = await import('./store/db');
-    await clearAllData();
+    // applyBackup чистит только пользовательские хранилища, настройки не трогает.
+    await applyBackup({ ...(await buildBackup()), objects: [] });
 
     const stashed = await takeRollback();
     expect(stashed?.backup.objects.map((o) => o.title)).toEqual(['Мои данные']);
+  });
+
+  it('полное удаление данных сносит и снимок — иначе копия документов осталась бы на неделю', async () => {
+    await ledgerStore.create({ type: 'document', title: 'Мои данные' });
+    await ownerUserId();
+    await stashRollback();
+
+    await clearAllData();
+
+    expect(await getSetting('pre-import-rollback')).toBeUndefined();
+    expect(await takeRollback()).toBeNull();
+    // Настройки самой установки — не данные, они остаются.
+    expect(await getSetting('owner-user-id')).toBeTruthy();
   });
 
   it('после отката снимок убирается — второй раз откатывать нечего', async () => {

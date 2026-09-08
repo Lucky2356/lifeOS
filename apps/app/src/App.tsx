@@ -9,6 +9,7 @@ import { NavigatorScreen } from './components/NavigatorScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { SearchScreen } from './components/SearchScreen';
 import { useTheme } from './lib/theme';
+import { useT } from './lib/i18n';
 import { ledgerStore, migrateLegacyLocalStorage, requestPersistentStorage } from './lib/store';
 import { initNativeUpdate, openApkDownload, type AndroidUpdate } from './lib/native-update';
 import { startReminderWatcher } from './lib/notifications';
@@ -18,6 +19,7 @@ import { cleanupCache } from './lib/platform-files';
 type Route = 'today' | 'ledger' | 'household' | 'decisions' | 'navigator' | 'search' | 'settings';
 
 export function App() {
+  const t = useT();
   const { theme, preference, setPreference, toggle } = useTheme();
   const [route, setRoute] = useState<Route>('today');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export function App() {
     return (
       <div className="app">
         <main className="main">
-          <div className="state">Загрузка…</div>
+          <div className="state">{t('app.loading')}</div>
         </main>
       </div>
     );
@@ -82,13 +84,17 @@ export function App() {
     <div className="app">
       {androidUpdate && (
         <div className="update-banner" role="status">
-          <span>Доступна новая версия {androidUpdate.version}. Обновите приложение — данные сохранятся.</span>
+          <span>{t('app.update.available', { version: androidUpdate.version })}</span>
           <span style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary" onClick={() => openApkDownload(androidUpdate.apkUrl)}>
-              Обновить
+              {t('app.update.action')}
             </button>
-            <button className="btn btn-ghost" onClick={() => setAndroidUpdate(null)} aria-label="Позже">
-              Позже
+            <button
+              className="btn btn-ghost"
+              onClick={() => setAndroidUpdate(null)}
+              aria-label={t('app.update.later')}
+            >
+              {t('app.update.later')}
             </button>
           </span>
         </div>

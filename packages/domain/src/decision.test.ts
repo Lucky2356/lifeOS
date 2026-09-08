@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DomainError } from './errors';
 import {
   applyDecisionUpdate,
   createDecision,
@@ -65,12 +66,14 @@ describe('жизненный цикл решения', () => {
   });
 
   it('не даёт выбрать вариант, которого нет', () => {
-    expect(() => decideDecision(withOptions(), 'нет-такого')).toThrow();
+    expect(() => decideDecision(withOptions(), 'нет-такого')).toThrow(
+      new DomainError('option_not_in_decision'),
+    );
   });
 
   it('исход записывается только для принятого решения', () => {
     const draft = withOptions();
-    expect(() => recordOutcome(draft, 'вышло так себе')).toThrow();
+    expect(() => recordOutcome(draft, 'вышло так себе')).toThrow(new DomainError('outcome_requires_decided'));
 
     const decided = decideDecision(draft, 'a');
     expect(recordOutcome(decided, 'вышло хорошо').actualOutcome).toBe('вышло хорошо');

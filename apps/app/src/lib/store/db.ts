@@ -110,7 +110,8 @@ export function db(): Promise<IDBPDatabase<LifeOsSchema>> {
      * обработчика `openDB` просто не разрешается — молча и навсегда.
      */
     blocked() {
-      console.warn('Life OS: обновление хранилища ждёт, пока закроются другие вкладки приложения.');
+      // Диагностика для разработчика в консоли, не текст интерфейса.
+      console.warn('Life OS: storage upgrade is waiting for other tabs of the app to close.');
     },
     /** Обратная сторона: это нас просят закрыться ради обновления. Держать чужое обновление нельзя. */
     blocking() {

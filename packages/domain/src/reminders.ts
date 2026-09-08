@@ -1,3 +1,5 @@
+import { DomainError } from './errors';
+
 /**
  * Напоминания и жизненный цикл дедлайнов — чистые правила, без ИИ (принцип продукта).
  * Считаются одинаково на клиенте (в т.ч. офлайн) и на сервере.
@@ -19,7 +21,7 @@ export interface ComputedReminder {
 export function computeReminders(deadlineISO: string, rules: ReminderRule[]): ComputedReminder[] {
   const deadline = new Date(deadlineISO);
   if (Number.isNaN(deadline.getTime())) {
-    throw new Error(`Invalid deadline: ${deadlineISO}`);
+    throw new DomainError('invalid_deadline');
   }
   return rules
     .map((rule) => {

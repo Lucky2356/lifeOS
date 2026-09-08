@@ -1,5 +1,6 @@
 import type { ObjectType } from './object-types';
 import type { Sensitivity } from './life-object';
+import type { Locale } from './content';
 
 /**
  * Что именно записывают в объект каждого типа. Ядро Life Ledger хранит эти значения в свободном
@@ -17,7 +18,8 @@ export interface ObjectFieldSpec {
   key: string;
   label: { ru: string; en: string };
   kind: FieldKind;
-  placeholder?: string;
+  /** Пример значения. Двуязычен, как и подпись: в каталоге не место строке на одном языке. */
+  placeholder?: { ru: string; en: string };
 }
 
 const f = (
@@ -25,7 +27,7 @@ const f = (
   ru: string,
   en: string,
   kind: FieldKind = 'text',
-  placeholder?: string,
+  placeholder?: { ru: string; en: string },
 ): ObjectFieldSpec => ({ key, label: { ru, en }, kind, placeholder });
 
 export const objectFields: Record<ObjectType, ObjectFieldSpec[]> = {
@@ -38,7 +40,7 @@ export const objectFields: Record<ObjectType, ObjectFieldSpec[]> = {
   ],
   subscription: [
     f('price', 'Стоимость', 'Price', 'number'),
-    f('period', 'Периодичность', 'Billing period', 'text', 'ежемесячно'),
+    f('period', 'Периодичность', 'Billing period', 'text', { ru: 'ежемесячно', en: 'monthly' }),
     f('account', 'Аккаунт', 'Account'),
   ],
   insurance: [
@@ -83,7 +85,13 @@ export function defaultSensitivityFor(type: ObjectType): Sensitivity {
   return 'normal';
 }
 
-/** Подпись поля по ключу — чтобы показать уже сохранённые данные, в том числе из старых версий. */
-export function fieldLabel(type: ObjectType, key: string, locale: 'ru' | 'en' = 'ru'): string {
+/**
+ * Подпись поля по ключу — чтобы показать уже сохранённые данные, в том числе из старых версий.
+ *
+ * Язык обязателен и умолчания не имеет намеренно: с умолчанием `'ru'` любой неисправленный вызов
+ * остался бы русским и при этом прошёл компиляцию — ровно тот молчаливый недоперевод, против
+ * которого выстроен весь остальной механизм.
+ */
+export function fieldLabel(type: ObjectType, key: string, locale: Locale): string {
   return objectFields[type].find((spec) => spec.key === key)?.label[locale] ?? key;
 }

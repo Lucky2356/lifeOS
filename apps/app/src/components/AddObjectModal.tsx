@@ -10,6 +10,7 @@ import {
 import { ledgerStore } from '../lib/store';
 import { useEscapeToClose, useFocusTrap } from '../lib/use-modal';
 import { SensitivityField, TypeFields } from './ObjectFields';
+import { useLocale, useT } from '../lib/i18n';
 
 export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
@@ -19,6 +20,8 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
   const [data, setData] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
+  const locale = useLocale();
   const titleId = useId();
   useEscapeToClose(onClose);
   const trapRef = useFocusTrap<HTMLFormElement>();
@@ -46,7 +49,7 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
       await ledgerStore.create(input);
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить');
+      setError(err instanceof Error ? err.message : t('object.saveFailed'));
       setBusy(false);
     }
   }
@@ -63,25 +66,25 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
         aria-labelledby={titleId}
       >
         <h2 id={titleId} className="serif" style={{ fontSize: 20, margin: '0 0 16px' }}>
-          Новый объект
+          {t('object.new')}
         </h2>
         <div className="field">
-          <label htmlFor="title">Название</label>
+          <label htmlFor="title">{t('object.title')}</label>
           <input
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Загранпаспорт"
+            placeholder={t('object.titlePlaceholder')}
             required
             autoFocus
           />
         </div>
         <div className="field">
-          <label htmlFor="type">Тип</label>
+          <label htmlFor="type">{t('object.type')}</label>
           <select id="type" value={type} onChange={(e) => changeType(e.target.value as ObjectType)}>
-            {objectTypes.map((t) => (
-              <option key={t} value={t}>
-                {objectTypeLabels[t].ru}
+            {objectTypes.map((option) => (
+              <option key={option} value={option}>
+                {objectTypeLabels[option][locale]}
               </option>
             ))}
           </select>
@@ -94,7 +97,7 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
         />
 
         <div className="field">
-          <label htmlFor="validUntil">Действует до / дедлайн (необязательно)</label>
+          <label htmlFor="validUntil">{t('object.validUntil')}</label>
           <input
             id="validUntil"
             type="date"
@@ -116,10 +119,10 @@ export function AddObjectModal({ onClose, onCreated }: { onClose: () => void; on
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Отмена
+            {t('dialog.cancel')}
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy || title.trim().length === 0}>
-            {busy ? 'Сохраняю…' : 'Добавить'}
+            {busy ? t('object.saving') : t('object.add')}
           </button>
         </div>
       </form>

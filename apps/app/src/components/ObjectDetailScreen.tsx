@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   fieldLabel,
   lifecycleFor,
+  lifeObjectStatusLabels,
   objectFields,
   objectTypeLabels,
+  sensitivityLabels,
   reminderOffsetChoices,
   reminderRulesFor,
   trashRetentionDays,
@@ -15,13 +17,15 @@ import {
 import { ledgerStore } from '../lib/store';
 import { ConfirmDialog } from './Dialog';
 import { Attachments } from './Attachments';
-import { SensitivityField, TypeFields, sensitivityLabels } from './ObjectFields';
+import { SensitivityField, TypeFields } from './ObjectFields';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { Icon } from './Icon';
+import { useLocale, useT } from '../lib/i18n';
 
-const statusLabels: Record<LifeObjectStatus, string> = { active: 'Активен', archived: 'В архиве' };
+/** Заголовок раздела полей повторяется в трёх ветках карточки — ключ один. */
+const FIELDS = 'object.fields';
 
 /** Значения полей хранятся как есть; для формы приводим их к строкам. */
 function toFormData(data: Record<string, unknown>): Record<string, string> {
@@ -39,6 +43,8 @@ export function ObjectDetailScreen({
   theme: Theme;
   onToggleTheme: () => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [obj, setObj] = useState<LifeObject | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -60,7 +66,7 @@ export function ObjectDetailScreen({
       .get(id)
       .then((o) => {
         if (!o) {
-          setError('Объект не найден');
+          setError(t('object.notFound'));
           return;
         }
         setObj(o);
@@ -72,7 +78,7 @@ export function ObjectDetailScreen({
         setData(toFormData(o.data));
         setReminderDays(o.reminderDays ?? null);
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Ошибка загрузки'));
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : t('ledger.loadFailed')));
   }, [id]);
 
   useEffect(() => load(), [load]);
@@ -93,7 +99,7 @@ export function ObjectDetailScreen({
       setEditing(false);
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось сохранить');
+      setError(e instanceof Error ? e.message : t('object.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -106,7 +112,7 @@ export function ObjectDetailScreen({
       await ledgerStore.remove(id);
       onBack();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось удалить');
+      setError(e instanceof Error ? e.message : t('object.deleteFailed'));
       setBusy(false);
     }
   }
@@ -115,9 +121,9 @@ export function ObjectDetailScreen({
     return (
       <main className="main">
         <button className="btn btn-ghost" onClick={onBack}>
-          <Icon name="arrow-left" /> Назад
+          <Icon name="arrow-left" /> {t('object.back')}
         </button>
-        <div className="state">Не удалось открыть объект.</div>
+        <div className="state">{t('object.openFailed')}</div>
       </main>
     );
   }
@@ -125,7 +131,7 @@ export function ObjectDetailScreen({
   if (!obj) {
     return (
       <main className="main">
-        <div className="state">Загрузка…</div>
+        <div className="state">{t('app.loading')}</div>
       </main>
     );
   }
@@ -142,9 +148,9 @@ export function ObjectDetailScreen({
     <main className="main">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
         <button className="btn btn-ghost" onClick={onBack}>
-          <Icon name="arrow-left" /> Реестр
+          <Icon name="arrow-left" /> {t('ledger.title')}
         </button>
-        <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
+        <button className="btn" onClick={onToggleTheme} aria-label={t('theme.toggle')}>
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
@@ -159,7 +165,7 @@ export function ObjectDetailScreen({
               className="title-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              aria-label="Название"
+              aria-label={t('object.title')}
             />
           ) : (
             <div className="serif" style={{ fontSize: 24 }}>
@@ -175,7 +181,7 @@ export function ObjectDetailScreen({
         {editing ? (
           <>
             <button className="btn btn-primary" onClick={save} disabled={busy || title.trim().length === 0}>
-              {busy ? 'Сохраняю…' : 'Сохранить'}
+              {busy ? t('object.saving') : t('object.save')}
             </button>
             <button
               className="btn"
@@ -185,13 +191,13 @@ export function ObjectDetailScreen({
               }}
               disabled={busy}
             >
-              Отмена
+              {t('dialog.cancel')}
             </button>
           </>
         ) : (
           <>
             <button className="btn" onClick={() => setEditing(true)}>
-              <Icon name="edit" /> Изменить
+              <Icon name="edit" /> {t('object.edit')}
             </button>
             <button
               className="btn"
@@ -201,10 +207,10 @@ export function ObjectDetailScreen({
                 setTimeout(() => window.print(), 50);
               }}
             >
-              <Icon name="file-text" /> Распечатать
+              <Icon name="file-text" /> {t('object.print')}
             </button>
             <button className="btn btn-danger" onClick={() => setConfirmDelete(true)} disabled={busy}>
-              <Icon name="trash" /> Удалить
+              <Icon name="trash" /> {t('object.delete')}
             </button>
           </>
         )}
@@ -212,7 +218,7 @@ export function ObjectDetailScreen({
 
       <div className="kv-grid">
         <div className="kv">
-          <span className="kv-label">Действует до / дедлайн</span>
+          <span className="kv-label">{t('object.validUntilLabel')}</span>
           {editing ? (
             <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
           ) : (
@@ -220,18 +226,18 @@ export function ObjectDetailScreen({
           )}
         </div>
         <div className="kv">
-          <span className="kv-label">Статус</span>
+          <span className="kv-label">{t('object.status')}</span>
           {editing ? (
             <select value={status} onChange={(e) => setStatus(e.target.value as LifeObjectStatus)}>
-              <option value="active">Активен</option>
-              <option value="archived">В архиве</option>
+              <option value="active">{lifeObjectStatusLabels.active[locale]}</option>
+              <option value="archived">{lifeObjectStatusLabels.archived[locale]}</option>
             </select>
           ) : (
-            <span className="kv-value">{statusLabels[obj.status]}</span>
+            <span className="kv-value">{lifeObjectStatusLabels[obj.status][locale]}</span>
           )}
         </div>
         <div className="kv">
-          <span className="kv-label">Действует с</span>
+          <span className="kv-label">{t('object.validFrom')}</span>
           {editing ? (
             <input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
           ) : (
@@ -240,15 +246,15 @@ export function ObjectDetailScreen({
         </div>
         {!editing && (
           <div className="kv">
-            <span className="kv-label">Чувствительность</span>
-            <span className="kv-value">{sensitivityLabels[obj.sensitivity]}</span>
+            <span className="kv-label">{t('object.sensitivity')}</span>
+            <span className="kv-value">{sensitivityLabels[obj.sensitivity][locale]}</span>
           </div>
         )}
       </div>
 
       {editing ? (
         <>
-          <div className="section-label">Поля</div>
+          <div className="section-label">{t(FIELDS)}</div>
           <div style={{ maxWidth: 420, marginBottom: 22 }}>
             <TypeFields
               type={obj.type}
@@ -262,18 +268,18 @@ export function ObjectDetailScreen({
         dataEntries.length > 0 && (
           <>
             <div className="section-label">
-              Поля
+              {t(FIELDS)}
               {obj.sensitivity !== 'normal' && (
                 <button className="reveal-btn" onClick={() => setReveal((r) => !r)}>
                   <Icon name={masked ? 'lock' : 'lock-open'} />
-                  {masked ? 'Показать' : 'Скрыть'}
+                  {masked ? t('object.reveal') : t('object.hide')}
                 </button>
               )}
             </div>
             <div className="kv-grid">
               {dataEntries.map(([k, v]) => (
                 <div className="kv" key={k}>
-                  <span className="kv-label">{fieldLabel(obj.type, k)}</span>
+                  <span className="kv-label">{fieldLabel(obj.type, k, locale)}</span>
                   <span className="kv-value">{masked ? '•• •••• ••' : String(v)}</span>
                 </div>
               ))}
@@ -284,22 +290,20 @@ export function ObjectDetailScreen({
 
       {!editing && dataEntries.length === 0 && objectFields[obj.type].length > 0 && (
         <>
-          <div className="section-label">Поля</div>
+          <div className="section-label">{t(FIELDS)}</div>
           <div className="note" style={{ marginBottom: 22 }}>
-            Нажмите «Изменить», чтобы записать {objectFields[obj.type][0]?.label.ru.toLowerCase()} и другие
-            данные этого объекта.
+            {t('object.fieldsHint', { field: objectFields[obj.type][0]?.label[locale] ?? '' })}
           </div>
         </>
       )}
 
       <Attachments objectId={id} />
 
-      <div className="section-label">Напоминания</div>
+      <div className="section-label">{t('object.reminders')}</div>
       {editing && (
         <div className="list-card" style={{ marginBottom: 14, padding: 14 }}>
           <div className="page-sub" style={{ marginBottom: 10 }}>
-            За сколько дней предупредить. Ничего не выбрано — используются общие пороги (90 / 30 / 7 / 1): для
-            подписки они избыточны, для паспорта наоборот.
+            {t('object.remindersHint')}
           </div>
           <div className="filters" style={{ marginBottom: 0 }}>
             {reminderOffsetChoices.map((days) => {
@@ -319,7 +323,7 @@ export function ObjectDetailScreen({
                     })
                   }
                 >
-                  {days} дн.
+                  {t('object.days', { n: days })}
                 </button>
               );
             })}
@@ -327,15 +331,13 @@ export function ObjectDetailScreen({
         </div>
       )}
       {reminders.length === 0 ? (
-        <div className="note">
-          {obj.validUntil ? 'Ближайших напоминаний нет.' : 'Добавьте дедлайн, чтобы получать напоминания.'}
-        </div>
+        <div className="note">{obj.validUntil ? t('object.noReminders') : t('object.needDeadline')}</div>
       ) : (
         <div className="list-card">
           {reminders.map((r) => (
             <div className="list-row" key={r.offsetDays}>
               <Icon name="bell" style={{ color: 'var(--sage)' }} />
-              <span>За {r.offsetDays} дн. до срока</span>
+              <span>{t('object.reminderBefore', { n: r.offsetDays })}</span>
               <span className="list-row-meta">{formatDate(r.fireAt)}</span>
             </div>
           ))}
@@ -345,36 +347,32 @@ export function ObjectDetailScreen({
       {(state === 'due_soon' || state === 'overdue') && (
         <div className="hint">
           <Icon name="info-circle" />
-          <span>
-            {state === 'overdue'
-              ? 'Срок уже прошёл — стоит заняться в ближайшее время.'
-              : 'Срок приближается — можно спокойно подготовиться заранее.'}
-          </span>
+          <span>{state === 'overdue' ? t('object.overdueHint') : t('object.dueSoonHint')}</span>
         </div>
       )}
 
-      <div className="section-label">История</div>
+      <div className="section-label">{t('object.history')}</div>
       <div className="timeline">
         <div className="timeline-row">
           <span className="timeline-dot" />
           <div>
-            <div>Последнее изменение · версия {obj.version}</div>
+            <div>{t('object.lastChange', { version: obj.version })}</div>
             <div className="page-sub">{formatDateTime(obj.updatedAt)}</div>
           </div>
         </div>
         <div className="timeline-row">
           <span className="timeline-dot timeline-dot-muted" />
           <div>
-            <div>Объект создан</div>
+            <div>{t('object.created')}</div>
             <div className="page-sub">{formatDateTime(obj.createdAt)}</div>
           </div>
         </div>
       </div>
       {confirmDelete && (
         <ConfirmDialog
-          title="Удалить объект?"
-          message={`Объект и приложенные файлы попадут в корзину. Оттуда их можно вернуть в течение ${trashRetentionDays} дней — потом они удалятся окончательно.`}
-          confirmLabel="В корзину"
+          title={t('object.deleteTitle')}
+          message={t('object.deleteMessage', { days: trashRetentionDays })}
+          confirmLabel={t('object.deleteConfirm')}
           danger
           onConfirm={remove}
           onCancel={() => setConfirmDelete(false)}

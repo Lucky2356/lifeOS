@@ -8,13 +8,25 @@ import {
   type LifeObject,
 } from '@life-os/domain';
 import { decisionsStore, householdStore, ledgerStore } from '../lib/store';
-import { counted, formatDate } from '../lib/format';
+import { formatDate, formatWeekdayDate } from '../lib/format';
 import { backupIsStale, lastBackupAt } from '../lib/backup';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import type { Theme } from '../lib/theme';
 import { Icon } from './Icon';
+import { useLocale, useT, type TFunction } from '../lib/i18n';
 
 const order = { overdue: 0, due_soon: 1, ok: 2, none: 3 } as const;
+
+/**
+ * Подпись под приветствием: у экрана четыре состояния, и в русском счётчик тянет за собой не
+ * только существительное, но и глагол — поэтому каждое состояние отдельным сообщением.
+ */
+function summary(t: TFunction, attention: LifeObject[] | null, empty: boolean, count: number): string {
+  if (attention === null) return t('app.loading');
+  if (empty) return t('today.emptyHint');
+  if (count === 0) return t('today.allCalm');
+  return t('today.needsAttention', { n: count });
+}
 
 export function TodayScreen({
   theme,
@@ -31,6 +43,8 @@ export function TodayScreen({
   onOpenLedger: () => void;
   onOpenDecisions: () => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [attention, setAttention] = useState<LifeObject[] | null>(null);
   const [tasks, setTasks] = useState<HouseholdTask[]>([]);
   const [reviews, setReviews] = useState<Decision[]>([]);
@@ -105,7 +119,7 @@ export function TodayScreen({
 
   // Просроченная задача по дому — такое же «дело», как истекающий документ: с появлением сроков
   // у задач заголовок обязан их учитывать, иначе он врёт.
-  const urgentTasks = tasks.filter((t) => (daysUntil(t.dueAt) ?? 1) <= 0).length;
+  const urgentTasks = tasks.filter((task) => (daysUntil(task.dueAt) ?? 1) <= 0).length;
   // Ничего не внесено — «всё под контролем» здесь было бы неправдой и ничего не подсказывало бы.
   const empty = attention !== null && totalObjects === 0 && tasks.length === 0 && reviews.length === 0;
   const flaggedObjects = attention?.length ?? 0;
@@ -115,13 +129,13 @@ export function TodayScreen({
     return (
       <main className="main">
         <div className="serif page-title" style={{ marginBottom: 8 }}>
-          Не удалось прочитать данные
+          {t('today.readFailed')}
         </div>
         <div className="page-sub" style={{ maxWidth: 520, marginBottom: 18 }}>
-          Хранилище на этом устройстве недоступно. Попробуйте перезапустить приложение.
+          {t('today.readFailedHint')}
         </div>
         <button className="btn btn-primary" onClick={() => window.location.reload()}>
-          Перезапустить
+          {t('error.restart')}
         </button>
       </main>
     );
@@ -132,22 +146,14 @@ export function TodayScreen({
       <div className="page-head">
         <div>
           <div className="page-sub" style={{ marginBottom: 2 }}>
-            {new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }).format(
-              new Date(),
-            )}
+            {formatWeekdayDate(new Date())}
           </div>
-          <div className="serif page-title">Доброе утро</div>
+          <div className="serif page-title">{t('today.greeting')}</div>
           <div className="page-sub" style={{ marginTop: 4 }}>
-            {attention === null
-              ? 'Загрузка…'
-              : empty
-                ? 'Здесь появится то, что требует внимания.'
-                : count === 0
-                  ? 'Всё под контролем. Ничего срочного.'
-                  : `${counted(count, 'дело', 'дела', 'дел')} ${count === 1 ? 'просит' : 'просят'} внимания. Остальное под контролем.`}
+            {summary(t, attention, empty, count)}
           </div>
         </div>
-        <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
+        <button className="btn" onClick={onToggleTheme} aria-label={t('theme.toggle')}>
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
@@ -155,19 +161,16 @@ export function TodayScreen({
       {backupStale && (
         <div className="hint" style={{ marginBottom: 20 }} role="status">
           <Icon name="download" />
-          <span style={{ flex: 1 }}>
-            Данные хранятся только на этом устройстве, и резервной копии давно не было. Копия занимает минуту
-            и спасает при потере или сбросе телефона.
-          </span>
+          <span style={{ flex: 1 }}>{t('today.backupNote')}</span>
           <button className="btn" onClick={onOpenSettings}>
-            Сохранить копию
+            {t('today.backupAction')}
           </button>
         </div>
       )}
 
       {flaggedObjects > 0 && (
         <>
-          <div className="section-label">Требует внимания</div>
+          <div className="section-label">{t('today.attentionSection')}</div>
           <div className="list-card" style={{ marginBottom: 22 }}>
             {attention!.map((o) => {
               const pill = lifecyclePill(o);
@@ -190,7 +193,7 @@ export function TodayScreen({
                   </span>
                   <span style={{ flex: 1 }}>
                     <span style={{ fontWeight: 500 }}>{o.title}</span>
-                    <span className="page-sub"> · {objectTypeLabels[o.type].ru}</span>
+                    <span className="page-sub"> · {objectTypeLabels[o.type][locale]}</span>
                   </span>
                   <span className={`pill ${pill.cls}`}>{pill.label}</span>
                 </button>
@@ -202,7 +205,7 @@ export function TodayScreen({
 
       {reviews.length > 0 && (
         <>
-          <div className="section-label">Оглянуться на решение</div>
+          <div className="section-label">{t('today.decisionsSection')}</div>
           <div className="list-card" style={{ marginBottom: 22 }}>
             {reviews.map((d) => (
               <button
@@ -223,9 +226,9 @@ export function TodayScreen({
                 </span>
                 <span style={{ flex: 1 }}>
                   <span style={{ fontWeight: 500 }}>{d.title}</span>
-                  <span className="page-sub"> · решено {formatDate(d.decidedAt)}</span>
+                  <span className="page-sub">{t('today.decidedOn', { date: formatDate(d.decidedAt) })}</span>
                 </span>
-                <span className="pill pill-warn">записать исход</span>
+                <span className="pill pill-warn">{t('today.recordOutcome')}</span>
               </button>
             ))}
           </div>
@@ -234,20 +237,20 @@ export function TodayScreen({
 
       {tasks.length > 0 && (
         <>
-          <div className="section-label">Дом · задачи</div>
+          <div className="section-label">{t('today.tasksSection')}</div>
           <div className="list-card">
-            {tasks.map((t) => (
-              <div className="list-row" key={t.id}>
+            {tasks.map((task) => (
+              <div className="list-row" key={task.id}>
                 <span className="check" aria-hidden="true" />
-                <span style={{ flex: 1 }}>{t.title}</span>
-                {t.dueAt && (
+                <span style={{ flex: 1 }}>{task.title}</span>
+                {task.dueAt && (
                   <span
                     className="list-row-meta"
                     style={{
-                      color: lifecycleFor(t.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
+                      color: lifecycleFor(task.dueAt) === 'overdue' ? 'var(--brick-ink)' : 'var(--ink-3)',
                     }}
                   >
-                    {formatDate(t.dueAt)}
+                    {formatDate(task.dueAt)}
                   </span>
                 )}
               </div>
@@ -258,30 +261,29 @@ export function TodayScreen({
 
       {empty && (
         <div className="state" style={{ textAlign: 'left', maxWidth: 640 }}>
-          <div style={{ fontWeight: 500, color: 'var(--ink)', marginBottom: 8 }}>С чего начать</div>
-          <div style={{ marginBottom: 14 }}>
-            Life OS держит в одном месте документы, вещи и обязательства — и напоминает о сроках заранее. Всё
-            хранится на этом устройстве и никуда не отправляется.
+          <div style={{ fontWeight: 500, color: 'var(--ink)', marginBottom: 8 }}>
+            {t('today.onboardingTitle')}
           </div>
+          <div style={{ marginBottom: 14 }}>{t('today.onboardingBody')}</div>
           <ol style={{ margin: '0 0 16px', paddingLeft: 20, lineHeight: 1.9 }}>
-            <li>Добавьте первый документ со сроком — например, паспорт или страховку.</li>
-            <li>Приложите скан, чтобы он был под рукой, когда понадобится.</li>
-            <li>Разрешите уведомления в настройках, чтобы срок не застал врасплох.</li>
-            <li>Сохраните резервную копию: другой копии этих данных не существует.</li>
+            <li>{t('today.onboarding1')}</li>
+            <li>{t('today.onboarding2')}</li>
+            <li>{t('today.onboarding3')}</li>
+            <li>{t('today.onboarding4')}</li>
           </ol>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={onOpenLedger}>
-              Добавить первый объект
+              {t('ledger.addFirst')}
             </button>
             <button className="btn" onClick={onOpenSettings}>
-              Открыть настройки
+              {t('today.openSettings')}
             </button>
           </div>
         </div>
       )}
 
       {attention !== null && !empty && count === 0 && tasks.length === 0 && reviews.length === 0 && (
-        <div className="state">Спокойный день — система держит ваши дела под контролем.</div>
+        <div className="state">{t('today.calmDay')}</div>
       )}
     </main>
   );

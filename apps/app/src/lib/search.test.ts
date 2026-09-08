@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { searchEverything } from './search';
+import { setLocale, t } from './i18n';
 import { ledgerStore } from './store/objects';
 import { decisionsStore } from './store/decisions';
 import { householdStore } from './store/household';
@@ -38,11 +39,24 @@ describe('поиск по всему приложению', () => {
     const obj = await ledgerStore.create({ type: 'document', title: 'Старый полис' });
     await ledgerStore.update(obj.id, { status: 'archived' });
     const hit = (await searchEverything('старый полис')).find((h) => h.kind === 'object');
-    expect(hit?.subtitle).toContain('в архиве');
+    expect(hit?.subtitle).toContain(t('search.archivedSuffix'));
   });
 
   it('ничего не находит по бессмыслице', async () => {
     await seed();
     expect(await searchEverything('щщщ')).toEqual([]);
+  });
+
+  it('находит плейбуки по обоим языкам, а показывает на текущем', async () => {
+    // В английском режиме русский запрос обязан находить: русский текст лежит в том же паке, в том
+    // же объекте, и человек, набирающий «пособие», ищет своё, а не язык интерфейса.
+    setLocale('en');
+
+    const byRussian = await searchEverything('пособие');
+    expect(byRussian.some((h) => h.kind === 'playbook')).toBe(true);
+    expect(byRussian.find((h) => h.kind === 'playbook')?.title).toMatch(/[A-Za-z]/);
+
+    const byEnglish = await searchEverything('benefit');
+    expect(byEnglish.some((h) => h.kind === 'playbook')).toBe(true);
   });
 });

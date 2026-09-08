@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { counted } from '../lib/format';
 import { searchEverything, searchKindLabels, type SearchHit } from '../lib/search';
 import type { Theme } from '../lib/theme';
 import { Icon } from './Icon';
+import { useT } from '../lib/i18n';
 
 const kindIcons: Record<SearchHit['kind'], string> = {
   object: 'folders',
@@ -23,6 +23,7 @@ export function SearchScreen({
   onOpenObject: (id: string) => void;
   onOpenSection: (kind: SearchHit['kind']) => void;
 }) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -57,10 +58,10 @@ export function SearchScreen({
     <main className="main">
       <div className="page-head">
         <div>
-          <div className="serif page-title">Поиск</div>
-          <div className="page-sub">По реестру, дому, решениям и плейбукам</div>
+          <div className="serif page-title">{t('search.title')}</div>
+          <div className="page-sub">{t('search.hint')}</div>
         </div>
-        <button className="btn" onClick={onToggleTheme} aria-label="Переключить тему">
+        <button className="btn" onClick={onToggleTheme} aria-label={t('theme.toggle')}>
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
       </div>
@@ -79,22 +80,22 @@ export function SearchScreen({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Что ищем?"
-          aria-label="Поиск по приложению"
+          placeholder={t('search.subtitle')}
+          aria-label={t('search.aria')}
           autoFocus
           style={{ width: '100%', paddingLeft: 36 }}
         />
       </div>
 
       {query.trim().length === 0 ? (
-        <div className="state">Начните вводить — найдём во всех разделах сразу.</div>
+        <div className="state">{t('search.hint')}</div>
       ) : searching && hits.length === 0 ? (
-        <div className="state">Ищем…</div>
+        <div className="state">{t('search.searching')}</div>
       ) : hits.length === 0 ? (
-        <div className="state">Ничего не нашлось.</div>
+        <div className="state">{t('search.nothing')}</div>
       ) : (
         <>
-          <div className="section-label">{counted(hits.length, 'находка', 'находки', 'находок')}</div>
+          <div className="section-label">{t('search.found', { n: hits.length })}</div>
           <div className="list-card">
             {hits.map((hit) => (
               <button
@@ -116,7 +117,7 @@ export function SearchScreen({
                   <span style={{ fontWeight: 500 }}>{hit.title}</span>
                   <span className="page-sub"> · {hit.subtitle}</span>
                 </span>
-                <span className="list-row-meta">{searchKindLabels[hit.kind]}</span>
+                <span className="list-row-meta">{t(searchKindLabels[hit.kind])}</span>
               </button>
             ))}
           </div>

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { baseEntitySchema } from './sync';
 import { newId } from './ids';
+import { DomainError } from './errors';
 
 export const decisionCriterionSchema = z.object({
   id: z.string(),
@@ -147,7 +148,7 @@ export function decideDecision(
   now: Date = new Date(),
 ): Decision {
   if (!current.options.some((o) => o.id === chosenOptionId)) {
-    throw new Error('Выбранного варианта нет в решении');
+    throw new DomainError('option_not_in_decision');
   }
   return applyDecisionUpdate(
     current,
@@ -173,7 +174,7 @@ export function reopenDecision(current: Decision, now: Date = new Date()): Decis
 /** Записать, что вышло на самом деле. Имеет смысл только для принятого решения. */
 export function recordOutcome(current: Decision, outcome: string, now: Date = new Date()): Decision {
   if (current.status !== 'decided') {
-    throw new Error('Исход записывается только для принятого решения');
+    throw new DomainError('outcome_requires_decided');
   }
   // Исход записан — возвращаться больше незачем, напоминание снимается.
   return applyDecisionUpdate(current, { actualOutcome: outcome, reviewAt: null }, now);

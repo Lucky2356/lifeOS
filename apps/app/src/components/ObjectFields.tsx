@@ -1,17 +1,12 @@
 import { useId } from 'react';
-import { objectFields, type ObjectType, type Sensitivity } from '@life-os/domain';
+import { objectFields, sensitivityLabels, type ObjectType, type Sensitivity } from '@life-os/domain';
+import { useLocale, useT } from '../lib/i18n';
 
 /**
  * Общие поля карточки объекта: значения, специфичные для типа, и уровень чувствительности.
  * Одни и те же элементы нужны и при создании, и при правке — держим их в одном месте,
  * чтобы формы не разъезжались.
  */
-
-export const sensitivityLabels: Record<Sensitivity, string> = {
-  normal: 'Обычная',
-  sensitive: 'Чувствительная',
-  high: 'Повышенная',
-};
 
 export function SensitivityField({
   value,
@@ -21,18 +16,20 @@ export function SensitivityField({
   onChange: (next: Sensitivity) => void;
 }) {
   const id = useId();
+  const locale = useLocale();
+  const t = useT();
   return (
     <div className="field">
-      <label htmlFor={id}>Чувствительность</label>
+      <label htmlFor={id}>{t('object.sensitivity')}</label>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value as Sensitivity)}>
         {(Object.keys(sensitivityLabels) as Sensitivity[]).map((s) => (
           <option key={s} value={s}>
-            {sensitivityLabels[s]}
+            {sensitivityLabels[s][locale]}
           </option>
         ))}
       </select>
       <div className="page-sub" style={{ fontSize: 12, marginTop: 5 }}>
-        Значения выше обычной скрыты в карточке, пока их не откроют.
+        {t('object.sensitivityHint')}
       </div>
     </div>
   );
@@ -50,17 +47,18 @@ export function TypeFields({
 }) {
   // Свой префикс id на каждый экземпляр — формы создания и правки не должны конфликтовать.
   const prefix = useId();
+  const locale = useLocale();
   return (
     <>
       {objectFields[type].map((spec) => (
         <div className="field" key={spec.key}>
-          <label htmlFor={`${prefix}${spec.key}`}>{spec.label.ru}</label>
+          <label htmlFor={`${prefix}${spec.key}`}>{spec.label[locale]}</label>
           <input
             id={`${prefix}${spec.key}`}
-            type={spec.kind === 'number' ? 'number' : spec.kind === 'date' ? 'date' : 'text'}
+            type={spec.kind}
             value={data[spec.key] ?? ''}
             onChange={(e) => onChange(spec.key, e.target.value)}
-            placeholder={spec.placeholder}
+            placeholder={spec.placeholder?.[locale]}
           />
         </div>
       ))}

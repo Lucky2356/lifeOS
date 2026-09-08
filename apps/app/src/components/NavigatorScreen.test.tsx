@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { pickText } from '@life-os/domain';
-import { navigatorStore } from '../lib/store';
+import { ledgerStore, navigatorStore } from '../lib/store';
 import { NavigatorScreen } from './NavigatorScreen';
 
 function renderNavigator() {
@@ -51,5 +51,32 @@ describe('NavigatorScreen', () => {
 
     await user.click(screen.getAllByRole('button', { name: 'Отметить готовым' })[0]!);
     expect(await screen.findByRole('button', { name: 'Начать заново' })).toBeTruthy();
+  });
+
+  it('прочитанный реестр выносит вердикт по каждому требуемому документу', async () => {
+    await ledgerStore.create({ type: 'document', title: 'Загранпаспорт' });
+    const user = userEvent.setup();
+    renderNavigator();
+
+    await user.click(await screen.findByText(jobLossTitle));
+    await screen.findByText(pickText(jobLoss.summary, 'ru'));
+
+    expect(await screen.findAllByTitle('Есть в реестре')).toHaveLength(2);
+    expect(screen.getAllByTitle('В реестре не нашлось')).toHaveLength(3);
+  });
+
+  it('непрочитанный реестр не выдаётся за отсутствие документов', async () => {
+    // Сбой чтения реестра — не то же самое, что пустой реестр. Человеку в кризисе нельзя сообщать,
+    // что у него нет паспорта, который у него есть.
+    vi.spyOn(ledgerStore, 'list').mockRejectedValueOnce(new Error('реестр недоступен'));
+    const user = userEvent.setup();
+    renderNavigator();
+
+    await user.click(await screen.findByText(jobLossTitle));
+    await screen.findByText(pickText(jobLoss.summary, 'ru'));
+
+    expect(await screen.findAllByTitle('Реестр не прочитан')).toHaveLength(5);
+    expect(screen.queryByTitle('Есть в реестре')).toBeNull();
+    expect(screen.queryByTitle('В реестре не нашлось')).toBeNull();
   });
 });

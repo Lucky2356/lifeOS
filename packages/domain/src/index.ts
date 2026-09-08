@@ -1,3 +1,4 @@
+export * from './errors';
 export * from './sync';
 export * from './ids';
 export * from './object-types';

@@ -9,6 +9,21 @@ export type Sensitivity = z.infer<typeof sensitivitySchema>;
 export const lifeObjectStatusSchema = z.enum(['active', 'archived']);
 export type LifeObjectStatus = z.infer<typeof lifeObjectStatusSchema>;
 
+/**
+ * Подписи перечислений живут рядом с самими перечислениями: добавили значение — видно, что подпись
+ * к нему не написана. В приложении они лежали по-русски и в двух разных файлах.
+ */
+export const sensitivityLabels: Record<Sensitivity, { ru: string; en: string }> = {
+  normal: { ru: 'Обычная', en: 'Normal' },
+  sensitive: { ru: 'Чувствительная', en: 'Sensitive' },
+  high: { ru: 'Повышенная', en: 'High' },
+};
+
+export const lifeObjectStatusLabels: Record<LifeObjectStatus, { ru: string; en: string }> = {
+  active: { ru: 'Активен', en: 'Active' },
+  archived: { ru: 'В архиве', en: 'Archived' },
+};
+
 /** Полная сущность «объект жизни» — ядро Life Ledger (см. docs/DATA_MODEL.md). */
 export const lifeObjectSchema = baseEntitySchema.extend({
   householdId: z.string().uuid().nullable(),

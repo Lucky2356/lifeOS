@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   fieldLabel,
   lifecycleFor,
+  lifeObjectStatusLabels,
   objectFields,
   objectTypeLabels,
+  sensitivityLabels,
   reminderOffsetChoices,
   reminderRulesFor,
   trashRetentionDays,
@@ -15,13 +17,12 @@ import {
 import { ledgerStore } from '../lib/store';
 import { ConfirmDialog } from './Dialog';
 import { Attachments } from './Attachments';
-import { SensitivityField, TypeFields, sensitivityLabels } from './ObjectFields';
+import { SensitivityField, TypeFields } from './ObjectFields';
 import { lifecyclePill, typeIcons } from '../lib/object-visuals';
 import { formatDate, formatDateTime } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { Icon } from './Icon';
-
-const statusLabels: Record<LifeObjectStatus, string> = { active: 'Активен', archived: 'В архиве' };
+import { useLocale } from '../lib/i18n';
 
 /** Значения полей хранятся как есть; для формы приводим их к строкам. */
 function toFormData(data: Record<string, unknown>): Record<string, string> {
@@ -39,6 +40,7 @@ export function ObjectDetailScreen({
   theme: Theme;
   onToggleTheme: () => void;
 }) {
+  const locale = useLocale();
   const [obj, setObj] = useState<LifeObject | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -227,7 +229,7 @@ export function ObjectDetailScreen({
               <option value="archived">В архиве</option>
             </select>
           ) : (
-            <span className="kv-value">{statusLabels[obj.status]}</span>
+            <span className="kv-value">{lifeObjectStatusLabels[obj.status][locale]}</span>
           )}
         </div>
         <div className="kv">
@@ -241,7 +243,7 @@ export function ObjectDetailScreen({
         {!editing && (
           <div className="kv">
             <span className="kv-label">Чувствительность</span>
-            <span className="kv-value">{sensitivityLabels[obj.sensitivity]}</span>
+            <span className="kv-value">{sensitivityLabels[obj.sensitivity][locale]}</span>
           </div>
         )}
       </div>
@@ -273,7 +275,7 @@ export function ObjectDetailScreen({
             <div className="kv-grid">
               {dataEntries.map(([k, v]) => (
                 <div className="kv" key={k}>
-                  <span className="kv-label">{fieldLabel(obj.type, k)}</span>
+                  <span className="kv-label">{fieldLabel(obj.type, k, locale)}</span>
                   <span className="kv-value">{masked ? '•• •••• ••' : String(v)}</span>
                 </div>
               ))}

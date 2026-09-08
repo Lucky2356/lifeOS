@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DomainError } from './errors';
 import {
   computeReminders,
   daysUntil,
@@ -18,7 +19,9 @@ describe('computeReminders', () => {
   });
 
   it('бросает ошибку на невалидном дедлайне', () => {
-    expect(() => computeReminders('не-дата', [{ offsetDays: 7 }])).toThrow();
+    expect(() => computeReminders('не-дата', [{ offsetDays: 7 }])).toThrow(
+      new DomainError('invalid_deadline'),
+    );
   });
 });
 

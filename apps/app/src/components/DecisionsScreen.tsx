@@ -14,16 +14,19 @@ import { formatDate } from '../lib/format';
 import type { Theme } from '../lib/theme';
 import { ChoiceDialog, ConfirmDialog, PromptDialog } from './Dialog';
 import { Icon } from './Icon';
+import { useT } from '../lib/i18n';
 
 function ThemeBtn({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  const t = useT();
   return (
-    <button className="btn" onClick={onToggle} aria-label="Переключить тему">
+    <button className="btn" onClick={onToggle} aria-label={t('theme.toggle')}>
       <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
     </button>
   );
 }
 
 export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
+  const t = useT();
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [selected, setSelected] = useState<Decision | null>(null);
   const [criteria, setCriteria] = useState<DecisionCriterion[]>([]);
@@ -135,11 +138,11 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
   }
 
   function addCriterion() {
-    setCriteria((c) => [...c, { id: newDecisionChildId(), label: 'Новый критерий', weight: 3 }]);
+    setCriteria((c) => [...c, { id: newDecisionChildId(), label: t('decisions.newCriterion'), weight: 3 }]);
     setDirty(true);
   }
   function addOption() {
-    setOptions((o) => [...o, { id: newDecisionChildId(), label: 'Новый вариант', scores: {} }]);
+    setOptions((o) => [...o, { id: newDecisionChildId(), label: t('decisions.newOption'), scores: {} }]);
     setDirty(true);
   }
   function setScore(optId: string, critId: string, value: number) {
@@ -151,14 +154,15 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
   const ranked = scoreOptions({ criteria, options });
   const decided = selected?.status === 'decided';
-  const chosenLabel = options.find((o) => o.id === selected?.chosenOptionId)?.label ?? 'вариант удалён';
+  const chosenLabel =
+    options.find((o) => o.id === selected?.chosenOptionId)?.label ?? t('decisions.optionRemoved');
 
   if (selected) {
     return (
       <main className="main">
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
           <button className="btn btn-ghost" onClick={() => setSelected(null)}>
-            <Icon name="arrow-left" /> Решения
+            <Icon name="arrow-left" /> {t('decisions.title')}
           </button>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
         </div>
@@ -167,18 +171,18 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
             <div className="serif page-title">{selected.title}</div>
             {decided && (
               <div className="page-sub">
-                Решено {formatDate(selected.decidedAt)} · {chosenLabel}
+                {t('decisions.decidedOn', { date: formatDate(selected.decidedAt), option: chosenLabel })}
               </div>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className={`pill ${decided ? 'pill-ok' : 'pill-none'}`}>
-              {decided ? 'решено' : 'черновик'}
+              {decided ? t('decisions.decided') : t('decisions.draft')}
             </span>
             <button
               className="btn btn-danger"
               onClick={() => setConfirmDelete(true)}
-              aria-label="Удалить решение"
+              aria-label={t('decisions.delete')}
             >
               <Icon name="trash" />
             </button>
@@ -186,7 +190,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         </div>
 
         <div className="field" style={{ maxWidth: 620 }}>
-          <label htmlFor="decision-context">В чём вопрос</label>
+          <label htmlFor="decision-context">{t('decisions.context')}</label>
           <textarea
             id="decision-context"
             rows={2}
@@ -195,20 +199,20 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               setContext(e.target.value);
               setDirty(true);
             }}
-            placeholder="Что происходит и почему выбор вообще встал"
+            placeholder={t('decisions.contextPlaceholder')}
           />
         </div>
 
         <div className="section-label">
-          Критерии
+          {t('decisions.criteria')}
           <button className="reveal-btn" onClick={addCriterion}>
-            <Icon name="plus" /> добавить
+            <Icon name="plus" /> {t('decisions.addCriterion')}
           </button>
         </div>
         <div className="list-card" style={{ marginBottom: 20 }}>
           {criteria.length === 0 && (
             <div className="list-row" style={{ color: 'var(--ink-3)' }}>
-              Добавьте критерии
+              {t('decisions.addCriteria')}
             </div>
           )}
           {criteria.map((c) => (
@@ -221,7 +225,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   setDirty(true);
                 }}
               />
-              <span className="list-row-meta">вес</span>
+              <span className="list-row-meta">{t('decisions.weight')}</span>
               <select
                 value={c.weight}
                 onChange={(e) => {
@@ -240,7 +244,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               <button
                 className="reveal-btn"
                 onClick={() => removeCriterion(c.id)}
-                aria-label={`Убрать критерий «${c.label}»`}
+                aria-label={t('decisions.removeCriterion', { label: c.label })}
               >
                 <Icon name="trash" />
               </button>
@@ -249,15 +253,15 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         </div>
 
         <div className="section-label">
-          Варианты
+          {t('decisions.options')}
           <button className="reveal-btn" onClick={addOption}>
-            <Icon name="plus" /> добавить
+            <Icon name="plus" /> {t('decisions.addCriterion')}
           </button>
         </div>
         <div className="list-card" style={{ marginBottom: 20 }}>
           {options.length === 0 && (
             <div className="list-row" style={{ color: 'var(--ink-3)' }}>
-              Добавьте варианты
+              {t('decisions.addOptions')}
             </div>
           )}
           {options.map((o) => (
@@ -296,7 +300,7 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
               <button
                 className="reveal-btn"
                 onClick={() => removeOption(o.id)}
-                aria-label={`Убрать вариант «${o.label}»`}
+                aria-label={t('decisions.removeOption', { label: o.label })}
               >
                 <Icon name="trash" />
               </button>
@@ -306,19 +310,19 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
         {ranked.length > 0 && (
           <>
-            <div className="section-label">Взвешенный итог</div>
+            <div className="section-label">{t('decisions.score')}</div>
             <div className="list-card" style={{ marginBottom: 20 }}>
               {ranked.map((r, i) => (
                 <div className="list-row" key={r.optionId}>
                   {i === 0 && <Icon name="star" style={{ color: 'var(--sage)' }} />}
                   <span style={{ flex: 1, fontWeight: i === 0 ? 500 : 400 }}>{r.label}</span>
-                  <span className="list-row-meta">{r.total} баллов</span>
+                  <span className="list-row-meta">{t('decisions.points', { n: r.total })}</span>
                   {selected.chosenOptionId === r.optionId ? (
-                    <span className="pill pill-ok">выбрано</span>
+                    <span className="pill pill-ok">{t('decisions.chosen')}</span>
                   ) : (
                     !decided && (
                       <button className="reveal-btn" onClick={() => setDeciding(r.optionId)}>
-                        выбрать
+                        {t('decisions.choose')}
                       </button>
                     )
                   )}
@@ -331,17 +335,14 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
         {decided && selected.reviewAt && !selected.actualOutcome && (
           <div className="hint" style={{ marginBottom: 20 }}>
             <Icon name="bell" />
-            <span>
-              Вернуться к этому решению {formatDate(selected.reviewAt)} — тогда и станет видно, совпало ли
-              ожидание с тем, что вышло.
-            </span>
+            <span>{t('decisions.reviewNote', { date: formatDate(selected.reviewAt) })}</span>
           </div>
         )}
 
-        <div className="section-label">Журнал исхода</div>
+        <div className="section-label">{t('decisions.journal')}</div>
         <div className="list-card" style={{ marginBottom: 20, padding: 14, display: 'grid', gap: 12 }}>
           <div className="field" style={{ margin: 0 }}>
-            <label htmlFor="expected">Чего вы ждёте от этого решения</label>
+            <label htmlFor="expected">{t('decisions.expected')}</label>
             <textarea
               id="expected"
               rows={2}
@@ -350,22 +351,22 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                 setExpected(e.target.value);
                 setDirty(true);
               }}
-              placeholder="Через полгода я рассчитываю, что…"
+              placeholder={t('decisions.expectedPlaceholder')}
             />
             <div className="page-sub" style={{ fontSize: 12, marginTop: 5 }}>
-              Записанное ожидание — то, с чем потом сравнивают результат.
+              {t('decisions.expectedHint')}
             </div>
           </div>
 
           {decided ? (
             <div className="field" style={{ margin: 0 }}>
-              <label htmlFor="outcome">Что вышло на самом деле</label>
+              <label htmlFor="outcome">{t('decisions.outcome')}</label>
               <textarea
                 id="outcome"
                 rows={2}
                 value={outcome}
                 onChange={(e) => setOutcome(e.target.value)}
-                placeholder="Оглядываясь назад…"
+                placeholder={t('decisions.outcomePlaceholder')}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                 <button
@@ -373,31 +374,29 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   onClick={() => void saveOutcome()}
                   disabled={outcome.trim() === (selected.actualOutcome ?? '')}
                 >
-                  Записать исход
+                  {t('decisions.recordOutcome')}
                 </button>
                 <button className="btn btn-ghost" onClick={() => setConfirmReopen(true)}>
-                  Пересмотреть решение
+                  {t('decisions.reopen')}
                 </button>
               </div>
             </div>
           ) : (
             <div className="page-sub">
-              {ranked.length === 0
-                ? 'Добавьте варианты, чтобы принять решение.'
-                : 'Выберите вариант во «Взвешенном итоге» — решение зафиксируется с датой.'}
+              {ranked.length === 0 ? t('decisions.needOptions') : t('decisions.pickOption')}
             </div>
           )}
         </div>
 
         <button className="btn btn-primary" onClick={save} disabled={!dirty}>
-          {dirty ? 'Сохранить' : 'Сохранено'}
+          {dirty ? t('decisions.save') : t('decisions.saved')}
         </button>
 
         {confirmDelete && (
           <ConfirmDialog
-            title={`Удалить решение «${selected.title}»?`}
-            message="Критерии, варианты и записанный исход будут удалены безвозвратно."
-            confirmLabel="Удалить"
+            title={t('decisions.deleteTitle', { title: selected.title })}
+            message={t('decisions.deleteMessage')}
+            confirmLabel={t('decisions.deleteConfirm')}
             danger
             onConfirm={() => void removeDecision()}
             onCancel={() => setConfirmDelete(false)}
@@ -406,9 +405,9 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
         {confirmReopen && (
           <ConfirmDialog
-            title="Вернуть решение в черновик?"
-            message="Выбранный вариант, дата решения и записанный исход будут стёрты."
-            confirmLabel="Пересмотреть"
+            title={t('decisions.reopenTitle')}
+            message={t('decisions.reopenMessage')}
+            confirmLabel={t('decisions.reopenConfirm')}
             danger
             onConfirm={() => void reopen()}
             onCancel={() => setConfirmReopen(false)}
@@ -417,13 +416,13 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
 
         {deciding && (
           <ChoiceDialog
-            title="Когда вернуться к этому решению?"
-            message="Записанное ожидание имеет смысл, только если кто-то напомнит его перечитать. Приложение позовёт обратно в выбранный срок."
+            title={t('decisions.reviewTitle')}
+            message={t('decisions.reviewMessage')}
             choices={[
-              { value: 6, label: 'Через полгода', hint: 'подходит большинству решений' },
-              { value: 3, label: 'Через три месяца', hint: 'быстро проверяемый выбор' },
-              { value: 12, label: 'Через год', hint: 'то, что раскрывается долго' },
-              { value: 0, label: 'Не напоминать' },
+              { value: 6, label: t('decisions.review6'), hint: t('decisions.review6Hint') },
+              { value: 3, label: t('decisions.review3'), hint: t('decisions.review3Hint') },
+              { value: 12, label: t('decisions.review12'), hint: t('decisions.review12Hint') },
+              { value: 0, label: t('decisions.reviewNever') },
             ]}
             onChoose={(months) => void decide(deciding, months)}
             onCancel={() => setDeciding(null)}
@@ -437,18 +436,18 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
     <main className="main">
       <div className="page-head">
         <div>
-          <div className="serif page-title">Решения</div>
-          <div className="page-sub">Взвешивайте варианты и ведите журнал решений</div>
+          <div className="serif page-title">{t('decisions.title')}</div>
+          <div className="page-sub">{t('decisions.subtitle')}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <ThemeBtn theme={theme} onToggle={onToggleTheme} />
           <button className="btn btn-primary" onClick={() => setCreating(true)}>
-            <Icon name="plus" /> Новое
+            <Icon name="plus" /> {t('decisions.new')}
           </button>
         </div>
       </div>
       {decisions.length === 0 ? (
-        <div className="state">Пока нет решений. Создайте первое, когда предстоит выбор.</div>
+        <div className="state">{t('decisions.empty')}</div>
       ) : (
         <div className="grid">
           {decisions.map((d) => (
@@ -458,12 +457,12 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
                   <Icon name="scale" />
                 </span>
                 <span className={`pill ${d.status === 'decided' ? 'pill-ok' : 'pill-none'}`}>
-                  {d.status === 'decided' ? 'решено' : 'черновик'}
+                  {d.status === 'decided' ? t('decisions.decided') : t('decisions.draft')}
                 </span>
               </div>
               <div className="card-title">{d.title}</div>
               <div className="card-meta">
-                {d.options.length} вар. · {d.criteria.length} крит.
+                {t('decisions.counts', { options: d.options.length, criteria: d.criteria.length })}
               </div>
             </button>
           ))}
@@ -471,10 +470,10 @@ export function DecisionsScreen({ theme, onToggleTheme }: { theme: Theme; onTogg
       )}
       {creating && (
         <PromptDialog
-          title="Новое решение"
-          label="О чём решение?"
-          placeholder="Например: сменить работу"
-          confirmLabel="Создать"
+          title={t('decisions.newTitle')}
+          label={t('decisions.newLabel')}
+          placeholder={t('decisions.newPlaceholder')}
+          confirmLabel={t('decisions.create')}
           onSubmit={createNew}
           onCancel={() => setCreating(false)}
         />

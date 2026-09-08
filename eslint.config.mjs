@@ -46,7 +46,6 @@ export default tseslint.config(
 
       // Ещё не переведено:
       'apps/app/src/components/Attachments.tsx',
-      'apps/app/src/components/DecisionsScreen.tsx',
       'apps/app/src/components/ObjectDetailScreen.tsx',
       'apps/app/src/components/SearchScreen.tsx',
       'apps/app/src/components/SettingsScreen.tsx',
